@@ -17,6 +17,7 @@ from app.rules import RULES
 from app.rules.base import Rule
 from app.schemas.issue import ValidationIssue
 from app.schemas.report import GenerationSource, PreflightReport, PreflightSummary
+from app.services.llm_service import build_fallback_narrative
 
 logger = logging.getLogger(__name__)
 
@@ -66,12 +67,13 @@ def validate_context(
             logger.exception("rule execution failed: %s", rule.code)
             failed_rules.append(rule.code)
     summary = build_summary(issues, checked_rows=len(ctx.promotions))
+    narrative = build_fallback_narrative(issues)
     return PreflightReport(
         run_id=uuid4().hex,
         summary=summary,
         issues=issues,
-        ai_summary=deterministic_ai_summary(issues),
-        checklist=deterministic_checklist(issues),
+        ai_summary=narrative.ai_summary,
+        checklist=narrative.checklist,
         generated_by=GenerationSource.FALLBACK,
         failed_rules=failed_rules,
     )
@@ -92,20 +94,3 @@ def build_summary(issues: list[ValidationIssue], checked_rows: int) -> Preflight
         passed=by_severity.get("error", 0) == 0,
         checked_rows=checked_rows,
     )
-
-
-def deterministic_ai_summary(issues: list[ValidationIssue]) -> str:
-    if not issues:
-        return "검수 결과 이상 없음. 모든 파일이 규칙을 통과했습니다."
-    first_issue = issues[0]
-    return (
-        f"총 {len(issues)}건의 이슈가 발견되었습니다. "
-        f"가장 먼저 확인할 항목은 {first_issue.code}입니다."
-    )
-
-
-def deterministic_checklist(issues: list[ValidationIssue]) -> list[str]:
-    return [
-        f"[{issue.code}] {issue.suggestion or issue.title}"
-        for issue in issues
-    ]
