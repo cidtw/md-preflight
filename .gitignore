@@ -4,3 +4,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .DS_Store
+
+# 내부 프로세스 산출물(로컬 전용) — 티켓/리뷰 노트/생성 리포트는 repo에 올리지 않음
+handoff/
+outputs/*
+!outputs/.gitkeep
