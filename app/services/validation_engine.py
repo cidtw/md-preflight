@@ -16,8 +16,11 @@ from app.ingest.normalize import build_context
 from app.rules import RULES
 from app.rules.base import Rule
 from app.schemas.issue import ValidationIssue
-from app.schemas.report import GenerationSource, PreflightReport, PreflightSummary
-from app.services.llm_service import build_fallback_narrative
+from app.schemas.report import PreflightReport, PreflightSummary
+from app.services.llm_service import (
+    FallbackNarrativeGenerator,
+    NarrativeGenerator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,25 +59,27 @@ def validate_context(
     ctx: PreflightContext,
     *,
     rules: Sequence[Rule] | None = None,
+    generator: NarrativeGenerator | None = None,
 ) -> PreflightReport:
     issues: list[ValidationIssue] = []
     failed_rules: list[str] = []
     active_rules = RULES if rules is None else rules
+    narrative_generator = FallbackNarrativeGenerator() if generator is None else generator
     for rule in active_rules:
         try:
             issues.extend(rule.apply(ctx))
-        except Exception:
+        except Exception:  # noqa: BROAD_EXCEPT_OK
             logger.exception("rule execution failed: %s", rule.code)
             failed_rules.append(rule.code)
     summary = build_summary(issues, checked_rows=len(ctx.promotions))
-    narrative = build_fallback_narrative(issues)
+    narrative = narrative_generator.generate(summary, issues)
     return PreflightReport(
         run_id=uuid4().hex,
         summary=summary,
         issues=issues,
         ai_summary=narrative.ai_summary,
         checklist=narrative.checklist,
-        generated_by=GenerationSource.FALLBACK,
+        generated_by=narrative.source,
         failed_rules=failed_rules,
     )
 
