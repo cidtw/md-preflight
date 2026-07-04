@@ -24,8 +24,14 @@ def build_context(
     promotions = normalize_promotions(promotion_raw)
     products = normalize_product_master(product_raw)
     inventory = normalize_inventory(inventory_raw)
-    products_for_join = products.drop(columns=["source_row"])
-    inventory_for_join = inventory.drop(columns=["source_row"])
+    products_for_join = (
+        products.drop(columns=["source_row"])
+        .drop_duplicates(subset="product_code", keep="first")
+    )
+    inventory_for_join = (
+        inventory.drop(columns=["source_row"])
+        .drop_duplicates(subset="product_code", keep="first")
+    )
     joined = promotions.merge(
         products_for_join,
         on="product_code",
@@ -38,6 +44,9 @@ def build_context(
         how="left",
         suffixes=("", "_inventory"),
     )
+    if len(joined) != len(promotions):
+        msg = f"join invariant violated: joined={len(joined)} promotions={len(promotions)}"
+        raise IngestError(msg)
     return PreflightContext(
         promotions=promotions,
         products=products,
