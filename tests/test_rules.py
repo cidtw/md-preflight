@@ -4,8 +4,12 @@ import pandas as pd
 
 from app.core.rule_config import RuleThresholds
 from app.domain.context import PreflightContext
+from app.rules.benefit_condition import MISSING_BENEFIT_CONDITION_RULE
 from app.rules.date_range import INVALID_DATE_RANGE_RULE
 from app.rules.discount_rate import EXTREME_DISCOUNT_RATE_RULE
+from app.rules.inbound_date import INBOUND_DATE_CONFLICT_RULE
+from app.rules.inventory import INVENTORY_SHORTAGE_RISK_RULE
+from app.rules.margin_rate import LOW_MARGIN_RATE_RULE
 from app.rules.product_master import MISSING_PRODUCT_MASTER_RULE
 from app.rules.promo_price import INVALID_PROMO_PRICE_RULE
 
@@ -62,6 +66,61 @@ def test_extreme_discount_rate_when_discount_above_threshold(
     assert issue.entity == {"promotion_id": "P-3", "product_code": "SKU-3"}
     assert issue.observed == "discount_rate=80.00%"
     assert issue.suggestion is not None
+
+
+def test_low_margin_rate_when_margin_below_threshold(
+    sample_context: PreflightContext,
+) -> None:
+    issues = LOW_MARGIN_RATE_RULE.apply(sample_context)
+    assert len(issues) == 2
+    warning_issue = next(issue for issue in issues if issue.entity["promotion_id"] == "P-5")
+    assert warning_issue.code == "LOW_MARGIN_RATE"
+    assert warning_issue.severity.value == "warning"
+    assert warning_issue.location.row == 6
+    assert warning_issue.observed == "margin_rate=1.79%"
+    error_issue = next(issue for issue in issues if issue.entity["promotion_id"] == "P-3")
+    assert error_issue.severity.value == "error"
+    assert error_issue.location.row == 4
+    assert error_issue.observed == "margin_rate=-175.00%"
+
+
+def test_inventory_shortage_risk_when_demand_exceeds_stock(
+    sample_context: PreflightContext,
+) -> None:
+    issues = INVENTORY_SHORTAGE_RISK_RULE.apply(sample_context)
+    assert len(issues) == 1
+    issue = issues[0]
+    assert issue.code == "INVENTORY_SHORTAGE_RISK"
+    assert issue.severity.value == "warning"
+    assert issue.location.row == 6
+    assert issue.entity == {"promotion_id": "P-5", "product_code": "SKU-5"}
+    assert issue.observed == "expected_demand=8.0, stock_qty=5.0"
+
+
+def test_inbound_date_conflict_when_inventory_arrives_after_start(
+    sample_context: PreflightContext,
+) -> None:
+    issues = INBOUND_DATE_CONFLICT_RULE.apply(sample_context)
+    assert len(issues) == 1
+    issue = issues[0]
+    assert issue.code == "INBOUND_DATE_CONFLICT"
+    assert issue.severity.value == "warning"
+    assert issue.location.row == 6
+    assert issue.entity == {"promotion_id": "P-5", "product_code": "SKU-5"}
+    assert issue.observed == "inbound_date=2026-07-12, start_date=2026-07-10"
+
+
+def test_missing_benefit_condition_when_type_exists_without_condition(
+    sample_context: PreflightContext,
+) -> None:
+    issues = MISSING_BENEFIT_CONDITION_RULE.apply(sample_context)
+    assert len(issues) == 1
+    issue = issues[0]
+    assert issue.code == "MISSING_BENEFIT_CONDITION"
+    assert issue.severity.value == "error"
+    assert issue.location.row == 7
+    assert issue.entity == {"promotion_id": "P-6", "product_code": "SKU-6"}
+    assert issue.observed == "benefit_type=gift, benefit_condition=<empty>"
 
 
 def test_missing_product_master_does_not_flag_null_normal_price() -> None:
@@ -142,4 +201,8 @@ def test_clean_sample_has_no_issues(clean_context: PreflightContext) -> None:
     issues += MISSING_PRODUCT_MASTER_RULE.apply(clean_context)
     issues += INVALID_PROMO_PRICE_RULE.apply(clean_context)
     issues += EXTREME_DISCOUNT_RATE_RULE.apply(clean_context)
+    issues += LOW_MARGIN_RATE_RULE.apply(clean_context)
+    issues += INVENTORY_SHORTAGE_RISK_RULE.apply(clean_context)
+    issues += INBOUND_DATE_CONFLICT_RULE.apply(clean_context)
+    issues += MISSING_BENEFIT_CONDITION_RULE.apply(clean_context)
     assert issues == []

@@ -16,9 +16,8 @@ def thresholds() -> RuleThresholds:
     return RuleThresholds()
 
 
-@pytest.fixture()
-def sample_context(thresholds: RuleThresholds) -> PreflightContext:
-    promotion = pd.DataFrame(
+def build_sample_promotions() -> pd.DataFrame:
+    return pd.DataFrame(
         [
             {
                 "promotion_id": "P-1",
@@ -56,9 +55,30 @@ def sample_context(thresholds: RuleThresholds) -> PreflightContext:
                 "benefit_type": "discount",
                 "benefit_condition": "buy 1",
             },
+            {
+                "promotion_id": "P-5",
+                "product_code": "SKU-5",
+                "start_date": "2026-07-10",
+                "end_date": "2026-07-13",
+                "promo_price": "5600",
+                "benefit_type": "discount",
+                "benefit_condition": "buy 3",
+            },
+            {
+                "promotion_id": "P-6",
+                "product_code": "SKU-6",
+                "start_date": "2026-07-11",
+                "end_date": "2026-07-16",
+                "promo_price": "6500",
+                "benefit_type": "gift",
+                "benefit_condition": "",
+            },
         ]
     )
-    products = pd.DataFrame(
+
+
+def build_sample_products() -> pd.DataFrame:
+    return pd.DataFrame(
         [
             {
                 "product_code": "SKU-1",
@@ -78,9 +98,24 @@ def sample_context(thresholds: RuleThresholds) -> PreflightContext:
                 "normal_price": "10000",
                 "cost": "5500",
             },
+            {
+                "product_code": "SKU-5",
+                "product_name": "Item 5",
+                "normal_price": "10000",
+                "cost": "5500",
+            },
+            {
+                "product_code": "SKU-6",
+                "product_name": "Item 6",
+                "normal_price": "10000",
+                "cost": "5000",
+            },
         ]
     )
-    inventory = pd.DataFrame(
+
+
+def build_sample_inventory() -> pd.DataFrame:
+    return pd.DataFrame(
         [
             {
                 "product_code": "SKU-1",
@@ -100,9 +135,36 @@ def sample_context(thresholds: RuleThresholds) -> PreflightContext:
                 "inbound_date": "2026-07-09",
                 "expected_demand": "8",
             },
+            {
+                "product_code": "SKU-5",
+                "stock_qty": "5",
+                "inbound_date": "2026-07-12",
+                "expected_demand": "8",
+            },
+            {
+                "product_code": "SKU-6",
+                "stock_qty": "15",
+                "inbound_date": "2026-07-09",
+                "expected_demand": "7",
+            },
+            {
+                "product_code": "SKU-9",
+                "stock_qty": "5",
+                "inbound_date": "2026-07-09",
+                "expected_demand": "4",
+            },
         ]
     )
-    return build_context(promotion, products, inventory, thresholds)
+
+
+@pytest.fixture()
+def sample_context(thresholds: RuleThresholds) -> PreflightContext:
+    return build_context(
+        build_sample_promotions(),
+        build_sample_products(),
+        build_sample_inventory(),
+        thresholds,
+    )
 
 
 @pytest.fixture()
