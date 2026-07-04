@@ -22,7 +22,7 @@ md-preflight/
 ├─ PROJECT_BRIEF.md
 ├─ BACKEND_ARCHITECTURE.md        # 이 문서
 ├─ README.md                      # (Week 3) 문제정의·설계의도·데모 방법
-├─ pyproject.toml                 # ruff + pytest + fastapi + pandas + openpyxl + anthropic
+├─ pyproject.toml                 # ruff + pytest + fastapi + pandas + openpyxl
 ├─ app/
 │  ├─ main.py                     # FastAPI app factory, 라우터 등록, CORS
 │  ├─ core/
@@ -34,37 +34,40 @@ md-preflight/
 │  ├─ schemas/                    # 경계(API) Pydantic 모델
 │  │  ├─ issue.py                 # Severity, IssueLocation, ValidationIssue
 │  │  ├─ report.py                # PreflightSummary, PreflightReport
-│  │  └─ rule_meta.py             # RuleMeta (GET /rules 응답)
+│  │  └─ rule_meta.py             # RuleMeta (GET /api/preflight/rules 응답)
 │  ├─ domain/
 │  │  ├─ columns.py               # 파일별 컬럼 상수 + 기대 스키마(정본)
-│  │  └─ context.py               # PreflightContext (정규화된 3 DataFrame + 조인 뷰)
+│  │  └─ context.py               # PreflightContext (정규화된 3 DataFrame + 조인 뷰 + RuleThresholds)
 │  ├─ ingest/
 │  │  ├─ loader.py                # read_excel/csv → raw DataFrame
 │  │  └─ normalize.py             # 컬럼 검증·타입 캐스팅·조인 → PreflightContext
 │  ├─ rules/
-│  │  ├─ __init__.py              # RULES 레지스트리(리스트) + ALL_RULE_META
+│  │  ├─ __init__.py              # RULES 레지스트리(리스트)
 │  │  ├─ base.py                  # Rule 프로토콜, Severity, issue 헬퍼
 │  │  ├─ date_range.py            # INVALID_DATE_RANGE
 │  │  ├─ product_master.py        # MISSING_PRODUCT_MASTER
+│  │  ├─ incomplete_master.py     # INCOMPLETE_PRODUCT_MASTER
 │  │  ├─ promo_price.py           # INVALID_PROMO_PRICE
 │  │  ├─ discount_rate.py         # EXTREME_DISCOUNT_RATE
 │  │  ├─ margin_rate.py           # LOW_MARGIN_RATE
+│  │  ├─ duplicate_master_code.py # DUPLICATE_MASTER_CODE
 │  │  ├─ inventory.py             # INVENTORY_SHORTAGE_RISK
 │  │  ├─ inbound_date.py          # INBOUND_DATE_CONFLICT
 │  │  └─ benefit_condition.py     # MISSING_BENEFIT_CONDITION
 │  └─ services/
 │     ├─ validation_engine.py     # ingest → 룰 실행 → PreflightReport 조립 (오케스트레이터)
-│     ├─ llm_service.py           # 요약+체크리스트 생성 (결정론적 fallback 포함)
-│     └─ report_service.py        # PreflightReport → Markdown/PDF 렌더
+│     ├─ llm_service.py           # 현재는 fallback 서사 생성만 담당 (실제 LLM 연동은 T6 예정)
+│     └─ report_service.py        # PreflightReport → Markdown 렌더 (PDF는 계획, P2)
+├─ data/
+│  └─ samples/
+│     ├─ clean/                   # 이슈 0건 세트 (csv/xlsx 3종)
+│     └─ dirty/                   # 10개 룰을 유발하는 세트 (csv/xlsx 3종)
 └─ tests/
    ├─ conftest.py                 # DataFrame/Context 빌더 팩토리
-   ├─ fixtures/
-   │  ├─ clean/                   # 이슈 0건 세트 (xlsx 3개)
-   │  └─ dirty/                   # 8개 룰 전부 유발하는 세트
-   ├─ rules/                      # 룰당 1개 테스트 파일 (핵심 커버리지)
-   ├─ ingest/                     # 스키마/타입/누락 컬럼 테스트
-   ├─ services/                   # 엔진 통합 + llm fallback + 리포트 렌더
-   └─ api/                        # TestClient 업로드 → 응답 shape 검증
+   ├─ test_rules.py               # 룰 판정/심각도/임계값 테스트
+   ├─ test_loader.py              # ingest/loader 검증
+   ├─ test_services.py            # 엔진 통합 + fallback + 리포트 렌더
+   └─ test_api.py                 # TestClient 업로드 → 응답 shape 검증
 ```
 
 **의도**
@@ -147,8 +150,12 @@ class PreflightReport(BaseModel):
     issues: list[ValidationIssue]
     ai_summary: str | None           # LLM 요약 (fallback 시 템플릿 문자열)
     checklist: list[str]             # 담당자 실행 체크리스트
-    generated_by: Literal["llm", "fallback"]   # 데모 투명성
+    generated_by: Literal["llm", "fallback"]   # 현재는 T6 전까지 "fallback"으로 고정
+    failed_rules: list[str]          # 예외로 스킵된 룰 code 목록
 ```
+
+- `generated_by`는 스키마상 `llm | fallback`이지만 현재 `validate_context()`는 항상 `fallback`을 반환한다.
+- `failed_rules`는 개별 룰 예외를 전체 500으로 터뜨리지 않고 격리했을 때, 스킵된 룰 code를 담는 실제 응답 필드다.
 
 ---
 
@@ -172,10 +179,10 @@ class PreflightReport(BaseModel):
       ▼
 ④ summary 집계            심각도/룰별 카운트, passed 판정 → PreflightSummary
       ▼
-⑤ llm_service (선택)      결정론적 결과 → LLM 요약 + 체크리스트
-      │                    키 없음/타임아웃/에러 → 결정론적 fallback (generated_by="fallback")
+⑤ llm_service             현재는 fallback 서사만 생성
+      │                    실제 LLM 연동은 T6 예정, 지금은 generated_by="fallback" 고정
       ▼
-   PreflightReport         (⑥ report_service가 요청 시 Markdown/PDF로 렌더)
+   PreflightReport         (⑥ report_service가 요청 시 Markdown으로 렌더, PDF는 계획)
 ```
 
 ### 3.1 Rule 계약 (`rules/base.py`)
@@ -192,28 +199,32 @@ class Rule(Protocol):
 - **룰 추가 = 파일 1개 + 리스트 1줄.** 로더/데코레이터 매직 없음 → 리뷰·디버깅 쉬움.
 - 룰은 Pandas 벡터 연산으로 조건 마스크를 만들고, 해당 행을 순회하며 `ValidationIssue`를 생성.
 
-### 3.2 8개 MVP 룰 판정 정의
+### 3.2 10개 룰 판정 정의
 
 | code | severity | 판정 로직(요지) | 임계값 |
 |------|----------|-----------------|--------|
 | `INVALID_DATE_RANGE` | error | `start_date > end_date` 또는 날짜 파싱 실패 | — |
-| `MISSING_PRODUCT_MASTER` | error | `product_code`가 product_master에 없음(조인 NaN) | — |
+| `MISSING_PRODUCT_MASTER` | error | `product_code`가 product_master에 없음(조인 `left_only`) | — |
+| `INCOMPLETE_PRODUCT_MASTER` | error | 마스터 매칭 성공(`left_only` 아님)이나 `normal_price` 또는 `cost` 결측(NaN) | — |
 | `INVALID_PROMO_PRICE` | error | `promo_price <= 0` 또는 `promo_price > normal_price` | — |
-| `EXTREME_DISCOUNT_RATE` | warning | 할인율 `1 - promo/normal` ≥ 임계 | `max_discount_rate=0.7` |
-| `LOW_MARGIN_RATE` | warning¹ | 마진율 `(promo - cost)/promo` < 임계 | `min_margin_rate=0.05` |
-| `INVENTORY_SHORTAGE_RISK` | warning | `expected_demand > stock_qty` | (선택) `buffer_ratio` |
+| `EXTREME_DISCOUNT_RATE` | warning | `normal_price > 0`, `promo_price > 0`, `promo_price <= normal_price`일 때 할인율 `1 - promo/normal` ≥ 임계 | `max_discount_rate=0.7` |
+| `LOW_MARGIN_RATE` | warning¹ | `promo_price > 0`일 때 마진율 `(promo - cost)/promo` < 임계 | `min_margin_rate=0.05` |
+| `DUPLICATE_MASTER_CODE` | warning | product_master 또는 inventory에 동일 `product_code`가 중복 존재(원본 프레임 기준) | — |
+| `INVENTORY_SHORTAGE_RISK` | warning | `expected_demand > stock_qty` | — |
 | `INBOUND_DATE_CONFLICT` | warning | `inbound_date > start_date` (행사 시작 후 입고) | — |
-| `MISSING_BENEFIT_CONDITION` | error² | `benefit_type` 있는데 `benefit_condition` 공란 | — |
+| `MISSING_BENEFIT_CONDITION` | error | `benefit_type` 값이 있는데 `benefit_condition`이 비어 있음 | — |
 
-¹ 마진이 음수면 `error`로 승격. ² 조건 자체가 무의미하면 `warning`. 승격 기준도 config 상수로 고정해 결정론 유지.
+¹ 기본 severity 메타데이터는 `warning`이지만, 실제 issue 생성 시 계산된 마진율이 음수면 `error`로 승격된다.
+
+> **조인 불변식(ingest):** `normalize.build_context`는 join 입력(products/inventory)을 `product_code` 기준 `drop_duplicates(keep="first")`로 정규화해 `joined`가 `promotions`와 1:1(행 수 동일)임을 보장하고, 사후에 `len(joined) != len(promotions)`이면 `IngestError`를 던진다. 중복 자체는 삭제로 숨기지 않고 `DUPLICATE_MASTER_CODE`로 표면화한다. `INCOMPLETE_PRODUCT_MASTER`는 `MISSING_PRODUCT_MASTER`(마스터 자체 없음)와 겹치지 않도록 `left_only`를 제외하며, 기존 가격/마진/할인 룰이 스킵하던 결측(NaN) 행을 명시적으로 소유한다.
 
 ### 3.3 LLM 경계 (`services/llm_service.py`)
 
-- **입력**: `PreflightSummary` + `list[ValidationIssue]` (이미 확정된 사실).
-- **출력**: (a) 3~5문장 한국어 요약, (b) 우선순위 정렬된 체크리스트 `list[str]`.
-- **프롬프트 규약**: "아래 검수 결과를 재판단하지 말고, 있는 그대로 담당자용으로 요약/체크리스트화하라. 새 이슈를 만들지 마라." → LLM이 판정을 못 만들게 명시.
-- **fallback**: 키 없음/에러/타임아웃 시 템플릿 기반 생성 — 심각도순으로 이슈를 문장화하고 체크리스트는 `code`별 정형 문구. `generated_by="fallback"`로 표시. **데모 안정성의 핵심.**
-- Claude 최신 모델 사용(`claude-sonnet-5` 권장, 비용/속도 균형). 온도 낮게, JSON 강제 스키마로 파싱 안전.
+- **현재 구현**: `FallbackNarrativeGenerator`, `LLMNarrativeGenerator`, `FallbackOnErrorNarrativeGenerator`가 존재한다. 입력은 확정된 `PreflightSummary` + `list[ValidationIssue]`, 출력은 `ai_summary`, `checklist`, `source`(`llm`/`fallback`)다.
+- **동작 방식**: `use_llm=false`면 무조건 fallback을 사용한다. `use_llm=true`면서 `ANTHROPIC_API_KEY`가 있으면 Claude structured output을 시도하고, SDK 예외나 parse 실패가 나면 자동으로 fallback으로 전환한다.
+- **프롬프트 경계**: LLM에는 `summary`와 issue의 제한된 필드(`code`, `severity`, `title`, `observed`, `expected`, `suggestion`)만 전달된다. 판정 데이터(`issues`, `summary`, `passed`)는 규칙 엔진 결과가 그대로 유지되고, LLM은 서술만 담당한다.
+- **`generated_by`**: 실제로 LLM 서사가 성공하면 `"llm"`, fallback 경로면 `"fallback"`이다. `/api/preflight/validate`는 룰 전용 경로라 항상 fallback을 반환한다.
+- **의미**: 현재 `llm_service.py`는 "규칙 엔진 결과를 서술로 변환하는 경계"다. 데모는 fallback으로 항상 살아 있고, LLM은 성공 시에만 narrative 계층에 개입한다.
 
 ---
 
@@ -223,26 +234,27 @@ class Rule(Protocol):
 
 | Method | Path | 설명 |
 |--------|------|------|
-| `POST` | `/api/preflight` | 3파일 multipart 업로드 → 전체 파이프라인 → `PreflightReport` (LLM 포함) |
-| `POST` | `/api/preflight/validate` | 룰만 실행(LLM 생략). 빠른 결정론 경로 / 테스트·디버그용 |
-| `GET` | `/api/preflight/{run_id}` | 저장된 결과 재조회 |
-| `GET` | `/api/preflight/{run_id}/report.md` | Markdown 리포트 다운로드 |
-| `GET` | `/api/preflight/{run_id}/report.pdf` | PDF 리포트 다운로드 (Week 3) |
-| `GET` | `/api/rules` | 룰 메타데이터 목록(code/severity/description) — 프론트 룰 안내 |
-| `GET` | `/health` | 헬스체크 |
+| `POST` | `/api/preflight/validate` | 3파일 multipart 업로드 → ingest + rule engine → `PreflightReport` (항상 fallback 서사) |
+| `POST` | `/api/preflight` | 3파일 multipart 업로드 → 전체 파이프라인. `use_llm=true`면 Claude narrative를 시도하고 실패 시 fallback |
+| `GET` | `/api/preflight/runs/{run_id}` | 저장된 결과 재조회 |
+| `GET` | `/api/preflight/runs/{run_id}/report.md` | Markdown 리포트 다운로드 |
+| `GET` | `/api/preflight/runs/{run_id}/report.pdf` | 계획만 존재 (P2), 현재 라우트 없음 |
+| `GET` | `/api/preflight/rules` | 룰 메타데이터 목록(code/severity/description) |
+| `GET` | `/api/preflight/health` | 헬스체크 |
 
 **요청 예 (`POST /api/preflight`)**: `multipart/form-data`
 - `promotion_plan`: file, `product_master`: file, `inventory`: file
-- `use_llm`: bool = true (false면 fallback 강제 — 데모 시 오프라인 대비)
+- `use_llm`: bool = true (활성화 시 Claude API 연동 서술 생성, 비활성화 혹은 호출 실패 시 fallback 자동 전환)
 
 **응답**: `PreflightReport` (§2.4).
 
 **에러 규약** (`core/errors.py`):
-- `422` — 컬럼 누락/타입 오류(IngestError). `detail`에 어떤 파일·어떤 컬럼인지 구조화.
-- `413` — 파일 크기 초과. `400` — 파일 개수/확장자 오류.
+- `422` — 컬럼 누락/타입 오류·빈 업로드 등 `IngestError`. 현재 코드가 실제로 처리하는 유효성 실패 경로다.
+- `400` — 파일 개수/허용 확장자(`.csv`, `.xlsx`) 외 업로드 시 `UploadValidationError` 발생.
+- `413` — 단일 파일 크기(5MB) 제한 초과 시 `UploadValidationError` 발생.
 - 룰 실행 중 개별 룰 예외는 500으로 새지 않고 격리(로그 + 스킵), 응답은 200.
 
-라우터는 얇게: 파싱/검증 후 `validation_engine.run(...)` 호출만. 비즈니스 로직은 서비스에.
+라우터는 얇게: 업로드를 `build_uploaded_context(...)`로 넘기고 `validate_context(...)` 호출만 수행한다. 비즈니스 로직은 서비스에 둔다.
 
 ---
 
@@ -252,17 +264,17 @@ class Rule(Protocol):
 
 | 계층 | 대상 | 방식 | 비중 |
 |------|------|------|------|
-| Unit — rules | 8개 룰 각각 | 인메모리 `PreflightContext` 빌더로 pass 1 + 각 실패모드 케이스 (룰당 3~5) | ★★★★★ |
+| Unit — rules | 10개 룰 각각 | 인메모리 `PreflightContext` 빌더로 pass 1 + 각 실패모드 케이스 (룰당 3~5) | ★★★★★ |
 | Unit — ingest | 컬럼 누락/타입불량/날짜파싱 | 작은 DataFrame·임시 xlsx | ★★★ |
-| Integration — engine | ingest→룰→summary 전 구간 | `fixtures/dirty` → 기대 이슈 집합 스냅샷 | ★★★ |
+| Integration — engine | ingest→룰→summary 전 구간 | `data/samples/dirty` → 기대 이슈 집합 스냅샷 | ★★★ |
 | Service — llm | 프롬프트 조립 + fallback | LLM 클라이언트 **목킹**, 실제 API 호출 금지 | ★★ |
 | Service — report | Markdown 렌더 | 스냅샷 비교 | ★ |
-| API | 업로드 흐름·에러코드 | `TestClient` + fixtures | ★★ |
+| API | 업로드 흐름·에러코드 | `TestClient` + `data/samples/{clean,dirty}` | ★★ |
 
 **규칙**
 - CI에서 **실제 LLM 호출 금지** (목킹/fallback). 룰·엔진 테스트는 네트워크·파일 IO 없이 순수 DataFrame으로.
 - `conftest.py`에 `make_context(promotions=..., products=..., inventory=...)` 팩토리를 두어 각 룰 테스트가 최소 데이터로 독립 실행되게 한다 (리뷰 기준 "독립 테스트 가능성").
-- 골든 픽스처 2종: `clean`(passed=True, 이슈 0) / `dirty`(8룰 전부 유발) — 회귀 안전망 + 데모 데이터 겸용.
+- 골든 샘플 2종: `data/samples/clean`(passed=True, 이슈 0) / `data/samples/dirty`(8룰 전부 유발) — 회귀 안전망 + 데모 데이터 겸용.
 - 목표 커버리지: `rules/` ≥ 90%, 전체 ≥ 80%.
 
 ---
@@ -278,14 +290,14 @@ class Rule(Protocol):
 
 ### Week 2 — 룰 완성 + 프론트 연동 가능 상태
 - P0: 나머지 룰 4개 — `discount_rate`, `inventory`, `inbound_date`, `benefit_condition` + 테스트
-- P0: summary 집계, `POST /api/preflight`(LLM 미포함으로 우선), `GET /api/rules`, `GET /{run_id}`
+- P0: summary 집계, `POST /api/preflight`(현재는 fallback-only), `GET /api/preflight/rules`, `GET /api/preflight/runs/{run_id}`
 - P1: `report_service` Markdown 렌더 + `report.md` 다운로드
 - P1: API 테스트, 인메모리 run 저장, CORS/에러 규약 정리
 - 완료 기준: 프론트가 실제 응답으로 이슈 리스트·요약 화면을 그린다.
 
 ### Week 3 — LLM 서술 + 포트폴리오 마감
-- P0: `llm_service` 요약+체크리스트 + **결정론적 fallback** + `use_llm` 플래그
-- P1: PDF 리포트, `generated_by` 노출
+- P0: 실제 LLM 연동(T6) + `generated_by="llm"` 경로 추가
+- P1: PDF 리포트 라우트/렌더 추가
 - P1: **README** (문제정의·설계의도·룰/LLM 역할분리·데모 방법) ← 포트폴리오 핵심
 - P2: 데모 스크립트/시드 데이터 정리, 엣지 픽스처 보강
 - 완료 기준: 오프라인에서도 업로드→요약→체크리스트→리포트가 끊김 없이 시연된다.
