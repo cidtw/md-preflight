@@ -13,6 +13,9 @@ class Settings(BaseSettings):
         env_prefix="MDPREFLIGHT_",
     )
 
+    llm_model: str = "claude-sonnet-5"
+    max_upload_bytes: int = 5 * 1024 * 1024
+    allowed_extensions: tuple[str, ...] = (".csv", ".xlsx")
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:3000",

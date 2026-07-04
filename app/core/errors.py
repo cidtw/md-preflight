@@ -10,3 +10,13 @@ class IngestError(Exception):
     @override
     def __str__(self) -> str:
         return self.message
+
+
+@dataclass(frozen=True, slots=True)
+class UploadValidationError(Exception):
+    message: str
+    status_code: int
+
+    @override
+    def __str__(self) -> str:
+        return self.message
