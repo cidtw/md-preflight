@@ -190,7 +190,7 @@ function renderReport(r) {
   list.innerHTML = "";
   if (r.issues.length === 0) {
     list.classList.remove("issue-list");
-    list.append(el("div", "empty-clean", "✓ 검수 통과 — 발견된 이슈가 없습니다."));
+    list.append(el("div", "empty-clean", "✓ 검수 통과 — 발견된 문제가 없습니다."));
   } else {
     list.classList.add("issue-list");
     const sorted = [...r.issues].sort((a, b) => sevRank(b.severity) - sevRank(a.severity) || a.code.localeCompare(b.code));
@@ -274,7 +274,43 @@ function resetToUpload() {
   showView("view-upload");
 }
 
+/* ---------- theme (light / dark / system) ---------- */
+const mql = window.matchMedia("(prefers-color-scheme: dark)");
+
+function applyTheme(pref) {
+  const dark = pref === "dark" || (pref === "system" && mql.matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  document.documentElement.dataset.themePref = pref;
+  document.querySelectorAll(".theme-btn").forEach((b) =>
+    b.classList.toggle("active", b.dataset.themeSet === pref),
+  );
+}
+
+function initTheme() {
+  let pref = "system";
+  try {
+    pref = localStorage.getItem("mdp-theme") || "system";
+  } catch (_) {}
+  applyTheme(pref);
+  document.querySelectorAll(".theme-btn").forEach((b) =>
+    b.addEventListener("click", () => {
+      const p = b.dataset.themeSet;
+      try {
+        localStorage.setItem("mdp-theme", p);
+      } catch (_) {}
+      applyTheme(p);
+    }),
+  );
+  // 시스템 모드일 때 OS 테마 변경을 실시간 반영
+  mql.addEventListener("change", () => {
+    if ((document.documentElement.dataset.themePref || "system") === "system") {
+      applyTheme("system");
+    }
+  });
+}
+
 /* ---------- init ---------- */
 buildDropzones();
+initTheme();
 $("#run-btn").addEventListener("click", runPreflight);
 $("#back-btn").addEventListener("click", resetToUpload);
