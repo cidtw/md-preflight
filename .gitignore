@@ -9,3 +9,5 @@ __pycache__/
 handoff/
 outputs/*
 !outputs/.gitkeep
+.vercel
+.env*
