@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import re
 from io import StringIO
 from pathlib import Path
 
-import pandas as pd
+import pandas as pd  # noqa: PANDAS_OK
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import TypeAdapter
@@ -70,6 +71,7 @@ def test_validate_endpoint_when_uploading_sample_files() -> None:
         "MISSING_BENEFIT_CONDITION": 1,
     }
     assert payload.failed_rules == []
+    assert payload.created_at.tzinfo is not None
 
     stored = client.get(f"/api/preflight/runs/{payload.run_id}")
 
@@ -229,6 +231,20 @@ def test_post_preflight_saved_run_is_retrievable() -> None:
     assert stored_payload == payload
 
 
+def test_report_has_created_at() -> None:
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/preflight",
+        data={"use_llm": "false"},
+        files=build_preflight_upload_files(),
+    )
+
+    assert response.status_code == 200
+    payload = PreflightReport.model_validate(response.json())
+    assert payload.created_at.tzinfo is not None
+
+
 def test_report_md_download() -> None:
     client = TestClient(app)
 
@@ -244,8 +260,29 @@ def test_report_md_download() -> None:
 
     assert response.status_code == 200
     assert "markdown" in response.headers["content-type"]
+    assert "Created At (UTC):" in response.text
     assert "# MD Preflight Report" in response.text
     assert "## Issues" in response.text
+
+
+def test_download_filename_is_timestamped() -> None:
+    client = TestClient(app)
+
+    create_response = client.post(
+        "/api/preflight",
+        data={"use_llm": "false"},
+        files=build_preflight_upload_files(),
+    )
+
+    assert create_response.status_code == 200
+    payload = PreflightReport.model_validate(create_response.json())
+    response = client.get(f"/api/preflight/runs/{payload.run_id}/report.md")
+
+    assert response.status_code == 200
+    assert re.search(
+        r'preflight-\d{4}-\d{2}-\d{2}-\d{4}-report\.md',
+        response.headers["content-disposition"],
+    ) is not None
 
 
 def test_report_md_unknown_run_returns_404() -> None:
@@ -405,4 +442,3 @@ def test_missing_column_still_422() -> None:
         files=build_preflight_upload_files(promotions=promotions),
     )
     assert response.status_code == 422
-

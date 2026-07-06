@@ -4,6 +4,7 @@ import logging
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from fastapi import UploadFile
@@ -81,6 +82,7 @@ def validate_context(
         checklist=narrative.checklist,
         generated_by=narrative.source,
         failed_rules=failed_rules,
+        created_at=datetime.now(tz=UTC),
     )
 
 

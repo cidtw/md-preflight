@@ -199,9 +199,18 @@ function renderReport(r) {
 
   // ai summary + provenance
   const ai = $("#ai-summary");
-  ai.className = "ai-panel has-badge";
+  const isFallback = r.generated_by !== "llm";
+  ai.className = `ai-panel has-badge ${isFallback ? "is-fallback" : "is-llm"}`;
   ai.innerHTML = "";
   const badge = el("span", `prov-badge ${r.generated_by === "llm" ? "llm" : "fallback"}`, r.generated_by);
+  const note = el(
+    "div",
+    "ai-note",
+    isFallback
+      ? "표준 요약 · 미리 정해둔 규칙 결과를 바탕으로 정리한 문장입니다."
+      : "AI 요약 · 이번 검수에서 먼저 봐야 할 포인트를 정리했습니다.",
+  );
+  ai.append(note);
   ai.append(badge);
   ai.append(el("div", "ai-text", r.ai_summary || "요약이 생성되지 않았습니다."));
 
