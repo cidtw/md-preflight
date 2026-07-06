@@ -22,6 +22,26 @@ class PreflightSummary(BaseModel):
     checked_rows: int
 
 
+class FileSummary(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
+    file: str
+    issue_count: int
+    headline: str
+
+
+class ChecklistItem(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
+    code: str
+    file: str
+    row: int | None
+    column: str | None
+    current: str | None
+    suggested: str | None
+    rationale: str
+
+
 class PreflightReport(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
@@ -29,7 +49,9 @@ class PreflightReport(BaseModel):
     summary: PreflightSummary
     issues: list[ValidationIssue]
     ai_summary: str | None
+    file_summaries: list[FileSummary] = Field(default_factory=list)
     checklist: list[str]
+    checklist_items: list[ChecklistItem] = Field(default_factory=list)
     generated_by: GenerationSource
     failed_rules: list[str] = Field(default_factory=list)
     created_at: datetime

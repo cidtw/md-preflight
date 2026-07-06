@@ -10,9 +10,11 @@ from app.core.errors import IngestError, UploadValidationError
 from app.rules import RULES
 from app.schemas.report import PreflightReport
 from app.schemas.rule_meta import RuleMeta
+from app.schemas.source_meta import SourceMeta
 from app.services.report_service import render_markdown_report
 from app.services.run_store import RunStore
 from app.services.validation_engine import UploadedFiles, build_uploaded_context, validate_context
+from app.sources import SOURCE_CATALOG
 
 router = APIRouter(prefix="/api/preflight", tags=["preflight"])
 
@@ -159,6 +161,11 @@ def download_markdown_report(
 @router.get("/rules", response_model=list[RuleMeta])
 def get_rules() -> list[RuleMeta]:
     return [rule.meta() for rule in RULES]
+
+
+@router.get("/sources", response_model=list[SourceMeta])
+def get_sources() -> list[SourceMeta]:
+    return SOURCE_CATALOG
 
 
 @router.get("/health")

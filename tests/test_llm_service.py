@@ -10,7 +10,7 @@ from pydantic import BaseModel, TypeAdapter
 from typing_extensions import TypedDict
 
 from app.schemas.issue import IssueLocation, Severity, ValidationIssue
-from app.schemas.report import GenerationSource, PreflightSummary
+from app.schemas.report import FileSummary, GenerationSource, PreflightSummary
 from app.services.llm_service import LLMNarrativeGenerator, Narrative
 
 
@@ -34,6 +34,7 @@ class _SummaryPayload(TypedDict):
 class _PromptPayload(TypedDict):
     summary: _SummaryPayload
     issues: list[_IssuePayload]
+    file_groups: list[dict[str, str | int]]
 
 
 class _MessagePayload(TypedDict):
@@ -52,8 +53,15 @@ _MESSAGE_PAYLOAD_LIST_ADAPTER: Final[TypeAdapter[list[_MessagePayload]]] = TypeA
 
 
 @dataclass(frozen=True, slots=True)
+class _ParsedFileSummaryStub:
+    file: str
+    headline: str
+
+
+@dataclass(frozen=True, slots=True)
 class _ParsedNarrativeStub:
     ai_summary: str
+    file_summaries: list[_ParsedFileSummaryStub]
     checklist: list[str]
 
 
@@ -167,6 +175,12 @@ def test_llm_generator_parses_response(monkeypatch: pytest.MonkeyPatch) -> None:
     parse = _ParseRecorder(
         parsed_output=_ParsedNarrativeStub(
             ai_summary="총 1건의 이슈가 발견되었습니다.",
+            file_summaries=[
+                _ParsedFileSummaryStub(
+                    file="promotion_plan",
+                    headline="가격 점검이 필요합니다.",
+                )
+            ],
             checklist=["[INVALID_PROMO_PRICE] 행사가를 수정하세요."],
         )
     )
@@ -179,6 +193,13 @@ def test_llm_generator_parses_response(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert narrative == Narrative(
         ai_summary="총 1건의 이슈가 발견되었습니다.",
+        file_summaries=[
+            FileSummary(
+                file="promotion_plan",
+                issue_count=1,
+                headline="가격 점검이 필요합니다.",
+            )
+        ],
         checklist=["[INVALID_PROMO_PRICE] 행사가를 수정하세요."],
         source=GenerationSource.LLM,
     )
@@ -189,7 +210,16 @@ def test_llm_generator_prompt_uses_only_allowed_payload_fields(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     parse = _ParseRecorder(
-        parsed_output=_ParsedNarrativeStub(ai_summary="요약", checklist=["체크리스트"])
+        parsed_output=_ParsedNarrativeStub(
+            ai_summary="요약",
+            file_summaries=[
+                _ParsedFileSummaryStub(
+                    file="raw_prices",
+                    headline="가격을 검토하세요.",
+                )
+            ],
+            checklist=["체크리스트"],
+        )
     )
     generator = LLMNarrativeGenerator(
         client=_build_llm_client(monkeypatch, parse),
@@ -251,4 +281,3 @@ def test_llm_generator_raises_on_sdk_errors(
 
     with pytest.raises(type(sdk_error)):
         _ = generator.generate(_make_summary(), [_make_issue()])
-

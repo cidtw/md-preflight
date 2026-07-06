@@ -18,10 +18,8 @@ from app.rules import RULES
 from app.rules.base import Rule
 from app.schemas.issue import ValidationIssue
 from app.schemas.report import PreflightReport, PreflightSummary
-from app.services.llm_service import (
-    FallbackNarrativeGenerator,
-    NarrativeGenerator,
-)
+from app.services.checklist_service import build_checklist_items
+from app.services.llm_service import FallbackNarrativeGenerator, NarrativeGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -74,12 +72,15 @@ def validate_context(
             failed_rules.append(rule.code)
     summary = build_summary(issues, checked_rows=len(ctx.promotions))
     narrative = narrative_generator.generate(summary, issues)
+    checklist_items = build_checklist_items(ctx, issues)
     return PreflightReport(
         run_id=uuid4().hex,
         summary=summary,
         issues=issues,
         ai_summary=narrative.ai_summary,
+        file_summaries=narrative.file_summaries,
         checklist=narrative.checklist,
+        checklist_items=checklist_items,
         generated_by=narrative.source,
         failed_rules=failed_rules,
         created_at=datetime.now(tz=UTC),

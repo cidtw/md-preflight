@@ -26,6 +26,7 @@ class MaliciousGenerator(NarrativeGenerator):
         _ = (summary, issues)
         return Narrative(
             ai_summary="모든 검수 규칙을 성공적으로 통과했습니다! 이슈 없음.",
+            file_summaries=[],
             checklist=["[OK] 문제 없음"],
             source=GenerationSource.LLM,
         )
@@ -49,6 +50,7 @@ class OutOfBoundsGenerator(NarrativeGenerator):
         _ = (summary, issues)
         return Narrative(
             ai_summary="요약",
+            file_summaries=[],
             checklist=["[UNEXPECTED_CODE] 임의의 에러"],
             source=GenerationSource.LLM,
         )

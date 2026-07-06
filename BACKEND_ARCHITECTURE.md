@@ -256,6 +256,18 @@ class Rule(Protocol):
 
 라우터는 얇게: 업로드를 `build_uploaded_context(...)`로 넘기고 `validate_context(...)` 호출만 수행한다. 비즈니스 로직은 서비스에 둔다.
 
+## 4.1 입력 소스 추상화 (로드맵)
+
+- 현재 활성 입력 경로는 멀티파트 업로드뿐이지만, 장기적으로는 모든 입력 소스를 동일한 tabular shape로 정규화한다.
+- 개념적 프로토콜은 `TabularSource.fetch() -> LoadedTable`이며, 업로드 경로는 이 프로토콜의 첫 구현으로 본다.
+- 예정 소스:
+  - `upload` — available
+  - `notion` — planned
+  - `google_sheets` — planned
+  - `csv_url` — planned
+- 어떤 소스를 거쳐 오더라도 ingest 이후에는 동일한 정규화/룰 엔진을 사용하므로 판정은 소스와 무관하게 유지된다.
+- 외부 토큰은 향후에도 요청당 전달을 기본으로 고려하고, 서버에 장기 저장하지 않는 방향이 무상태 원칙과 가장 잘 맞는다.
+
 ---
 
 ## 5. 테스트 전략
