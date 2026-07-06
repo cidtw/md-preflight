@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from app.schemas.issue import IssueLocation, Severity, ValidationIssue
 from app.schemas.report import GenerationSource, PreflightReport, PreflightSummary
 from app.services.llm_service import build_fallback_narrative
@@ -49,6 +51,7 @@ def test_render_markdown_report_when_report_exists() -> None:
         ai_summary="총 1건의 이슈가 발견되었습니다.",
         checklist=["[INVALID_PROMO_PRICE] 행사가를 수정하세요."],
         generated_by=GenerationSource.FALLBACK,
+        created_at=datetime(2026, 7, 6, 14, 32, tzinfo=UTC),
     )
     markdown = render_markdown_report(report)
     assert "# MD Preflight Report" in markdown

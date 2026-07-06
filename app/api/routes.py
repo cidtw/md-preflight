@@ -17,6 +17,11 @@ from app.services.validation_engine import UploadedFiles, build_uploaded_context
 router = APIRouter(prefix="/api/preflight", tags=["preflight"])
 
 
+def build_report_download_filename(report: PreflightReport) -> str:
+    timestamp = report.created_at.strftime("%Y-%m-%d-%H%M")
+    return f"preflight-{timestamp}-report.md"
+
+
 def _iter_uploads(files: UploadedFiles) -> tuple[UploadFile, UploadFile, UploadFile]:
     return files.promotion_plan, files.product_master, files.inventory
 
@@ -144,7 +149,9 @@ def download_markdown_report(
         content=render_markdown_report(report),
         media_type="text/markdown; charset=utf-8",
         headers={
-            "Content-Disposition": f'attachment; filename="preflight-{run_id}.md"',
+            "Content-Disposition": (
+                f'attachment; filename="{build_report_download_filename(report)}"'
+            ),
         },
     )
 

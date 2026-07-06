@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import StrEnum
 from typing import ClassVar
 
@@ -31,3 +32,4 @@ class PreflightReport(BaseModel):
     checklist: list[str]
     generated_by: GenerationSource
     failed_rules: list[str] = Field(default_factory=list)
+    created_at: datetime
