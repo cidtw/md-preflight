@@ -9,7 +9,10 @@ import {
   applyParsedCellEdit,
   buildHighlightTargets,
   cellEditKey,
+  sanitizeChecklistCellValue,
 } from "./editor_state.mjs";
+import { buildAuthHeaders, isSignedIn } from "./auth_helpers.mjs";
+import { buildHistoryUrl, normalizeGranularity } from "./history_helpers.mjs";
 import { SOURCE_LABELS, displayLabel } from "./labels.mjs";
 import { checklistItemKey, diffIssueKeys, issueKey } from "./review_status.mjs";
 import { buildServiceRequestUrl } from "./source_request.mjs";
@@ -45,6 +48,14 @@ const state = {
     details: "",
   },
   checklistEditors: {},
+  auth: {
+    signedIn: false,
+    userId: null,
+  },
+  history: {
+    granularity: "day",
+    buckets: [],
+  },
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -77,9 +88,70 @@ function toast(msg) {
 
 /* ---------- view switching ---------- */
 function showView(id) {
-  ["view-upload", "view-loading", "view-result"].forEach((v) =>
+  ["view-upload", "view-loading", "view-result", "view-dashboard"].forEach((v) =>
     $(`#${v}`).classList.toggle("hidden", v !== id),
   );
+}
+
+function authHeaders() {
+  return buildAuthHeaders(state.auth);
+}
+
+function persistAuth() {
+  try {
+    localStorage.setItem("mdp-auth", JSON.stringify(state.auth));
+  } catch (_) {}
+}
+
+function renderAuthControls() {
+  const signedIn = isSignedIn(state.auth);
+  const status = $("#auth-status");
+  if (status) {
+    status.textContent = signedIn ? `${state.auth.userId} 로그인됨` : "비로그인";
+  }
+  const login = $("#auth-login");
+  const logout = $("#auth-logout");
+  const dashboard = $("#nav-dashboard");
+  if (login) {
+    login.classList.toggle("hidden", signedIn);
+  }
+  if (logout) {
+    logout.classList.toggle("hidden", !signedIn);
+  }
+  if (dashboard) {
+    dashboard.classList.toggle("hidden", !signedIn);
+  }
+}
+
+function signInStub() {
+  state.auth = { signedIn: true, userId: "demo-user" };
+  persistAuth();
+  renderAuthControls();
+  renderDashboard();
+}
+
+function signOutStub() {
+  state.auth = { signedIn: false, userId: null };
+  state.history = { granularity: "day", buckets: [] };
+  persistAuth();
+  renderAuthControls();
+  renderDashboard();
+  if ($("#view-dashboard") && !$("#view-dashboard").classList.contains("hidden")) {
+    showView("view-upload");
+  }
+}
+
+function initAuth() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("mdp-auth") || "null");
+    if (saved && typeof saved.signedIn === "boolean") {
+      state.auth = {
+        signedIn: Boolean(saved.signedIn),
+        userId: typeof saved.userId === "string" ? saved.userId : null,
+      };
+    }
+  } catch (_) {}
+  renderAuthControls();
 }
 
 /* ---------- dropzones ---------- */
@@ -169,7 +241,11 @@ async function runPreflight(filesOverride = null) {
 
   showView("view-loading");
   try {
-    const res = await fetch("/api/preflight", { method: "POST", body: fd });
+    const res = await fetch("/api/preflight", {
+      method: "POST",
+      body: fd,
+      headers: authHeaders(),
+    });
     if (!res.ok) {
       let detail = `검수 요청 실패 (${res.status})`;
       try {
@@ -397,7 +473,9 @@ function initTheme() {
 /* ---------- init ---------- */
 buildDropzones();
 initTheme();
+initAuth();
 void loadSources();
+renderDashboard();
 $("#run-btn").addEventListener("click", () => {
   void runPreflight();
 });
@@ -406,6 +484,13 @@ $("#export-edited-top").addEventListener("click", exportAllEditedFiles);
 $("#rerun-edited-top").addEventListener("click", () => {
   void rerunWithEditedFiles();
 });
+$("#auth-login")?.addEventListener("click", signInStub);
+$("#auth-logout")?.addEventListener("click", signOutStub);
+$("#nav-dashboard")?.addEventListener("click", () => {
+  showView("view-dashboard");
+  void loadHistory(state.history.granularity);
+});
+$("#dashboard-back")?.addEventListener("click", () => showView("view-upload"));
 
 async function buildParsedState(file) {
   if (isCsvFilename(file.name)) {
@@ -418,6 +503,9 @@ async function buildParsedState(file) {
         rows: parsed.rows,
         originalRows: parsed.rows.map((row) => [...row]),
         edits: new Set(),
+        structureDirty: false,
+        addedRowIndexes: new Set(),
+        addedColumnIndexes: new Set(),
         dirty: false,
         sourceName: file.name,
       };
@@ -430,6 +518,9 @@ async function buildParsedState(file) {
         rows: [],
         originalRows: [],
         edits: new Set(),
+        structureDirty: false,
+        addedRowIndexes: new Set(),
+        addedColumnIndexes: new Set(),
         dirty: false,
         sourceName: file.name,
         parseError: "CSV 파싱 실패",
@@ -444,6 +535,9 @@ async function buildParsedState(file) {
       rows: [],
       originalRows: [],
       edits: new Set(),
+      structureDirty: false,
+      addedRowIndexes: new Set(),
+      addedColumnIndexes: new Set(),
       dirty: false,
       sourceName: file.name,
     };
@@ -479,6 +573,77 @@ function renderFileSummaries(fileSummaries) {
     card.append(el("div", "ai-file-headline", summary.headline));
     host.append(card);
   });
+}
+
+function renderDashboard() {
+  const host = $("#history-dashboard");
+  if (!host) {
+    return;
+  }
+  host.innerHTML = "";
+  if (!isSignedIn(state.auth)) {
+    host.append(el("p", "caption mute", "로그인 후 일별·월별·연도별 검수 이력을 볼 수 있습니다."));
+    return;
+  }
+
+  const controls = el("div", "dashboard-controls");
+  ["day", "month", "year"].forEach((granularity) => {
+    const button = el(
+      "button",
+      `btn ${state.history.granularity === granularity ? "btn-primary" : "btn-secondary"}`,
+      granularity === "day" ? "일별" : granularity === "month" ? "월별" : "연별",
+    );
+    button.type = "button";
+    button.addEventListener("click", () => {
+      void loadHistory(granularity);
+    });
+    controls.append(button);
+  });
+  host.append(controls);
+
+  if (state.history.buckets.length === 0) {
+    host.append(el("p", "caption mute", "아직 저장된 검수 이력이 없습니다."));
+    return;
+  }
+
+  const chart = el("div", "history-chart");
+  const maxRuns = Math.max(...state.history.buckets.map((bucket) => bucket.run_count), 1);
+  state.history.buckets.forEach((bucket) => {
+    const card = el("div", "history-bar-card");
+    card.style.setProperty("--bar-scale", String(bucket.run_count / maxRuns));
+    card.append(el("div", "history-bar-value", `${bucket.run_count}회`));
+    card.append(el("div", "history-bar", ""));
+    card.append(el("div", "history-bar-label", bucket.bucket.slice(0, 10)));
+    chart.append(card);
+  });
+  host.append(chart);
+
+  const table = el("table", "history-table");
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>구간</th>
+        <th>검수 수</th>
+        <th>error 합계</th>
+        <th>warning 합계</th>
+        <th>통과율</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+  const tbody = table.querySelector("tbody");
+  state.history.buckets.forEach((bucket) => {
+    const row = el("tr");
+    row.innerHTML = `
+      <td>${bucket.bucket.slice(0, 10)}</td>
+      <td>${bucket.run_count}</td>
+      <td>${bucket.error_total}</td>
+      <td>${bucket.warning_total}</td>
+      <td>${Math.round(bucket.passed_rate * 100)}%</td>
+    `;
+    tbody.append(row);
+  });
+  host.append(table);
 }
 
 function renderFileEditors() {
@@ -529,6 +694,16 @@ function renderFileEditors() {
 function renderFileEditorActions(fileKey, parsed) {
   const wrap = el("div", "file-editor-actions");
   wrap.dataset.fileKey = fileKey;
+  const addRowButton = el("button", "btn btn-secondary", "행 추가");
+  addRowButton.type = "button";
+  addRowButton.addEventListener("click", () => addEditorRow(fileKey));
+  wrap.append(addRowButton);
+
+  const addColumnButton = el("button", "btn btn-secondary", "열 추가");
+  addColumnButton.type = "button";
+  addColumnButton.addEventListener("click", () => addEditorColumn(fileKey));
+  wrap.append(addColumnButton);
+
   const exportButton = el("button", "btn btn-secondary", "수정본 CSV 내보내기");
   exportButton.dataset.fileAction = "export";
   exportButton.type = "button";
@@ -544,6 +719,47 @@ function renderFileEditorActions(fileKey, parsed) {
   status.dataset.fileAction = "status";
   wrap.append(status);
   return wrap;
+}
+
+function addEditorRow(fileKey) {
+  const parsed = state.parsed[fileKey];
+  if (!parsed || parsed.kind !== "csv" || !parsed.editable) {
+    return;
+  }
+  const rowIndex = parsed.rows.length;
+  const nextRow = new Array(parsed.headers.length).fill("");
+  parsed.rows.push(nextRow);
+  parsed.originalRows.push(new Array(parsed.headers.length).fill(""));
+  parsed.addedRowIndexes.add(rowIndex);
+  parsed.structureDirty = true;
+  parsed.dirty = true;
+  renderFileEditors();
+  refreshEditedActions();
+}
+
+function addEditorColumn(fileKey) {
+  const parsed = state.parsed[fileKey];
+  if (!parsed || parsed.kind !== "csv" || !parsed.editable) {
+    return;
+  }
+  const name = window.prompt("새 칼럼명을 입력해 주세요.", "")?.trim() ?? "";
+  if (!name) {
+    toast("칼럼명을 입력해야 합니다.");
+    return;
+  }
+  if (parsed.headers.includes(name)) {
+    toast("이미 있는 칼럼명입니다.");
+    return;
+  }
+  const columnIndex = parsed.headers.length;
+  parsed.headers.push(name);
+  parsed.rows.forEach((row) => row.push(""));
+  parsed.originalRows.forEach((row) => row.push(""));
+  parsed.addedColumnIndexes.add(columnIndex);
+  parsed.structureDirty = true;
+  parsed.dirty = true;
+  renderFileEditors();
+  refreshEditedActions();
 }
 
 function buildEditorTable(fileKey, parsed) {
@@ -605,7 +821,11 @@ function updateParsedCell(fileKey, rowIndex, columnIndex, value, cell = null) {
 }
 
 function isEditedCell(parsed, rowIndex, columnIndex) {
-  return parsed.edits.has(cellEditKey(rowIndex, columnIndex));
+  return (
+    parsed.edits.has(cellEditKey(rowIndex, columnIndex)) ||
+    parsed.addedRowIndexes.has(rowIndex) ||
+    parsed.addedColumnIndexes.has(columnIndex)
+  );
 }
 
 function matchesHighlight(fileKey, row, column) {
@@ -745,12 +965,13 @@ function saveChecklistEdit(itemKey, item) {
   const parsed = state.parsed[item.file];
   const rowIndex = item.row - 2;
   const columnIndex = parsed.headers.indexOf(item.column);
-  updateParsedCell(item.file, rowIndex, columnIndex, editorState.value);
+  const nextValue = sanitizeChecklistCellValue(editorState.value, item.column);
+  updateParsedCell(item.file, rowIndex, columnIndex, nextValue);
   state.appliedChecklistItems.add(checklistItemKey(item));
   state.pendingReview.add(itemKey);
   state.reviewItemsByKey[itemKey] = item;
   delete state.reviewResults[itemKey];
-  state.checklistEditors[itemKey] = { open: false, value: editorState.value };
+  state.checklistEditors[itemKey] = { open: false, value: nextValue };
   renderChecklist(state.result);
 }
 
@@ -862,13 +1083,38 @@ async function rerunWithEditedFiles() {
 
 async function loadSources() {
   try {
-    const response = await fetch("/api/preflight/sources");
+    const response = await fetch("/api/preflight/sources", { headers: authHeaders() });
     if (!response.ok) {
       return;
     }
     state.sourceCatalog = await response.json();
     renderSourcePicker();
   } catch (_) {}
+}
+
+async function loadHistory(granularity = state.history.granularity) {
+  state.history.granularity = normalizeGranularity(granularity);
+  if (!isSignedIn(state.auth)) {
+    renderDashboard();
+    return;
+  }
+  try {
+    const response = await fetch(buildHistoryUrl(state.history.granularity), {
+      headers: authHeaders(),
+    });
+    if (response.status === 401) {
+      signOutStub();
+      toast("대시보드는 로그인 후 사용할 수 있습니다.");
+      return;
+    }
+    if (!response.ok) {
+      throw new Error(`대시보드 조회 실패 (${response.status})`);
+    }
+    state.history.buckets = await response.json();
+    renderDashboard();
+  } catch (error) {
+    toast(error.message || "대시보드를 불러오지 못했습니다.");
+  }
 }
 
 function renderSourcePicker() {

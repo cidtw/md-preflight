@@ -70,7 +70,14 @@ export function parseCsv(text) {
 }
 
 export function toCsv(headers, rows) {
-  const lines = [headers, ...rows].map((row) =>
+  const normalizedRows = rows.map((row) => {
+    const padded = row.slice(0, headers.length);
+    while (padded.length < headers.length) {
+      padded.push("");
+    }
+    return padded;
+  });
+  const lines = [headers, ...normalizedRows].map((row) =>
     row.map((value) => escapeCsvField(value ?? "")).join(","),
   );
   return `${lines.join("\r\n")}\r\n`;

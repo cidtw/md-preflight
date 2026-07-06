@@ -6,7 +6,7 @@ export function applyParsedCellEdit(parsed, rowIndex, columnIndex, value) {
   } else {
     parsed.edits.add(key);
   }
-  parsed.dirty = parsed.edits.size > 0;
+  parsed.dirty = parsed.edits.size > 0 || parsed.structureDirty;
 }
 
 export function buildHighlightTargets(primary, related = []) {
@@ -32,4 +32,12 @@ export function buildHighlightTargets(primary, related = []) {
 
 export function cellEditKey(rowIndex, columnIndex) {
   return `${rowIndex},${columnIndex}`;
+}
+
+export function sanitizeChecklistCellValue(value, column) {
+  if (!column) {
+    return value;
+  }
+  const escapedColumn = column.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replace(new RegExp(`^\\s*${escapedColumn}\\s*=\\s*`), "");
 }

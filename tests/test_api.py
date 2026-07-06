@@ -11,10 +11,12 @@ from pydantic import TypeAdapter
 
 from app.domain.context import PreflightContext
 from app.main import app
+from app.schemas.history import HistoryBucket
 from app.schemas.issue import Severity, ValidationIssue
 from app.schemas.report import PreflightReport
 from app.schemas.rule_meta import RuleMeta
 from app.schemas.source_meta import SourceMeta
+from app.services.history_store import InMemoryHistoryStore
 from tests.conftest import (
     build_sample_inventory,
     build_sample_products,
@@ -80,6 +82,56 @@ def test_validate_endpoint_when_uploading_sample_files() -> None:
     assert stored.status_code == 200
     stored_payload = PreflightReport.model_validate(stored.json())
     assert stored_payload.run_id == payload.run_id
+
+
+def test_preflight_without_auth_still_returns_200(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.api.deps.HISTORY_STORE", InMemoryHistoryStore())
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/preflight",
+        data={"use_llm": "false"},
+        files=build_preflight_upload_files(),
+    )
+
+    assert response.status_code == 200
+
+
+def test_history_endpoint_requires_login(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.api.deps.HISTORY_STORE", InMemoryHistoryStore())
+    client = TestClient(app)
+
+    response = client.get("/api/preflight/history")
+
+    assert response.status_code == 401
+
+
+def test_history_endpoint_returns_buckets_for_signed_in_user(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.api.deps.HISTORY_STORE", InMemoryHistoryStore())
+    client = TestClient(app)
+
+    create = client.post(
+        "/api/preflight",
+        data={"use_llm": "false"},
+        headers={"x-md-preflight-user-id": "user-123"},
+        files=build_preflight_upload_files(),
+    )
+
+    assert create.status_code == 200
+    response = client.get(
+        "/api/preflight/history?granularity=day",
+        headers={"x-md-preflight-user-id": "user-123"},
+    )
+
+    assert response.status_code == 200
+    payload = TypeAdapter(list[HistoryBucket]).validate_python(response.json())
+    assert len(payload) == 1
+    assert payload[0].run_count == 1
+    assert payload[0].error_total >= 0
+    assert payload[0].warning_total >= 0
+    assert payload[0].bucket.year >= 2000
 
 
 def test_rules_endpoint_returns_registry() -> None:
