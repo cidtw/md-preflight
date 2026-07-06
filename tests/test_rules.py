@@ -81,10 +81,21 @@ def test_low_margin_rate_when_margin_below_threshold(
     assert warning_issue.severity.value == "warning"
     assert warning_issue.location.row == 6
     assert warning_issue.observed == "margin_rate=1.79%"
+    assert warning_issue.related_locations[0].file == "product_master"
+    assert warning_issue.related_locations[0].column == "cost"
     error_issue = next(issue for issue in issues if issue.entity["promotion_id"] == "P-3")
     assert error_issue.severity.value == "error"
     assert error_issue.location.row == 4
     assert error_issue.observed == "margin_rate=-175.00%"
+    assert error_issue.related_locations[0].file == "product_master"
+
+
+def test_single_file_rule_has_empty_related_locations(
+    sample_context: PreflightContext,
+) -> None:
+    issues = EXTREME_DISCOUNT_RATE_RULE.apply(sample_context)
+
+    assert issues[0].related_locations == []
 
 
 def test_inventory_shortage_risk_when_demand_exceeds_stock(

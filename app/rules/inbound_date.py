@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 from app.domain.columns import SourceFile
 from app.domain.context import PreflightContext
-from app.rules.base import RowEntity, make_issue
-from app.schemas.issue import Severity, ValidationIssue
+from app.rules.base import RowEntity, make_issue, normalize_related_row
+from app.schemas.issue import IssueLocation, Severity, ValidationIssue
 from app.schemas.rule_meta import RuleMeta
 
 
@@ -40,6 +40,13 @@ class InboundDateConflictRule:
                         promotion_id=str(row.promotion_id),
                         product_code=str(row.product_code),
                     ),
+                    related=[
+                        IssueLocation(
+                            file=SourceFile.INVENTORY.value,
+                            row=normalize_related_row(getattr(row, "inventory_source_row", None)),
+                            column="inbound_date",
+                        )
+                    ],
                     observed=(
                         "inbound_date="
                         f"{str(row.inbound_date)[:10]}, start_date={str(row.start_date)[:10]}"

@@ -25,11 +25,11 @@ def build_context(
     products = normalize_product_master(product_raw)
     inventory = normalize_inventory(inventory_raw)
     products_for_join = (
-        products.drop(columns=["source_row"])
+        products.rename(columns={"source_row": "product_source_row"})
         .drop_duplicates(subset="product_code", keep="first")
     )
     inventory_for_join = (
-        inventory.drop(columns=["source_row"])
+        inventory.rename(columns={"source_row": "inventory_source_row"})
         .drop_duplicates(subset="product_code", keep="first")
     )
     joined = promotions.merge(

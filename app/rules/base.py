@@ -27,6 +27,13 @@ class RowEntity:
     product_code: str
 
 
+def normalize_related_row(value: object) -> int | None:
+    text = str(value).strip().lower()
+    if text in {"", "nan", "none"}:
+        return None
+    return int(float(text))
+
+
 def make_issue(
     *,
     code: str,
@@ -37,6 +44,7 @@ def make_issue(
     row: int | None,
     column: str | None,
     entity: RowEntity,
+    related: list[IssueLocation] | None,
     observed: str | None,
     expected: str | None,
     suggestion: str | None,
@@ -51,6 +59,7 @@ def make_issue(
             "product_code": entity.product_code,
         },
         location=IssueLocation(file=file, row=row, column=column),
+        related_locations=[] if related is None else related,
         observed=observed,
         expected=expected,
         suggestion=suggestion,

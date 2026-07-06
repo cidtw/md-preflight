@@ -294,6 +294,10 @@ body {
   font-size: 13px;
   cursor: pointer;
 }
+.source-chip-icon {
+  display: inline-flex;
+  color: currentColor;
+}
 .source-chip.is-planned {
   color: var(--mute);
 }
@@ -328,6 +332,24 @@ body {
   padding-left: 18px;
   color: var(--mute);
   font-size: 12px;
+}
+.source-request-form {
+  display: grid;
+  gap: var(--s-sm);
+}
+.source-request-input,
+.source-request-textarea {
+  width: 100%;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--canvas);
+  color: var(--ink);
+  font: inherit;
+  padding: var(--s-sm);
+}
+.source-request-textarea {
+  min-height: 110px;
+  resize: vertical;
 }
 
 /* ---------- buttons ---------- */
@@ -420,6 +442,13 @@ body {
   font-family: var(--mono); font-size: 12px; line-height: 16px;
   background: var(--surface-2); color: var(--body);
   border-radius: var(--r-xs); padding: 2px 8px; white-space: nowrap; align-self: start;
+}
+.rule-chip-muted {
+  display: inline-flex;
+  margin-top: var(--s-xs);
+  color: var(--mute);
+  background: transparent;
+  border: 1px solid var(--hairline);
 }
 .issue-body { min-width: 0; }
 .issue-title { color: var(--ink); font-weight: 500; font-size: 14px; line-height: 20px; }
@@ -515,6 +544,47 @@ body {
 .checklist-review.is-applied {
   background: var(--ok-soft);
 }
+.checklist-inline-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-xs);
+  width: 100%;
+}
+.checklist-inline-input {
+  min-width: 220px;
+  flex: 1 1 220px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--canvas);
+  color: var(--ink);
+  font: inherit;
+  padding: var(--s-sm);
+}
+.review-status {
+  display: inline-flex;
+  margin-top: var(--s-xs);
+  font-size: 11px;
+  line-height: 18px;
+  border-radius: var(--r-pill);
+  padding: 0 var(--s-xs);
+}
+.status-pending {
+  background: var(--surface-2);
+  color: var(--mute);
+}
+.status-fixed {
+  background: var(--ok-soft);
+  color: var(--ok-deep);
+}
+.status-failed.sev-warning {
+  background: var(--warning-soft);
+  color: var(--warning-deep);
+}
+.status-failed.sev-error {
+  background: var(--error-soft);
+  color: var(--error-deep);
+}
 .file-editor-note { margin: calc(var(--s-md) * -1) 0 var(--s-md); }
 .file-editors { display: grid; gap: var(--s-md); }
 .file-editor {
@@ -608,6 +678,53 @@ body {
   background: var(--warning-soft);
 }
 .issue-jump-btn { margin-top: var(--s-xs); }
+.issue-group {
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-1);
+}
+.issue-group + .issue-group {
+  margin-top: var(--s-md);
+}
+.issue-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-sm);
+  padding: var(--s-md) var(--s-lg);
+  border-bottom: 1px solid var(--hairline);
+}
+.issue-group-title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.issue-group-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-xs);
+}
+.issue-group-badge {
+  font-size: 11px;
+  line-height: 18px;
+  border-radius: var(--r-pill);
+  padding: 0 var(--s-xs);
+}
+.issue-group-badge.error {
+  background: var(--error-soft);
+  color: var(--error-deep);
+}
+.issue-group-badge.warning {
+  background: var(--warning-soft);
+  color: var(--warning-deep);
+}
+.issue-group-badge.info {
+  background: var(--info-soft);
+  color: var(--info-deep);
+}
 
 /* ---------- toast ---------- */
 .toast {

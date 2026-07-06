@@ -47,6 +47,7 @@ class InvalidPromoPriceRule:
                     row=source_row,
                     column="promo_price",
                     entity=entity,
+                    related=None,
                     observed=f"promo_price={promo_price_raw}",
                     expected=f"0 < promo_price <= normal_price ({normal_price})",
                     suggestion="행사가를 정상가 이하의 양수로 다시 입력하세요.",
