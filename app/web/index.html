@@ -56,6 +56,8 @@
         <!-- dropzones injected by app.js -->
       </div>
 
+      <div id="source-picker" class="source-picker" aria-label="데이터 소스 선택"></div>
+
       <div class="run-bar">
         <label class="llm-toggle">
           <input type="checkbox" id="use-llm" checked />
@@ -91,7 +93,11 @@
     <section id="view-result" class="view hidden">
       <div class="result-head">
         <button id="back-btn" class="btn btn-ghost">← 다시 검수</button>
-        <a id="download-md" class="btn btn-secondary" href="#" download>Markdown 리포트</a>
+        <div class="result-actions">
+          <button id="export-edited-top" class="btn btn-secondary" type="button" disabled>수정본 내보내기</button>
+          <button id="rerun-edited-top" class="btn btn-secondary" type="button" disabled>수정본으로 다시 검수</button>
+          <a id="download-md" class="btn btn-secondary" href="#" download>Markdown 리포트</a>
+        </div>
       </div>
 
       <div class="result-section result-summary">
@@ -110,6 +116,12 @@
       <div class="result-section">
         <h2 class="display-sm section-title">담당자 체크리스트</h2>
         <ul id="checklist" class="checklist"></ul>
+      </div>
+
+      <div class="result-section">
+        <h2 class="display-sm section-title">업로드 파일</h2>
+        <p class="caption mute file-editor-note">브라우저 세션 안에서만 편집 내용을 보관합니다. 새로고침하면 수정 내용이 사라집니다.</p>
+        <div id="file-editors" class="file-editors"></div>
       </div>
     </section>
   </main>
@@ -133,6 +145,6 @@
 
   <div id="toast" class="toast hidden" role="alert"></div>
 
-  <script src="/static/app.js"></script>
+  <script type="module" src="/static/app.js"></script>
 </body>
 </html>
