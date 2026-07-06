@@ -1,7 +1,10 @@
-/* ============================================================
-   MD Preflight — MVP UI logic (dependency-free)
-   Backend contract: POST /api/preflight (multipart) -> PreflightReport
-   ============================================================ */
+import {
+  buildEditedCsvFilename,
+  isCsvFilename,
+  isSpreadsheetFilename,
+  parseCsv,
+  toCsv,
+} from "./csv_tools.mjs";
 
 const FIELDS = [
   { key: "promotion_plan", role: "프로모션 계획", hint: "promotion_plan.xlsx / .csv" },
@@ -10,9 +13,26 @@ const FIELDS = [
 ];
 const ALLOWED = [".csv", ".xlsx"];
 const MAX_BYTES = 5 * 1024 * 1024;
+const SOURCE_LABELS = {
+  promotion_plan: "프로모션 계획",
+  product_master: "상품 마스터",
+  inventory: "재고",
+};
 
 const state = {
   files: { promotion_plan: null, product_master: null, inventory: null },
+  parsed: {
+    promotion_plan: null,
+    product_master: null,
+    inventory: null,
+  },
+  result: null,
+  fileIssues: {},
+  highlightTarget: null,
+  sourceCatalog: [],
+  selectedSourceId: "upload",
+  appliedChecklistItems: new Set(),
+  dismissedChecklistItems: new Set(),
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -66,7 +86,9 @@ function buildDropzones() {
     const input = zone.querySelector("input");
 
     input.addEventListener("change", () => {
-      if (input.files[0]) setFile(f.key, input.files[0], zone);
+      if (input.files[0]) {
+        void setFile(f.key, input.files[0], zone);
+      }
     });
     zone.addEventListener("dragover", (e) => {
       e.preventDefault();
@@ -77,14 +99,16 @@ function buildDropzones() {
       e.preventDefault();
       zone.classList.remove("dragover");
       const file = e.dataTransfer.files[0];
-      if (file) setFile(f.key, file, zone);
+      if (file) {
+        void setFile(f.key, file, zone);
+      }
     });
 
     grid.appendChild(zone);
   });
 }
 
-function setFile(key, file, zone) {
+async function setFile(key, file, zone) {
   const body = zone.querySelector(".dz-body");
   zone.classList.remove("filled", "error");
 
@@ -106,6 +130,7 @@ function setFile(key, file, zone) {
   }
 
   state.files[key] = file;
+  state.parsed[key] = await buildParsedState(file);
   zone.classList.add("filled");
   body.className = "dz-body dz-file";
   body.textContent = `${file.name}`;
@@ -113,6 +138,7 @@ function setFile(key, file, zone) {
   hint.className = "dz-check";
   hint.textContent = `✓ ${fmtSize(file.size)}`;
   refreshRunBtn();
+  renderFileEditors();
 }
 
 function refreshRunBtn() {
@@ -121,9 +147,12 @@ function refreshRunBtn() {
 }
 
 /* ---------- run preflight ---------- */
-async function runPreflight() {
+async function runPreflight(filesOverride = null) {
   const fd = new FormData();
-  FIELDS.forEach((f) => fd.append(f.key, state.files[f.key]));
+  FIELDS.forEach((f) => {
+    const file = filesOverride?.[f.key] ?? state.files[f.key];
+    fd.append(f.key, file);
+  });
   fd.append("use_llm", $("#use-llm").checked ? "true" : "false");
 
   showView("view-loading");
@@ -138,6 +167,8 @@ async function runPreflight() {
       throw new Error(detail);
     }
     const report = await res.json();
+    state.result = report;
+    state.fileIssues = groupIssuesByFile(report.issues);
     renderReport(report);
     showView("view-result");
   } catch (err) {
@@ -214,13 +245,12 @@ function renderReport(r) {
   ai.append(badge);
   ai.append(el("div", "ai-text", r.ai_summary || "요약이 생성되지 않았습니다."));
 
+  renderFileSummaries(r.file_summaries || []);
+
   // checklist
-  const cl = $("#checklist");
-  cl.innerHTML = "";
-  (r.checklist || []).forEach((item) => cl.append(el("li", null, item)));
-  if (!r.checklist || r.checklist.length === 0) {
-    cl.append(el("li", null, "체크리스트 항목이 없습니다."));
-  }
+  renderChecklist(r);
+  renderFileEditors();
+  refreshEditedActions();
 }
 
 function sevRank(sev) {
@@ -264,6 +294,12 @@ function renderIssue(iss) {
     sug.textContent = `→ ${iss.suggestion}`;
     bodyEl.append(sug);
   }
+  if (iss.location?.file) {
+    const jump = el("button", "btn btn-ghost issue-jump-btn", "파일에서 보기");
+    jump.type = "button";
+    jump.addEventListener("click", () => jumpToIssueLocation(iss.location));
+    bodyEl.append(jump);
+  }
   row.append(bodyEl);
 
   const loc = iss.location || {};
@@ -278,8 +314,15 @@ function renderIssue(iss) {
 /* ---------- reset ---------- */
 function resetToUpload() {
   state.files = { promotion_plan: null, product_master: null, inventory: null };
+  state.parsed = { promotion_plan: null, product_master: null, inventory: null };
+  state.result = null;
+  state.fileIssues = {};
+  state.highlightTarget = null;
+  state.appliedChecklistItems = new Set();
+  state.dismissedChecklistItems = new Set();
   buildDropzones();
   refreshRunBtn();
+  refreshEditedActions();
   showView("view-upload");
 }
 
@@ -321,5 +364,419 @@ function initTheme() {
 /* ---------- init ---------- */
 buildDropzones();
 initTheme();
-$("#run-btn").addEventListener("click", runPreflight);
+void loadSources();
+$("#run-btn").addEventListener("click", () => {
+  void runPreflight();
+});
 $("#back-btn").addEventListener("click", resetToUpload);
+$("#export-edited-top").addEventListener("click", exportAllEditedFiles);
+$("#rerun-edited-top").addEventListener("click", () => {
+  void rerunWithEditedFiles();
+});
+
+async function buildParsedState(file) {
+  if (isCsvFilename(file.name)) {
+    try {
+      const parsed = parseCsv(await file.text());
+      return {
+        kind: "csv",
+        editable: true,
+        headers: parsed.headers,
+        rows: parsed.rows,
+        originalRows: parsed.rows.map((row) => [...row]),
+        edits: new Set(),
+        dirty: false,
+        sourceName: file.name,
+      };
+    } catch (error) {
+      toast(error.message || "CSV 파싱에 실패했습니다.");
+      return {
+        kind: "csv",
+        editable: false,
+        headers: [],
+        rows: [],
+        originalRows: [],
+        edits: new Set(),
+        dirty: false,
+        sourceName: file.name,
+        parseError: "CSV 파싱 실패",
+      };
+    }
+  }
+  if (isSpreadsheetFilename(file.name)) {
+    return {
+      kind: "xlsx",
+      editable: false,
+      headers: [],
+      rows: [],
+      originalRows: [],
+      edits: new Set(),
+      dirty: false,
+      sourceName: file.name,
+    };
+  }
+  return null;
+}
+
+function groupIssuesByFile(issues) {
+  return issues.reduce((acc, issue) => {
+    const file = issue.location?.file;
+    if (!file) {
+      return acc;
+    }
+    const bucket = acc[file] || [];
+    bucket.push(issue);
+    acc[file] = bucket;
+    return acc;
+  }, {});
+}
+
+function renderFileSummaries(fileSummaries) {
+  let host = $("#ai-file-summaries");
+  if (!host) {
+    host = el("div", "ai-file-summaries");
+    host.id = "ai-file-summaries";
+    $("#ai-summary").append(host);
+  }
+  host.innerHTML = "";
+  fileSummaries.forEach((summary) => {
+    const card = el("div", "ai-file-card");
+    card.append(el("div", "ai-file-name", summary.file));
+    card.append(el("div", "ai-file-meta", `${summary.issue_count}건`));
+    card.append(el("div", "ai-file-headline", summary.headline));
+    host.append(card);
+  });
+}
+
+function renderFileEditors() {
+  const host = $("#file-editors");
+  if (!host) {
+    return;
+  }
+  host.innerHTML = "";
+  FIELDS.forEach((field) => {
+    const parsed = state.parsed[field.key];
+    const details = el("details", "file-editor");
+    details.open = field.key === state.highlightTarget?.file || host.children.length === 0;
+    const summary = el("summary", "file-editor-summary");
+    const rowCount = parsed?.rows?.length || 0;
+    const issueCount = state.fileIssues[field.key]?.length || 0;
+    summary.append(el("span", "file-editor-title", SOURCE_LABELS[field.key]));
+    summary.append(el("span", "file-editor-meta", `${rowCount}행 · 이슈 ${issueCount}건`));
+    if (parsed?.kind === "xlsx") {
+      summary.append(el("span", "file-editor-badge readonly", "xlsx 보기 전용"));
+    } else if (parsed?.dirty) {
+      summary.append(el("span", "file-editor-badge dirty", "수정됨"));
+    } else if (parsed?.editable) {
+      summary.append(el("span", "file-editor-badge editable", "CSV 편집 가능"));
+    }
+    details.append(summary);
+
+    const body = el("div", "file-editor-body");
+    if (!parsed) {
+      body.append(el("p", "caption mute", "아직 업로드된 파일이 없습니다."));
+    } else if (parsed.kind === "xlsx") {
+      body.append(el("p", "caption mute", "xlsx는 보기 전용입니다. 편집하려면 CSV로 다시 업로드하세요."));
+    } else if (!parsed.editable) {
+      body.append(el("p", "caption mute", parsed.parseError || "이 파일은 편집할 수 없습니다."));
+    } else {
+      body.append(renderFileEditorActions(field.key, parsed));
+      body.append(buildEditorTable(field.key, parsed));
+    }
+    details.append(body);
+    host.append(details);
+  });
+}
+
+function renderFileEditorActions(fileKey, parsed) {
+  const wrap = el("div", "file-editor-actions");
+  const exportButton = el("button", "btn btn-secondary", "수정본 CSV 내보내기");
+  exportButton.type = "button";
+  exportButton.disabled = !parsed.dirty;
+  exportButton.addEventListener("click", () => exportParsedFile(fileKey));
+  wrap.append(exportButton);
+
+  const status = el(
+    "span",
+    "caption mute",
+    parsed.dirty ? "편집한 셀을 포함해 CSV로 내보낼 수 있습니다." : "편집 후 수정본 내보내기가 활성화됩니다.",
+  );
+  wrap.append(status);
+  return wrap;
+}
+
+function buildEditorTable(fileKey, parsed) {
+  const scroller = el("div", "file-editor-table-wrap");
+  const table = el("table", "file-editor-table");
+  const thead = el("thead");
+  const headRow = el("tr");
+  headRow.append(el("th", "file-editor-rowhead", "행"));
+  parsed.headers.forEach((header) => headRow.append(el("th", null, header)));
+  thead.append(headRow);
+  table.append(thead);
+
+  const tbody = el("tbody");
+  parsed.rows.forEach((row, rowIndex) => {
+    const tr = el("tr");
+    const csvRowNumber = rowIndex + 2;
+    tr.dataset.file = fileKey;
+    tr.dataset.row = String(csvRowNumber);
+    const rowHead = el("th", "file-editor-rowhead", String(csvRowNumber));
+    tr.append(rowHead);
+    row.forEach((value, columnIndex) => {
+      const td = el("td");
+      const input = el("input", "file-editor-input");
+      input.value = value;
+      input.dataset.file = fileKey;
+      input.dataset.row = String(csvRowNumber);
+      input.dataset.column = parsed.headers[columnIndex];
+      input.addEventListener("input", () => updateParsedCell(fileKey, rowIndex, columnIndex, input.value));
+      if (isEditedCell(parsed, rowIndex, columnIndex)) {
+        td.classList.add("is-edited");
+      }
+      if (matchesHighlight(fileKey, csvRowNumber, parsed.headers[columnIndex])) {
+        td.classList.add("is-highlighted");
+      }
+      td.append(input);
+      tr.append(td);
+    });
+    if (matchesHighlight(fileKey, csvRowNumber, state.highlightTarget?.column || null)) {
+      tr.classList.add("is-highlighted");
+    }
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  scroller.append(table);
+  return scroller;
+}
+
+function updateParsedCell(fileKey, rowIndex, columnIndex, value) {
+  const parsed = state.parsed[fileKey];
+  if (!parsed || parsed.kind !== "csv") {
+    return;
+  }
+  parsed.rows[rowIndex][columnIndex] = value;
+  const key = `${rowIndex},${columnIndex}`;
+  if (parsed.originalRows[rowIndex][columnIndex] === value) {
+    parsed.edits.delete(key);
+  } else {
+    parsed.edits.add(key);
+  }
+  parsed.dirty = parsed.edits.size > 0;
+  refreshEditedActions();
+  renderFileEditors();
+}
+
+function isEditedCell(parsed, rowIndex, columnIndex) {
+  return parsed.edits.has(`${rowIndex},${columnIndex}`);
+}
+
+function matchesHighlight(fileKey, row, column) {
+  if (!state.highlightTarget) {
+    return false;
+  }
+  return (
+    state.highlightTarget.file === fileKey &&
+    state.highlightTarget.row === row &&
+    (column == null || state.highlightTarget.column == null || state.highlightTarget.column === column)
+  );
+}
+
+function jumpToIssueLocation(location) {
+  if (!location.file || !location.row) {
+    return;
+  }
+  state.highlightTarget = {
+    file: location.file,
+    row: location.row,
+    column: location.column || null,
+  };
+  renderFileEditors();
+  requestAnimationFrame(() => {
+    const target = document.querySelector(
+      `[data-file="${location.file}"][data-row="${location.row}"][data-column="${location.column || ""}"]`,
+    ) || document.querySelector(`[data-file="${location.file}"][data-row="${location.row}"]`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (target.focus) {
+        target.focus();
+      }
+    }
+  });
+}
+
+function exportParsedFile(fileKey) {
+  const parsed = state.parsed[fileKey];
+  if (!parsed || parsed.kind !== "csv" || !parsed.dirty) {
+    return;
+  }
+  const blob = new Blob([toCsv(parsed.headers, parsed.rows)], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = buildEditedCsvFilename(fileKey);
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportAllEditedFiles() {
+  FIELDS.forEach((field) => {
+    const parsed = state.parsed[field.key];
+    if (parsed?.kind === "csv" && parsed.dirty) {
+      exportParsedFile(field.key);
+    }
+  });
+}
+
+function refreshEditedActions() {
+  const hasDirtyFiles = FIELDS.some((field) => state.parsed[field.key]?.dirty);
+  $("#export-edited-top").disabled = !hasDirtyFiles;
+  $("#rerun-edited-top").disabled = !hasDirtyFiles;
+}
+
+function renderChecklist(report) {
+  const host = $("#checklist");
+  host.innerHTML = "";
+  const items = report.checklist_items || [];
+  const visibleItems = items.filter((item) => !state.dismissedChecklistItems.has(checklistItemKey(item)));
+  if (visibleItems.length > 0) {
+    visibleItems.forEach((item) => host.append(buildChecklistItemElement(item)));
+    return;
+  }
+  (report.checklist || []).forEach((item) => host.append(el("li", null, item)));
+  if ((!report.checklist || report.checklist.length === 0) && visibleItems.length === 0) {
+    host.append(el("li", null, "체크리스트 항목이 없습니다."));
+  }
+}
+
+function buildChecklistItemElement(item) {
+  const itemKey = checklistItemKey(item);
+  const li = el("li", `checklist-review ${state.appliedChecklistItems.has(itemKey) ? "is-applied" : ""}`);
+  const body = el("div", "checklist-review-body");
+  body.append(el("div", "checklist-review-title", `[${item.code}] ${item.rationale}`));
+  body.append(el("div", "checklist-review-meta", `${item.file} · 행 ${item.row ?? "-"} · ${item.column ?? "-"}`));
+  body.append(el("div", "checklist-review-values", `현재값: ${item.current ?? "-"} · 권장값: ${item.suggested ?? "직접 수정 필요"}`));
+  li.append(body);
+
+  const actions = el("div", "checklist-review-actions");
+  const apply = el("button", "btn btn-secondary", state.appliedChecklistItems.has(itemKey) ? "적용됨" : "적용");
+  apply.type = "button";
+  apply.disabled = state.appliedChecklistItems.has(itemKey) || !canApplyChecklistItem(item);
+  apply.addEventListener("click", () => applyChecklistItem(item));
+  actions.append(apply);
+
+  const manual = el("button", "btn btn-ghost", "직접 수정");
+  manual.type = "button";
+  manual.addEventListener("click", () => jumpToIssueLocation(item));
+  actions.append(manual);
+
+  const dismiss = el("button", "btn btn-ghost", "무시");
+  dismiss.type = "button";
+  dismiss.addEventListener("click", () => {
+    state.dismissedChecklistItems.add(itemKey);
+    renderChecklist(state.result);
+  });
+  actions.append(dismiss);
+  li.append(actions);
+  return li;
+}
+
+function checklistItemKey(item) {
+  return [item.code, item.file, item.row ?? "-", item.column ?? "-"].join(":");
+}
+
+function canApplyChecklistItem(item) {
+  if (item.suggested == null || item.row == null || item.column == null) {
+    return false;
+  }
+  const parsed = state.parsed[item.file];
+  if (!parsed || parsed.kind !== "csv" || !parsed.editable) {
+    return false;
+  }
+  const rowIndex = item.row - 2;
+  const columnIndex = parsed.headers.indexOf(item.column);
+  return rowIndex >= 0 && rowIndex < parsed.rows.length && columnIndex >= 0;
+}
+
+function applyChecklistItem(item) {
+  if (!canApplyChecklistItem(item) || item.suggested == null || item.row == null || item.column == null) {
+    return;
+  }
+  const parsed = state.parsed[item.file];
+  const rowIndex = item.row - 2;
+  const columnIndex = parsed.headers.indexOf(item.column);
+  updateParsedCell(item.file, rowIndex, columnIndex, item.suggested);
+  state.appliedChecklistItems.add(checklistItemKey(item));
+  jumpToIssueLocation(item);
+  renderChecklist(state.result);
+}
+
+async function rerunWithEditedFiles() {
+  const overrides = {};
+  await Promise.all(
+    FIELDS.map(async (field) => {
+      const parsed = state.parsed[field.key];
+      if (parsed?.kind === "csv" && parsed.dirty) {
+        overrides[field.key] = new File(
+          [toCsv(parsed.headers, parsed.rows)],
+          state.files[field.key]?.name || `${field.key}.csv`,
+          { type: "text/csv" },
+        );
+      }
+    }),
+  );
+  await runPreflight(overrides);
+}
+
+async function loadSources() {
+  try {
+    const response = await fetch("/api/preflight/sources");
+    if (!response.ok) {
+      return;
+    }
+    state.sourceCatalog = await response.json();
+    renderSourcePicker();
+  } catch (_) {}
+}
+
+function renderSourcePicker() {
+  const host = $("#source-picker");
+  if (!host) {
+    return;
+  }
+  host.innerHTML = "";
+  const chips = el("div", "source-chip-list");
+  const panel = el("div", "source-preview");
+  state.sourceCatalog.forEach((source) => {
+    const button = el("button", `source-chip is-${source.status}`, source.label);
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(state.selectedSourceId === source.id));
+    button.classList.toggle("active", state.selectedSourceId === source.id);
+    button.addEventListener("click", () => {
+      state.selectedSourceId = source.id;
+      renderSourcePicker();
+    });
+    chips.append(button);
+    if (source.status !== "available") {
+      const badge = el("span", "source-chip-badge", "곧 지원");
+      button.append(badge);
+    }
+    if (state.selectedSourceId === source.id) {
+      panel.append(el("div", "source-preview-title", source.label));
+      panel.append(el("div", "source-preview-body", source.description));
+      const status = el(
+        "div",
+        "caption mute",
+        source.status === "available" ? "현재 업로드 경로를 사용할 수 있습니다." : "예정된 소스입니다. 실제 연결은 아직 지원하지 않습니다.",
+      );
+      panel.append(status);
+      if (source.auth_fields.length > 0) {
+        const list = el("ul", "source-preview-list");
+        source.auth_fields.forEach((field) => list.append(el("li", null, field)));
+        panel.append(list);
+      }
+    }
+  });
+  host.append(chips);
+  host.append(panel);
+}

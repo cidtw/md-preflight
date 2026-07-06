@@ -17,10 +17,36 @@ def render_markdown_report(report: PreflightReport) -> str:
         "",
         report.ai_summary or "요약 없음",
         "",
-        "## Checklist",
+        "## Per-file Summary",
         "",
     ]
+    lines.extend(
+        f"- {item.file}: {item.issue_count}건 · {item.headline}" for item in report.file_summaries
+    )
+    lines.extend(
+        [
+            "",
+        "## Checklist",
+        "",
+        ]
+    )
     lines.extend(f"- {item}" for item in report.checklist)
+    if report.checklist_items:
+        lines.extend(
+            [
+                "",
+                "## Checklist Items",
+                "",
+            ]
+        )
+        lines.extend(
+            (
+                f"- [{item.code}] {item.file}:{item.row}:{item.column} | "
+                f"current={item.current or '-'} | suggested={item.suggested or '-'} | "
+                f"{item.rationale}"
+            )
+            for item in report.checklist_items
+        )
     lines.extend(
         [
             "",

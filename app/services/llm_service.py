@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import ClassVar, Final, Protocol
 
@@ -10,7 +11,7 @@ from pydantic import BaseModel, ConfigDict
 from typing_extensions import override
 
 from app.schemas.issue import ValidationIssue
-from app.schemas.report import GenerationSource, PreflightSummary
+from app.schemas.report import FileSummary, GenerationSource, PreflightSummary
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ _SYSTEM_PROMPT: Final = (
 @dataclass(frozen=True, slots=True)
 class Narrative:
     ai_summary: str
+    file_summaries: list[FileSummary]
     checklist: list[str]
     source: GenerationSource
 
@@ -53,7 +55,22 @@ class LLMNarrative(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
     ai_summary: str
+    file_summaries: list[LLMFileSummary]
     checklist: list[str]
+
+
+class LLMFileSummary(BaseModel):
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
+    file: str
+    headline: str
+
+
+@dataclass(frozen=True, slots=True)
+class FileIssueGroup:
+    file: str
+    issue_count: int
+    representative: ValidationIssue
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +81,7 @@ class FallbackNarrativeGenerator:
         narrative = build_fallback_narrative(issues)
         return Narrative(
             ai_summary=narrative.ai_summary,
+            file_summaries=narrative.file_summaries,
             checklist=narrative.checklist,
             source=GenerationSource.FALLBACK,
         )
@@ -75,6 +93,7 @@ class LLMNarrativeGenerator:
     model: str
 
     def generate(self, summary: PreflightSummary, issues: list[ValidationIssue]) -> Narrative:
+        groups = group_by_file(issues)
         response = self.client.messages.parse(
             model=self.model,
             max_tokens=2000,
@@ -98,6 +117,16 @@ class LLMNarrativeGenerator:
                                 }
                                 for issue in issues
                             ],
+                            "file_groups": [
+                                {
+                                    "file": group.file,
+                                    "issue_count": group.issue_count,
+                                    "representative_code": group.representative.code,
+                                    "representative_title": group.representative.title,
+                                    "representative_severity": group.representative.severity.value,
+                                }
+                                for group in groups
+                            ],
                         },
                         ensure_ascii=False,
                     ),
@@ -111,6 +140,7 @@ class LLMNarrativeGenerator:
 
         return Narrative(
             ai_summary=parsed.ai_summary,
+            file_summaries=merge_llm_file_summaries(groups, parsed.file_summaries),
             checklist=parsed.checklist,
             source=GenerationSource.LLM,
         )
@@ -133,17 +163,70 @@ def build_fallback_narrative(issues: list[ValidationIssue]) -> FallbackNarrative
     if not issues:
         return FallbackNarrative(
             ai_summary="검수 결과 이상 없음. 모든 파일이 규칙을 통과했습니다.",
+            file_summaries=[],
             checklist=["검수 결과를 검토하고 다음 프로모션 등록 단계로 진행하세요."],
             source=GenerationSource.FALLBACK,
         )
     first_issue = issues[0]
+    groups = group_by_file(issues)
     return FallbackNarrative(
         ai_summary=(
             f"총 {len(issues)}건의 이슈가 발견되었습니다. "
             f"가장 먼저 확인할 항목은 {first_issue.code}입니다."
         ),
+        file_summaries=[
+            FileSummary(
+                file=group.file,
+                issue_count=group.issue_count,
+                headline=f"{group.issue_count}건의 이슈 — 대표: {group.representative.code}",
+            )
+            for group in groups
+        ],
         checklist=[
             f"[{issue.code}] {issue.suggestion or issue.title}" for issue in issues
         ],
         source=GenerationSource.FALLBACK,
     )
+
+
+def group_by_file(issues: list[ValidationIssue]) -> list[FileIssueGroup]:
+    grouped: dict[str, list[ValidationIssue]] = defaultdict(list)
+    for issue in issues:
+        grouped[issue.location.file].append(issue)
+
+    return [
+        FileIssueGroup(
+            file=file,
+            issue_count=len(file_issues),
+            representative=sorted(
+                file_issues,
+                key=lambda candidate: (
+                    severity_rank(candidate.severity.value),
+                    candidate.code,
+                ),
+            )[0],
+        )
+        for file, file_issues in sorted(grouped.items())
+    ]
+
+
+def merge_llm_file_summaries(
+    groups: list[FileIssueGroup],
+    llm_summaries: list[LLMFileSummary],
+) -> list[FileSummary]:
+    headlines = {summary.file: summary.headline for summary in llm_summaries}
+    return [
+        FileSummary(
+            file=group.file,
+            issue_count=group.issue_count,
+            headline=headlines.get(
+                group.file,
+                f"{group.issue_count}건의 이슈 — 대표: {group.representative.code}",
+            ),
+        )
+        for group in groups
+    ]
+
+
+def severity_rank(severity: str) -> int:
+    return {"error": 0, "warning": 1, "info": 2}.get(severity, 3)

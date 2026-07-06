@@ -29,6 +29,7 @@ class StubLlmGenerator:
         del summary, issues
         return Narrative(
             ai_summary="llm summary",
+            file_summaries=[],
             checklist=["llm checklist"],
             source=GenerationSource.LLM,
         )
@@ -47,6 +48,7 @@ class FixedNarrativeGenerator:
         del summary, issues
         return Narrative(
             ai_summary=self.ai_summary,
+            file_summaries=[],
             checklist=self.checklist,
             source=GenerationSource.LLM,
         )

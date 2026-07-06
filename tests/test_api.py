@@ -14,6 +14,7 @@ from app.main import app
 from app.schemas.issue import Severity, ValidationIssue
 from app.schemas.report import PreflightReport
 from app.schemas.rule_meta import RuleMeta
+from app.schemas.source_meta import SourceMeta
 from tests.conftest import (
     build_sample_inventory,
     build_sample_products,
@@ -72,6 +73,7 @@ def test_validate_endpoint_when_uploading_sample_files() -> None:
     }
     assert payload.failed_rules == []
     assert payload.created_at.tzinfo is not None
+    assert sum(item.issue_count for item in payload.file_summaries) == payload.summary.total_issues
 
     stored = client.get(f"/api/preflight/runs/{payload.run_id}")
 
@@ -99,6 +101,20 @@ def test_rules_endpoint_returns_registry() -> None:
         "INBOUND_DATE_CONFLICT",
         "MISSING_BENEFIT_CONDITION",
     ]
+
+
+def test_sources_catalog_lists_upload_available() -> None:
+    client = TestClient(app)
+
+    response = client.get("/api/preflight/sources")
+
+    assert response.status_code == 200
+    payload = TypeAdapter(list[SourceMeta]).validate_python(response.json())
+    statuses = {item.id: item.status for item in payload}
+    assert statuses["upload"] == "available"
+    assert statuses["notion"] == "planned"
+    assert statuses["google_sheets"] == "planned"
+    assert statuses["csv_url"] == "planned"
 
 
 def test_validate_endpoint_reports_failed_rules_when_a_rule_raises(
@@ -262,6 +278,7 @@ def test_report_md_download() -> None:
     assert "markdown" in response.headers["content-type"]
     assert "Created At (UTC):" in response.text
     assert "# MD Preflight Report" in response.text
+    assert "## Per-file Summary" in response.text
     assert "## Issues" in response.text
 
 
@@ -314,6 +331,7 @@ def test_preflight_llm_success_sets_llm(monkeypatch: pytest.MonkeyPatch) -> None
             _ = (summary, issues)
             return Narrative(
                 ai_summary="요약 완료",
+                file_summaries=[],
                 checklist=["- 항목 1"],
                 source=GenerationSource.LLM,
             )
