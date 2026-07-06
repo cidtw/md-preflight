@@ -17,4 +17,15 @@ for (const [index, csv] of cases.entries()) {
   }
 }
 
+const expandedHeaders = ["sku", "price", "promo_flag"];
+const expandedRows = [
+  ["SKU-1", "1000", ""],
+  ["SKU-2", "2000", "Y"],
+  ["", "", ""],
+];
+const expandedRoundTrip = parseCsv(toCsv(expandedHeaders, expandedRows));
+if (JSON.stringify(expandedRoundTrip) !== JSON.stringify({ headers: expandedHeaders, rows: expandedRows })) {
+  throw new Error("CSV structure expansion round-trip failed");
+}
+
 console.log("csv tools verification passed");

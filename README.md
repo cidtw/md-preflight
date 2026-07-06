@@ -120,7 +120,14 @@ uv run pytest            # 68 tests, 네트워크/실 LLM 호출 없음
 
 ## 범위 밖 (의도적 제외)
 
-실시간 POS/ERP 연동, 로그인·멀티테넌트, 수요예측. 3주 MVP 스코프를 통제하기 위한 명시적 제외다.
+실시간 POS/ERP 연동, 수요예측. 3주 MVP 스코프를 통제하기 위한 명시적 제외다. 로그인은 검수 경로가 아니라 이력 대시보드에만 선택적으로 붙는 스텁 seam까지 포함한다.
+
+## 선택 로그인 · 이력 대시보드 (스텁)
+
+- 검수 파이프라인은 **비로그인도 그대로 200**이다.
+- 로그인 스텁 상태에서는 브라우저가 `X-MD-Preflight-User-Id` 헤더를 함께 보내고, 서버는 그 값을 `user_id` seam으로 받아 **집계 이력만** append/query 한다.
+- `GET /api/preflight/history?granularity=day|month|year` 는 로그인 상태에서만 동작하는 읽기 전용 스텁 API다.
+- 실제 Clerk 연동은 다음 라운드 범위다. 예정 env: `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`.
 
 ## 문서
 
