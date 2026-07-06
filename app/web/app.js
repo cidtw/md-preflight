@@ -779,4 +779,9 @@ function renderSourcePicker() {
   });
   host.append(chips);
   host.append(panel);
+
+  const dropzones = $("#dropzones");
+  if (dropzones) {
+    dropzones.classList.toggle("hidden", state.selectedSourceId !== "upload");
+  }
 }
