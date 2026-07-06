@@ -241,6 +241,7 @@ class Rule(Protocol):
 | `GET` | `/api/preflight/runs/{run_id}/report.pdf` | 계획만 존재 (P2), 현재 라우트 없음 |
 | `GET` | `/api/preflight/rules` | 룰 메타데이터 목록(code/severity/description) |
 | `GET` | `/api/preflight/health` | 헬스체크 |
+| `GET` | `/api/preflight/history?granularity=day|month|year` | 로그인 사용자 검수 이력 집계 조회(스텁) |
 
 **요청 예 (`POST /api/preflight`)**: `multipart/form-data`
 - `promotion_plan`: file, `product_master`: file, `inventory`: file
@@ -255,6 +256,35 @@ class Rule(Protocol):
 - 룰 실행 중 개별 룰 예외는 500으로 새지 않고 격리(로그 + 스킵), 응답은 200.
 
 라우터는 얇게: 업로드를 `build_uploaded_context(...)`로 넘기고 `validate_context(...)` 호출만 수행한다. 비즈니스 로직은 서비스에 둔다.
+
+## 4.2 인증 seam (선택 로그인 스텁)
+
+- 검수 라우트(`POST /api/preflight`, `/validate`)는 **인증 없이도 동작**한다.
+- 다만 요청 헤더 `X-MD-Preflight-User-Id` 또는 쿠키 `md_preflight_user_id`가 있으면 이를 `get_current_user_id(request)` seam으로 읽어, 판정 완료 뒤 `RunHistoryRecord`를 append-only 이력 스토어에 저장한다.
+- 이 seam은 Clerk 배선을 위한 자리만 제공하며, 실제 Clerk SDK/미들웨어 연결은 다음 라운드다.
+
+## 부록 A. 이력 영속화 스키마 (스텁)
+
+이력 저장은 규칙 엔진 밖의 append-only 감사 로그이며, **원본 파일·셀값·PII를 저장하지 않고 판정 집계만** 남긴다.
+
+```sql
+run_history(
+  id            bigserial primary key,
+  user_id       text not null,
+  run_id        text not null,
+  created_at    timestamptz not null default now(),
+  passed        boolean not null,
+  error_count   integer not null,
+  warning_count integer not null,
+  total_issues  integer not null,
+  rules_triggered jsonb not null,
+  source_label  text
+)
+```
+
+- 현재 구현은 `HistoryStore` 인터페이스와 `InMemoryHistoryStore` 스텁만 제공한다.
+- 집계는 `date_trunc('day'|'month'|'year', created_at)`에 해당하는 버킷으로 합산한다.
+- 실제 DB 후보는 Vercel Postgres / Neon이며, `DATABASE_URL` 배선과 마이그레이션은 다음 라운드 범위다.
 
 ## 4.1 입력 소스 추상화 (로드맵)
 

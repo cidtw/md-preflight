@@ -1,16 +1,24 @@
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
 
-from app.api.deps import get_app_settings, get_narrative_generator, get_run_store
+from app.api.deps import (
+    get_app_settings,
+    get_current_user_id,
+    get_history_store,
+    get_narrative_generator,
+    get_run_store,
+)
 from app.core.config import Settings
 from app.core.errors import IngestError, UploadValidationError
 from app.rules import RULES
+from app.schemas.history import HistoryBucket, RunHistoryRecord
 from app.schemas.report import PreflightReport
 from app.schemas.rule_meta import RuleMeta
 from app.schemas.source_meta import SourceMeta
+from app.services.history_store import HistoryGranularity, HistoryStore
 from app.services.report_service import render_markdown_report
 from app.services.run_store import RunStore
 from app.services.validation_engine import UploadedFiles, build_uploaded_context, validate_context
@@ -50,8 +58,10 @@ async def build_report_from_uploads(
     *,
     files: UploadedFiles,
     run_store: RunStore,
+    history_store: HistoryStore,
     settings: Settings,
     use_llm: bool,
+    user_id: str | None,
 ) -> PreflightReport:
     await validate_uploaded_files(files, settings)
     context = await build_uploaded_context(files, settings.rule_thresholds)
@@ -60,6 +70,8 @@ async def build_report_from_uploads(
         generator=get_narrative_generator(settings=settings, use_llm=use_llm),
     )
     run_store.save(report)
+    if user_id is not None:
+        history_store.append(RunHistoryRecord.from_report(user_id, report.run_id, report))
     return report
 
 
@@ -69,7 +81,9 @@ async def preflight_files(
     product_master: Annotated[UploadFile, File()],
     inventory: Annotated[UploadFile, File()],
     run_store: Annotated[RunStore, Depends(get_run_store)],
+    history_store: Annotated[HistoryStore, Depends(get_history_store)],
     settings: Annotated[Settings, Depends(get_app_settings)],
+    user_id: Annotated[str | None, Depends(get_current_user_id)],
     use_llm: Annotated[bool, Form()] = True,
 ) -> PreflightReport:
     files = UploadedFiles(
@@ -81,8 +95,10 @@ async def preflight_files(
         return await build_report_from_uploads(
             files=files,
             run_store=run_store,
+            history_store=history_store,
             settings=settings,
             use_llm=use_llm,
+            user_id=user_id,
         )
     except UploadValidationError as exc:
         raise HTTPException(
@@ -102,7 +118,9 @@ async def validate_files(
     product_master: Annotated[UploadFile, File()],
     inventory: Annotated[UploadFile, File()],
     run_store: Annotated[RunStore, Depends(get_run_store)],
+    history_store: Annotated[HistoryStore, Depends(get_history_store)],
     settings: Annotated[Settings, Depends(get_app_settings)],
+    user_id: Annotated[str | None, Depends(get_current_user_id)],
 ) -> PreflightReport:
     files = UploadedFiles(
         promotion_plan=promotion_plan,
@@ -113,8 +131,10 @@ async def validate_files(
         return await build_report_from_uploads(
             files=files,
             run_store=run_store,
+            history_store=history_store,
             settings=settings,
             use_llm=False,
+            user_id=user_id,
         )
     except UploadValidationError as exc:
         raise HTTPException(
@@ -166,6 +186,20 @@ def get_rules() -> list[RuleMeta]:
 @router.get("/sources", response_model=list[SourceMeta])
 def get_sources() -> list[SourceMeta]:
     return SOURCE_CATALOG
+
+
+@router.get("/history", response_model=list[HistoryBucket])
+def get_history(
+    history_store: Annotated[HistoryStore, Depends(get_history_store)],
+    user_id: Annotated[str | None, Depends(get_current_user_id)],
+    granularity: Annotated[HistoryGranularity, Query()] = "day",
+) -> list[HistoryBucket]:
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Login required for history dashboard",
+        )
+    return history_store.query(user_id, granularity)
 
 
 @router.get("/health")
