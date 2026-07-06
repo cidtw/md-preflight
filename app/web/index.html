@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MD Preflight — 프로모션 사전검수</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20x='6'%20y='6'%20width='20'%20height='20'%20rx='6'%20fill='%23171717'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="top-nav">
+    <div class="nav-inner">
+      <div class="wordmark">
+        <span class="wordmark-dot" aria-hidden="true"></span>
+        MD&nbsp;Preflight
+      </div>
+      <span class="nav-meta">유통 프로모션 사전검수</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ───────── Upload view ───────── -->
+    <section id="view-upload" class="view">
+      <div class="page-head">
+        <p class="eyebrow">Preflight</p>
+        <h1 class="display-lg">등록 전에, 리스크를 먼저 잡는다.</h1>
+        <p class="lede">
+          프로모션 계획 · 상품 마스터 · 재고 파일을 올리면 가격 · 기간 · 마진 · 재고 ·
+          증정 조건의 운영 리스크를 <strong>결정론적 규칙 엔진</strong>이 검수합니다.
+        </p>
+      </div>
+
+      <div class="dropzone-grid" id="dropzones">
+        <!-- dropzones injected by app.js -->
+      </div>
+
+      <div class="run-bar">
+        <label class="llm-toggle">
+          <input type="checkbox" id="use-llm" checked />
+          <span class="switch" aria-hidden="true"></span>
+          <span class="llm-label">
+            AI 서술 생성
+            <span class="caption mute">끄면 결정론적 fallback 서사로 검수(오프라인 안전)</span>
+          </span>
+        </label>
+        <button id="run-btn" class="btn btn-primary" disabled>검수 실행</button>
+      </div>
+    </section>
+
+    <!-- ───────── Loading view ───────── -->
+    <section id="view-loading" class="view hidden">
+      <div class="loading">
+        <span class="spinner" aria-hidden="true"></span>
+        <p class="body">검수 중… 파일을 조인하고 10개 규칙을 적용하고 있습니다.</p>
+      </div>
+    </section>
+
+    <!-- ───────── Result view ───────── -->
+    <section id="view-result" class="view hidden">
+      <div class="result-head">
+        <button id="back-btn" class="btn btn-ghost">← 다시 검수</button>
+        <a id="download-md" class="btn btn-secondary" href="#" download>Markdown 리포트</a>
+      </div>
+
+      <div id="verdict" class="verdict"></div>
+      <div id="stats" class="stat-grid"></div>
+
+      <div class="result-section">
+        <h2 class="display-sm section-title">이슈 <span id="issue-count" class="count-chip"></span></h2>
+        <div id="issues" class="issue-list"></div>
+      </div>
+
+      <div class="result-section">
+        <h2 class="display-sm section-title">AI 요약</h2>
+        <div id="ai-summary" class="ai-panel"></div>
+      </div>
+
+      <div class="result-section">
+        <h2 class="display-sm section-title">담당자 체크리스트</h2>
+        <ul id="checklist" class="checklist"></ul>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden" role="alert"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
