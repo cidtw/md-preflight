@@ -198,3 +198,75 @@ def test_checklist_item_targets_issue_location() -> None:
     assert item.file == issue.location.file
     assert item.row == issue.location.row
     assert item.column == issue.location.column
+
+
+def test_checklist_item_current_uses_source_cell_value() -> None:
+    ctx = build_context(
+        build_sample_promotions(),
+        build_sample_products(),
+        build_sample_inventory(),
+        RuleThresholds(),
+    )
+    issue = ValidationIssue(
+        code="INVALID_DATE_RANGE",
+        severity=Severity.ERROR,
+        title="종료일이 시작일보다 빠릅니다",
+        message="기간을 확인하세요.",
+        entity={"promotion_id": "P-2", "product_code": "SKU-2"},
+        location=IssueLocation(file="promotion_plan", row=3, column="start_date"),
+        observed="start=2026-07-15, end=2026-07-10",
+        expected="start_date <= end_date",
+        suggestion="시작일 또는 종료일을 수정하세요.",
+    )
+
+    item = build_checklist_items(ctx, [issue])[0]
+
+    assert item.current == "2026-07-15"
+
+
+def test_checklist_item_current_reads_product_master_value() -> None:
+    ctx = build_context(
+        build_sample_promotions(),
+        build_sample_products(),
+        build_sample_inventory(),
+        RuleThresholds(),
+    )
+    issue = ValidationIssue(
+        code="LOW_MARGIN_RATE",
+        severity=Severity.WARNING,
+        title="마진율이 기준보다 낮습니다",
+        message="행사가 기준 마진율이 최소 기준을 충족하지 못했습니다.",
+        entity={"promotion_id": "P-1", "product_code": "SKU-1"},
+        location=IssueLocation(file="product_master", row=2, column="normal_price"),
+        observed="margin_rate=1.00%",
+        expected="margin_rate >= 5.00%",
+        suggestion="정상가를 확인하세요.",
+    )
+
+    item = build_checklist_items(ctx, [issue])[0]
+
+    assert item.current == "10000"
+
+
+def test_checklist_item_current_returns_none_when_mapping_missing() -> None:
+    ctx = build_context(
+        build_sample_promotions(),
+        build_sample_products(),
+        build_sample_inventory(),
+        RuleThresholds(),
+    )
+    issue = ValidationIssue(
+        code="LOW_MARGIN_RATE",
+        severity=Severity.WARNING,
+        title="마진율이 기준보다 낮습니다",
+        message="행사가 기준 마진율이 최소 기준을 충족하지 못했습니다.",
+        entity={"promotion_id": "P-1", "product_code": "SKU-1"},
+        location=IssueLocation(file="promotion_plan", row=999, column="promo_price"),
+        observed="margin_rate=1.00%",
+        expected="margin_rate >= 5.00%",
+        suggestion="행사가를 조정하거나 원가를 재검토하세요.",
+    )
+
+    item = build_checklist_items(ctx, [issue])[0]
+
+    assert item.current is None
