@@ -6,8 +6,8 @@ import pandas as pd
 
 from app.domain.columns import SourceFile
 from app.domain.context import PreflightContext
-from app.rules.base import RowEntity, make_issue
-from app.schemas.issue import Severity, ValidationIssue
+from app.rules.base import RowEntity, make_issue, normalize_related_row
+from app.schemas.issue import IssueLocation, Severity, ValidationIssue
 from app.schemas.rule_meta import RuleMeta
 
 
@@ -54,6 +54,13 @@ class IncompleteProductMasterRule:
                         promotion_id=str(row.promotion_id),
                         product_code=str(row.product_code),
                     ),
+                    related=[
+                        IssueLocation(
+                            file=SourceFile.PRODUCT_MASTER.value,
+                            row=normalize_related_row(getattr(row, "product_source_row", None)),
+                            column=column,
+                        )
+                    ],
                     observed=observed,
                     expected="product_master must provide normal_price and cost",
                     suggestion="상품 마스터에 정상가와 원가를 입력하세요.",

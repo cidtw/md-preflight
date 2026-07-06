@@ -41,6 +41,7 @@ class MissingBenefitConditionRule:
                         promotion_id=str(row.promotion_id),
                         product_code=str(row.product_code),
                     ),
+                    related=None,
                     observed=f"benefit_type={benefit_type}, benefit_condition=<empty>",
                     expected="benefit_condition must be provided when benefit_type is set",
                     suggestion="혜택 조건을 입력하거나 혜택 유형을 제거하세요.",

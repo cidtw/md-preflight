@@ -6,8 +6,8 @@ import pandas as pd
 
 from app.domain.columns import SourceFile
 from app.domain.context import PreflightContext
-from app.rules.base import RowEntity, make_issue
-from app.schemas.issue import Severity, ValidationIssue
+from app.rules.base import RowEntity, make_issue, normalize_related_row
+from app.schemas.issue import IssueLocation, Severity, ValidationIssue
 from app.schemas.rule_meta import RuleMeta
 
 
@@ -55,6 +55,13 @@ class LowMarginRateRule:
                         promotion_id=promotion_id,
                         product_code=product_code,
                     ),
+                    related=[
+                        IssueLocation(
+                            file=SourceFile.PRODUCT_MASTER.value,
+                            row=normalize_related_row(getattr(row, "product_source_row", None)),
+                            column="cost",
+                        )
+                    ],
                     observed=f"margin_rate={current_margin_rate:.2%}",
                     expected=f"margin_rate >= {ctx.thresholds.min_margin_rate:.2%}",
                     suggestion="행사가를 조정하거나 원가를 재검토하세요.",

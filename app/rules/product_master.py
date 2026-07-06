@@ -40,6 +40,7 @@ class MissingProductMasterRule:
                     row=source_row,
                     column="product_code",
                     entity=entity,
+                    related=None,
                     observed=product_code,
                     expected="product_master must contain the product_code",
                     suggestion="상품 마스터 파일에 해당 상품을 추가하세요.",

@@ -44,6 +44,7 @@ class InvalidDateRangeRule:
                     row=source_row,
                     column="start_date",
                     entity=entity,
+                    related=None,
                     observed=f"start={start_date_raw}, end={end_date_raw}",
                     expected="start_date and end_date must be parseable and start_date <= end_date",
                     suggestion="행사 시작일과 종료일을 다시 입력하세요.",

@@ -56,6 +56,7 @@ class ExtremeDiscountRateRule:
                     row=source_row,
                     column="promo_price",
                     entity=entity,
+                    related=None,
                     observed=f"discount_rate={discount:.2%}",
                     expected=f"discount_rate < {ctx.thresholds.max_discount_rate:.2%}",
                     suggestion="할인율을 줄이거나 프로모션 구조를 다시 검토하세요.",

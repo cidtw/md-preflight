@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 from app.domain.columns import SourceFile
 from app.domain.context import PreflightContext
-from app.rules.base import RowEntity, make_issue
-from app.schemas.issue import Severity, ValidationIssue
+from app.rules.base import RowEntity, make_issue, normalize_related_row
+from app.schemas.issue import IssueLocation, Severity, ValidationIssue
 from app.schemas.rule_meta import RuleMeta
 
 
@@ -40,6 +40,13 @@ class InventoryShortageRiskRule:
                         promotion_id=str(row.promotion_id),
                         product_code=str(row.product_code),
                     ),
+                    related=[
+                        IssueLocation(
+                            file=SourceFile.INVENTORY.value,
+                            row=normalize_related_row(getattr(row, "inventory_source_row", None)),
+                            column="stock_qty",
+                        )
+                    ],
                     observed=(
                         f"expected_demand={float(str(row.expected_demand)):.1f}, "
                         f"stock_qty={float(str(row.stock_qty)):.1f}"

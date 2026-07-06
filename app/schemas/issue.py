@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Severity(StrEnum):
@@ -27,6 +27,7 @@ class ValidationIssue(BaseModel):
     message: str
     entity: dict[str, str]
     location: IssueLocation
+    related_locations: list[IssueLocation] = Field(default_factory=list)
     observed: str | None
     expected: str | None
     suggestion: str | None
