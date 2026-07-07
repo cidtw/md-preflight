@@ -15,6 +15,7 @@ from app.services.llm_service import (
     FallbackNarrativeGenerator,
     FallbackOnErrorNarrativeGenerator,
     Narrative,
+    NarrativeGenerationError,
 )
 from tests.conftest import build_sample_products
 from tests.test_api import build_preflight_upload_files
@@ -61,9 +62,15 @@ class RaisingAnthropicNarrativeGenerator:
         issues: list[ValidationIssue],
     ) -> Narrative:
         del summary, issues
-        raise APIConnectionError(
-            message="connection error",
-            request=Request("POST", "https://api.anthropic.com/v1/messages"),
+        raise NarrativeGenerationError(
+            provider="anthropic",
+            model="claude-test",
+            reason=str(
+                APIConnectionError(
+                    message="connection error",
+                    request=Request("POST", "https://api.anthropic.com/v1/messages"),
+                )
+            ),
         )
 
 

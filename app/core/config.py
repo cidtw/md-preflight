@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import ClassVar
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.rule_config import RuleThresholds
@@ -9,11 +9,33 @@ from app.core.rule_config import RuleThresholds
 
 class Settings(BaseSettings):
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", ".env.local"),
         env_prefix="MDPREFLIGHT_",
+        extra="ignore",
     )
 
     llm_model: str = "claude-sonnet-5"
+    openai_model: str = "gpt-5.5"
+    database_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DATABASE_URL", "MDPREFLIGHT_DATABASE_URL"),
+    )
+    database_url_unpooled: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DATABASE_URL_UNPOOLED", "MDPREFLIGHT_DATABASE_URL_UNPOOLED"),
+    )
+    clerk_secret_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("CLERK_SECRET_KEY", "MDPREFLIGHT_CLERK_SECRET_KEY"),
+    )
+    clerk_publishable_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+            "CLERK_PUBLISHABLE_KEY",
+            "MDPREFLIGHT_CLERK_PUBLISHABLE_KEY",
+        ),
+    )
     max_upload_bytes: int = 5 * 1024 * 1024
     allowed_extensions: tuple[str, ...] = (".csv", ".xlsx")
     cors_origins: list[str] = Field(

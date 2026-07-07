@@ -5,10 +5,12 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from app.api import deps as api_deps
 from app.core.rule_config import RuleThresholds
 from app.domain.context import PreflightContext
 from app.ingest.loader import load_table
 from app.ingest.normalize import build_context
+from app.services.history_store import InMemoryHistoryStore
 
 
 @pytest.fixture()
@@ -181,3 +183,13 @@ def clean_context(thresholds: RuleThresholds, sample_files_dir: Path) -> Preflig
         load_table(str(base / "inventory.xlsx"), (base / "inventory.xlsx").read_bytes()),
         thresholds,
     )
+
+
+@pytest.fixture(autouse=True)
+def isolate_history_store(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "")
+    monkeypatch.setenv("DATABASE_URL_UNPOOLED", "")
+    monkeypatch.setenv("CLERK_SECRET_KEY", "")
+    monkeypatch.setenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "")
+    monkeypatch.setattr(api_deps, "history_store_instance", InMemoryHistoryStore())
+    monkeypatch.setattr(api_deps, "_history_store_initialized", True)
