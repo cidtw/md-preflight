@@ -99,6 +99,47 @@ def test_preflight_without_auth_still_returns_200(monkeypatch: pytest.MonkeyPatc
     assert response.status_code == 200
 
 
+def test_preflight_without_auth_still_returns_200_when_history_store_init_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.api.deps._history_store_initialized", False)
+    monkeypatch.setattr("app.api.deps.history_store_instance", InMemoryHistoryStore())
+    monkeypatch.setattr(
+        "app.api.deps.build_history_store",
+        lambda: (_ for _ in ()).throw(RuntimeError("db boot failed")),
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/preflight",
+        data={"use_llm": "false"},
+        files=build_preflight_upload_files(),
+    )
+
+    assert response.status_code == 200
+
+
+def test_preflight_with_auth_still_returns_200_when_history_store_init_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.api.deps._history_store_initialized", False)
+    monkeypatch.setattr("app.api.deps.history_store_instance", InMemoryHistoryStore())
+    monkeypatch.setattr(
+        "app.api.deps.build_history_store",
+        lambda: (_ for _ in ()).throw(RuntimeError("db boot failed")),
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/preflight",
+        data={"use_llm": "false"},
+        headers={"x-md-preflight-user-id": "user-123"},
+        files=build_preflight_upload_files(),
+    )
+
+    assert response.status_code == 200
+
+
 def test_history_endpoint_requires_login(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.api.deps.history_store_instance", InMemoryHistoryStore())
     client = TestClient(app)
@@ -203,9 +244,9 @@ def test_history_endpoint_accepts_verified_clerk_bearer_token(
         token: str,
         publishable_key: str,
         secret_key: str,
-        authorized_party: str | None,
+        authorized_parties: frozenset[str],
     ) -> VerifiedClerkSession:
-        del token, publishable_key, secret_key, authorized_party
+        del token, publishable_key, secret_key, authorized_parties
         return VerifiedClerkSession(user_id="user_clerk")
 
     publishable_key = "pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk"

@@ -128,9 +128,9 @@ uv run pytest            # 68 tests, 네트워크/실 LLM 호출 없음
 
 - 검수 파이프라인은 **비로그인도 그대로 200**이다.
 - `GET /api/preflight/history?granularity=day|month|year` 와 `GET /api/preflight/history/runs` 는 로그인 상태에서만 동작한다.
-- 서버는 `CLERK_SECRET_KEY` 와 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` 가 함께 설정되면 Clerk 세션 토큰(`Authorization: Bearer ...` 또는 `__session` 쿠키)을 검증해 실제 user ID를 얻는다.
+- 서버는 `CLERK_SECRET_KEY` 와 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` 가 함께 설정되면 Clerk 세션 토큰(`Authorization: Bearer ...` 또는 `__session` 쿠키)을 검증해 실제 user ID를 얻는다. 이때 `aud` 대신 `iss` 와 `azp`(허용 origin 목록) 기준으로 검증한다.
 - 두 키가 없으면 기존 스텁 경로(`X-MD-Preflight-User-Id` 헤더 / `md_preflight_user_id` 쿠키)로 자동 fallback 하므로 로컬 데모와 테스트는 계속 가볍게 유지된다.
-- 이력 저장소는 `DATABASE_URL` 이 설정되면 Neon/Postgres `run_history` 테이블에 append/query 하고, 비설정 환경에서는 `InMemoryHistoryStore` 로 fallback 한다.
+- 이력 저장소는 `DATABASE_URL` 이 설정되면 Neon/Postgres `run_history` 테이블에 append/query 하고, 비설정 환경에서는 `InMemoryHistoryStore` 로 fallback 한다. 스토어 초기화가 실패해도 검수 요청은 메모리 스토어로 degrade 되어 200을 유지한다.
 
 ## 문서
 

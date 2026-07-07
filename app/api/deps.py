@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 
 from anthropic import Anthropic
@@ -9,7 +10,7 @@ from openai import OpenAI
 from app.core.config import Settings, get_settings
 from app.services.clerk_auth import ClerkAuthenticationError, verify_clerk_session_token
 from app.services.history_store import HISTORY_STORE as DEFAULT_HISTORY_STORE
-from app.services.history_store import HistoryStore, build_history_store
+from app.services.history_store import HistoryStore, InMemoryHistoryStore, build_history_store
 from app.services.llm_service import (
     FallbackNarrativeGenerator,
     FallbackOnErrorNarrativeGenerator,
@@ -21,6 +22,7 @@ from app.services.run_store import RUN_STORE, RunStore
 
 _history_store_initialized = False
 history_store_instance: HistoryStore = DEFAULT_HISTORY_STORE
+logger = logging.getLogger(__name__)
 
 
 def get_run_store() -> RunStore:
@@ -31,7 +33,13 @@ def get_history_store() -> HistoryStore:
     global history_store_instance, _history_store_initialized
     if not _history_store_initialized:
         if type(history_store_instance).__name__ == "InMemoryHistoryStore":
-            history_store_instance = build_history_store()
+            try:
+                history_store_instance = build_history_store()
+            except Exception:
+                logger.exception(
+                    "history store initialization failed; degrading to in-memory store"
+                )
+                history_store_instance = InMemoryHistoryStore()
         _history_store_initialized = True
     return history_store_instance
 
@@ -78,7 +86,7 @@ def get_current_user_id(request: Request) -> str | None:
                 token=token,
                 publishable_key=settings.clerk_publishable_key,
                 secret_key=settings.clerk_secret_key,
-                authorized_party=str(request.base_url).rstrip("/"),
+                authorized_parties=resolve_clerk_authorized_parties(settings),
             )
         except ClerkAuthenticationError:
             return None
@@ -108,3 +116,8 @@ def extract_stub_user_id(request: Request) -> str | None:
     if cookie_value:
         return cookie_value.strip() or None
     return None
+
+
+def resolve_clerk_authorized_parties(settings: Settings) -> frozenset[str]:
+    configured = settings.clerk_authorized_origins or tuple(settings.cors_origins)
+    return frozenset(origin.rstrip("/") for origin in configured if origin.strip())

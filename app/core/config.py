@@ -36,6 +36,14 @@ class Settings(BaseSettings):
             "MDPREFLIGHT_CLERK_PUBLISHABLE_KEY",
         ),
     )
+    clerk_authorized_origins: tuple[str, ...] = Field(
+        default_factory=tuple,
+        validation_alias=AliasChoices(
+            "CLERK_AUTHORIZED_ORIGINS",
+            "CLERK_ALLOWED_ORIGINS",
+            "MDPREFLIGHT_CLERK_AUTHORIZED_ORIGINS",
+        ),
+    )
     max_upload_bytes: int = 5 * 1024 * 1024
     allowed_extensions: tuple[str, ...] = (".csv", ".xlsx")
     cors_origins: list[str] = Field(
