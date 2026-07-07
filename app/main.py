@@ -1,12 +1,13 @@
+import json
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 
 WEB_DIR = Path(__file__).parent / "web"
 
@@ -27,12 +28,27 @@ def create_app() -> FastAPI:
     if WEB_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
-        def index() -> FileResponse:
-            return FileResponse(WEB_DIR / "index.html")
+        def index() -> HTMLResponse:
+            return HTMLResponse(build_index_html(settings))
 
-        app.add_api_route("/", index, include_in_schema=False, response_class=FileResponse)
+        app.add_api_route("/", index, include_in_schema=False, response_class=HTMLResponse)
 
     return app
+
+
+def build_index_html(settings: Settings) -> str:
+    config_payload = json.dumps(
+        {"clerkPublishableKey": settings.clerk_publishable_key},
+        ensure_ascii=True,
+    )
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    return html.replace(
+        '<script type="module" src="/static/app.js?v=2"></script>',
+        (
+            f'<script>window.__MDP_CONFIG__ = {config_payload};</script>\n'
+            '  <script type="module" src="/static/app.js?v=2"></script>'
+        ),
+    )
 
 
 app = create_app()

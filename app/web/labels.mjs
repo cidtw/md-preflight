@@ -20,6 +20,19 @@ export const COLUMN_LABELS = {
   stock_qty: "재고수량",
 };
 
+export const RULE_LABELS = {
+  DUPLICATE_MASTER_CODE: "중복 상품 코드",
+  EXTREME_DISCOUNT_RATE: "과도한 할인율",
+  INBOUND_DATE_CONFLICT: "입고일 충돌",
+  INCOMPLETE_PRODUCT_MASTER: "마스터 핵심값 결측",
+  INVENTORY_SHORTAGE_RISK: "재고 부족 위험",
+  INVALID_DATE_RANGE: "잘못된 행사 기간",
+  INVALID_PROMO_PRICE: "유효하지 않은 행사가",
+  LOW_MARGIN_RATE: "낮은 마진율",
+  MISSING_BENEFIT_CONDITION: "혜택 조건 누락",
+  MISSING_PRODUCT_MASTER: "상품 마스터 누락",
+};
+
 export function displayLabel(key) {
-  return COLUMN_LABELS[key] ?? key;
+  return RULE_LABELS[key] ?? COLUMN_LABELS[key] ?? key;
 }

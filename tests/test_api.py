@@ -1,21 +1,23 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Generator
 from io import StringIO
 from pathlib import Path
 
-import pandas as pd  # noqa: PANDAS_OK
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import TypeAdapter
 
 from app.domain.context import PreflightContext
-from app.main import app
-from app.schemas.history import HistoryBucket
+from app.main import app, build_index_html
+from app.schemas.history import HistoryBucket, RunHistoryRecord
 from app.schemas.issue import Severity, ValidationIssue
 from app.schemas.report import PreflightReport
 from app.schemas.rule_meta import RuleMeta
 from app.schemas.source_meta import SourceMeta
+from app.services.clerk_auth import VerifiedClerkSession
 from app.services.history_store import InMemoryHistoryStore
 from tests.conftest import (
     build_sample_inventory,
@@ -85,7 +87,7 @@ def test_validate_endpoint_when_uploading_sample_files() -> None:
 
 
 def test_preflight_without_auth_still_returns_200(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.api.deps.HISTORY_STORE", InMemoryHistoryStore())
+    monkeypatch.setattr("app.api.deps.history_store_instance", InMemoryHistoryStore())
     client = TestClient(app)
 
     response = client.post(
@@ -97,8 +99,49 @@ def test_preflight_without_auth_still_returns_200(monkeypatch: pytest.MonkeyPatc
     assert response.status_code == 200
 
 
+def test_preflight_without_auth_still_returns_200_when_history_store_init_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.api.deps._history_store_initialized", False)
+    monkeypatch.setattr("app.api.deps.history_store_instance", InMemoryHistoryStore())
+    monkeypatch.setattr(
+        "app.api.deps.build_history_store",
+        lambda: (_ for _ in ()).throw(RuntimeError("db boot failed")),
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/preflight",
+        data={"use_llm": "false"},
+        files=build_preflight_upload_files(),
+    )
+
+    assert response.status_code == 200
+
+
+def test_preflight_with_auth_still_returns_200_when_history_store_init_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.api.deps._history_store_initialized", False)
+    monkeypatch.setattr("app.api.deps.history_store_instance", InMemoryHistoryStore())
+    monkeypatch.setattr(
+        "app.api.deps.build_history_store",
+        lambda: (_ for _ in ()).throw(RuntimeError("db boot failed")),
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/preflight",
+        data={"use_llm": "false"},
+        headers={"x-md-preflight-user-id": "user-123"},
+        files=build_preflight_upload_files(),
+    )
+
+    assert response.status_code == 200
+
+
 def test_history_endpoint_requires_login(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.api.deps.HISTORY_STORE", InMemoryHistoryStore())
+    monkeypatch.setattr("app.api.deps.history_store_instance", InMemoryHistoryStore())
     client = TestClient(app)
 
     response = client.get("/api/preflight/history")
@@ -109,7 +152,7 @@ def test_history_endpoint_requires_login(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_history_endpoint_returns_buckets_for_signed_in_user(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("app.api.deps.HISTORY_STORE", InMemoryHistoryStore())
+    monkeypatch.setattr("app.api.deps.history_store_instance", InMemoryHistoryStore())
     client = TestClient(app)
 
     create = client.post(
@@ -132,6 +175,154 @@ def test_history_endpoint_returns_buckets_for_signed_in_user(
     assert payload[0].error_total >= 0
     assert payload[0].warning_total >= 0
     assert payload[0].bucket.year >= 2000
+
+
+def test_history_runs_endpoint_requires_login(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.api.deps.history_store_instance", InMemoryHistoryStore())
+    client = TestClient(app)
+
+    response = client.get("/api/preflight/history/runs")
+
+    assert response.status_code == 401
+
+
+def test_history_runs_endpoint_returns_latest_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.api.deps.history_store_instance", InMemoryHistoryStore())
+    client = TestClient(app)
+
+    first = client.post(
+        "/api/preflight",
+        data={"use_llm": "false"},
+        headers={"x-md-preflight-user-id": "user-123"},
+        files=build_preflight_upload_files(),
+    )
+    second = client.post(
+        "/api/preflight",
+        data={"use_llm": "false"},
+        headers={"x-md-preflight-user-id": "user-123"},
+        files=build_preflight_upload_files(),
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    response = client.get(
+        "/api/preflight/history/runs?limit=1",
+        headers={"x-md-preflight-user-id": "user-123"},
+    )
+
+    assert response.status_code == 200
+    payload = TypeAdapter(list[RunHistoryRecord]).validate_python(response.json())
+    assert len(payload) == 1
+    assert payload[0].run_id == PreflightReport.model_validate(second.json()).run_id
+
+
+def test_history_endpoint_rejects_stub_header_when_clerk_mode_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    publishable_key = "pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk"
+    monkeypatch.setattr("app.api.deps.history_store_instance", InMemoryHistoryStore())
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_123")
+    monkeypatch.setenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", publishable_key)
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/preflight/history",
+        headers={"x-md-preflight-user-id": "user-123"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_history_endpoint_accepts_verified_clerk_bearer_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def verify_token(
+        *,
+        token: str,
+        publishable_key: str,
+        secret_key: str,
+        authorized_parties: frozenset[str],
+    ) -> VerifiedClerkSession:
+        del token, publishable_key, secret_key, authorized_parties
+        return VerifiedClerkSession(user_id="user_clerk")
+
+    publishable_key = "pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk"
+    monkeypatch.setattr("app.api.deps.history_store_instance", InMemoryHistoryStore())
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_123")
+    monkeypatch.setenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", publishable_key)
+    monkeypatch.setattr("app.api.deps.verify_clerk_session_token", verify_token)
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    client = TestClient(app)
+
+    create = client.post(
+        "/api/preflight",
+        data={"use_llm": "false"},
+        headers={"Authorization": "Bearer test-token"},
+        files=build_preflight_upload_files(),
+    )
+
+    assert create.status_code == 200
+    response = client.get(
+        "/api/preflight/history?granularity=day",
+        headers={"Authorization": "Bearer test-token"},
+    )
+
+    assert response.status_code == 200
+    payload = TypeAdapter(list[HistoryBucket]).validate_python(response.json())
+    assert len(payload) == 1
+    assert payload[0].run_count == 1
+
+
+def test_preflight_history_append_failure_does_not_break_report(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BrokenHistoryStore:
+        def append(self, record: RunHistoryRecord) -> None:
+            del record
+            raise RuntimeError("append broke")
+
+        def query(self, user_id: str, granularity: str) -> list[HistoryBucket]:
+            del user_id, granularity
+            return []
+
+        def list_runs(self, user_id: str, *, limit: int) -> list[RunHistoryRecord]:
+            del user_id, limit
+            return []
+
+    monkeypatch.setattr("app.api.deps.history_store_instance", BrokenHistoryStore())
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/preflight",
+        data={"use_llm": "false"},
+        headers={"x-md-preflight-user-id": "user-123"},
+        files=build_preflight_upload_files(),
+    )
+
+    assert response.status_code == 200
+
+
+def test_index_html_injects_clerk_publishable_key() -> None:
+    from app.core.config import Settings
+
+    html = build_index_html(Settings.model_construct(clerk_publishable_key="pk_test_value"))
+
+    assert "window.__MDP_CONFIG__" in html
+    assert "pk_test_value" in html
+
+
+@pytest.fixture(autouse=True)
+def clear_settings_cache() -> Generator[None, None, None]:
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 def test_rules_endpoint_returns_registry() -> None:

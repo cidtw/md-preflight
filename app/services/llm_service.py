@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from typing import ClassVar, Final, Protocol
 
 from anthropic import Anthropic, AnthropicError
+from openai import APIError as OpenAIAPIError
+from openai import OpenAI
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import override
 
@@ -43,12 +45,28 @@ class NarrativeGenerator(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
-class LLMNarrativeParseError(Exception):
+class NarrativeGenerationError(Exception):
+    provider: str
     model: str
+    reason: str
 
     @override
     def __str__(self) -> str:
-        return f"failed to parse narrative response for model {self.model}"
+        return f"{self.provider} narrative generation failed for model {self.model}: {self.reason}"
+
+
+@dataclass(frozen=True, slots=True)
+class LLMNarrativeParseError(NarrativeGenerationError):
+    provider: str
+    model: str
+    reason: str = "response could not be parsed"
+
+    @override
+    def __str__(self) -> str:
+        return (
+            f"failed to parse narrative response for provider {self.provider}, "
+            f"model {self.model}"
+        )
 
 
 class LLMNarrative(BaseModel):
@@ -94,55 +112,73 @@ class LLMNarrativeGenerator:
 
     def generate(self, summary: PreflightSummary, issues: list[ValidationIssue]) -> Narrative:
         groups = group_by_file(issues)
-        response = self.client.messages.parse(
-            model=self.model,
-            max_tokens=2000,
-            thinking={"type": "disabled"},
-            output_format=LLMNarrative,
-            system=_SYSTEM_PROMPT,
-            messages=[
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        {
-                            "summary": summary.model_dump(mode="json"),
-                            "issues": [
-                                {
-                                    "code": issue.code,
-                                    "severity": issue.severity.value,
-                                    "title": issue.title,
-                                    "observed": issue.observed,
-                                    "expected": issue.expected,
-                                    "suggestion": issue.suggestion,
-                                }
-                                for issue in issues
-                            ],
-                            "file_groups": [
-                                {
-                                    "file": group.file,
-                                    "issue_count": group.issue_count,
-                                    "representative_code": group.representative.code,
-                                    "representative_title": group.representative.title,
-                                    "representative_severity": group.representative.severity.value,
-                                }
-                                for group in groups
-                            ],
-                        },
-                        ensure_ascii=False,
-                    ),
-                }
-            ],
-        )
+        try:
+            response = self.client.messages.parse(
+                model=self.model,
+                max_tokens=2000,
+                thinking={"type": "disabled"},
+                output_format=LLMNarrative,
+                system=_SYSTEM_PROMPT,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": build_llm_payload(summary, issues, groups),
+                    }
+                ],
+            )
+        except AnthropicError as exc:
+            raise NarrativeGenerationError(
+                provider="anthropic",
+                model=self.model,
+                reason=str(exc),
+            ) from exc
 
         parsed = response.parsed_output
         if parsed is None:
-            raise LLMNarrativeParseError(model=self.model)
+            raise LLMNarrativeParseError(provider="anthropic", model=self.model)
 
-        return Narrative(
-            ai_summary=parsed.ai_summary,
-            file_summaries=merge_llm_file_summaries(groups, parsed.file_summaries),
-            checklist=parsed.checklist,
-            source=GenerationSource.LLM,
+        return build_narrative_from_parsed(groups, parsed)
+
+
+@dataclass(frozen=True, slots=True)
+class OpenAINarrativeGenerator:
+    client: OpenAI
+    model: str
+
+    def generate(self, summary: PreflightSummary, issues: list[ValidationIssue]) -> Narrative:
+        groups = group_by_file(issues)
+        try:
+            response = self.client.chat.completions.parse(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": _SYSTEM_PROMPT},
+                    {"role": "user", "content": build_llm_payload(summary, issues, groups)},
+                ],
+                response_format=LLMNarrative,
+            )
+        except OpenAIAPIError as exc:
+            raise NarrativeGenerationError(
+                provider="openai",
+                model=self.model,
+                reason=str(exc),
+            ) from exc
+
+        parsed = response.choices[0].message.parsed
+        if parsed is None:
+            raise LLMNarrativeParseError(provider="openai", model=self.model)
+
+        return build_narrative_from_parsed(groups, parsed)
+
+
+def build_narrative_from_parsed(
+    groups: list[FileIssueGroup],
+    parsed: LLMNarrative,
+) -> Narrative:
+    return Narrative(
+        ai_summary=parsed.ai_summary,
+        file_summaries=merge_llm_file_summaries(groups, parsed.file_summaries),
+        checklist=parsed.checklist,
+        source=GenerationSource.LLM,
         )
 
 
@@ -154,9 +190,43 @@ class FallbackOnErrorNarrativeGenerator:
     def generate(self, summary: PreflightSummary, issues: list[ValidationIssue]) -> Narrative:
         try:
             return self.primary.generate(summary, issues)
-        except (AnthropicError, LLMNarrativeParseError) as exc:
+        except NarrativeGenerationError as exc:
             logger.warning("llm narrative generation failed; using fallback: %s", exc)
             return self.fallback.generate(summary, issues)
+
+
+def build_llm_payload(
+    summary: PreflightSummary,
+    issues: list[ValidationIssue],
+    groups: list[FileIssueGroup],
+) -> str:
+    return json.dumps(
+        {
+            "summary": summary.model_dump(mode="json"),
+            "issues": [
+                {
+                    "code": issue.code,
+                    "severity": issue.severity.value,
+                    "title": issue.title,
+                    "observed": issue.observed,
+                    "expected": issue.expected,
+                    "suggestion": issue.suggestion,
+                }
+                for issue in issues
+            ],
+            "file_groups": [
+                {
+                    "file": group.file,
+                    "issue_count": group.issue_count,
+                    "representative_code": group.representative.code,
+                    "representative_title": group.representative.title,
+                    "representative_severity": group.representative.severity.value,
+                }
+                for group in groups
+            ],
+        },
+        ensure_ascii=False,
+    )
 
 
 def build_fallback_narrative(issues: list[ValidationIssue]) -> FallbackNarrative:

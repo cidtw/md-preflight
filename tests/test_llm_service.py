@@ -6,12 +6,19 @@ from typing import Final
 import pytest
 from anthropic import Anthropic, APIConnectionError, APIError, RateLimitError
 from httpx import Request, Response
+from openai import APIError as OpenAIAPIError
+from openai import OpenAI
 from pydantic import BaseModel, TypeAdapter
 from typing_extensions import TypedDict
 
 from app.schemas.issue import IssueLocation, Severity, ValidationIssue
 from app.schemas.report import FileSummary, GenerationSource, PreflightSummary
-from app.services.llm_service import LLMNarrativeGenerator, Narrative
+from app.services.llm_service import (
+    LLMNarrativeGenerator,
+    Narrative,
+    NarrativeGenerationError,
+    OpenAINarrativeGenerator,
+)
 
 
 class _IssuePayload(TypedDict):
@@ -80,6 +87,21 @@ class _ParseResponse:
     parsed_output: _ParsedNarrativeStub | None
 
 
+@dataclass(frozen=True, slots=True)
+class _OpenAIMessageStub:
+    parsed: _ParsedNarrativeStub | None
+
+
+@dataclass(frozen=True, slots=True)
+class _OpenAIChoiceStub:
+    message: _OpenAIMessageStub
+
+
+@dataclass(frozen=True, slots=True)
+class _OpenAIParseResponse:
+    choices: list[_OpenAIChoiceStub]
+
+
 class _ParseRecorder:
     _parsed_output: _ParsedNarrativeStub | None
     _error: Exception | None
@@ -118,12 +140,45 @@ class _ParseRecorder:
         return _ParseResponse(parsed_output=self._parsed_output)
 
 
+class _OpenAIParseRecorder:
+    _parsed_output: _ParsedNarrativeStub | None
+    _error: Exception | None
+    last_call: dict[str, object] | None
+
+    def __init__(
+        self,
+        *,
+        parsed_output: _ParsedNarrativeStub | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        self._parsed_output = parsed_output
+        self._error = error
+        self.last_call = None
+
+    def __call__(self, **kwargs: object) -> _OpenAIParseResponse:
+        self.last_call = kwargs
+        if self._error is not None:
+            raise self._error
+        return _OpenAIParseResponse(
+            choices=[_OpenAIChoiceStub(message=_OpenAIMessageStub(parsed=self._parsed_output))]
+        )
+
+
 def _build_llm_client(
     monkeypatch: pytest.MonkeyPatch,
     parse_recorder: _ParseRecorder,
 ) -> Anthropic:
     client = Anthropic(api_key="test")
     monkeypatch.setattr(client.messages, "parse", parse_recorder)
+    return client
+
+
+def _build_openai_client(
+    monkeypatch: pytest.MonkeyPatch,
+    parse_recorder: _OpenAIParseRecorder,
+) -> OpenAI:
+    client = OpenAI(api_key="test")
+    monkeypatch.setattr(client.chat.completions, "parse", parse_recorder)
     return client
 
 
@@ -279,5 +334,66 @@ def test_llm_generator_raises_on_sdk_errors(
         model="claude-test-model",
     )
 
-    with pytest.raises(type(sdk_error)):
+    with pytest.raises(NarrativeGenerationError):
+        _ = generator.generate(_make_summary(), [_make_issue()])
+
+
+def test_openai_generator_parses_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    parse = _OpenAIParseRecorder(
+        parsed_output=_ParsedNarrativeStub(
+            ai_summary="총 1건의 이슈가 발견되었습니다.",
+            file_summaries=[
+                _ParsedFileSummaryStub(
+                    file="promotion_plan",
+                    headline="가격 점검이 필요합니다.",
+                )
+            ],
+            checklist=["[INVALID_PROMO_PRICE] 행사가를 수정하세요."],
+        )
+    )
+    generator = OpenAINarrativeGenerator(
+        client=_build_openai_client(monkeypatch, parse),
+        model="gpt-5.5",
+    )
+
+    narrative = generator.generate(_make_summary(), [_make_issue()])
+
+    assert narrative == Narrative(
+        ai_summary="총 1건의 이슈가 발견되었습니다.",
+        file_summaries=[
+            FileSummary(
+                file="promotion_plan",
+                issue_count=1,
+                headline="가격 점검이 필요합니다.",
+            )
+        ],
+        checklist=["[INVALID_PROMO_PRICE] 행사가를 수정하세요."],
+        source=GenerationSource.LLM,
+    )
+    assert parse.last_call is not None
+    assert parse.last_call["response_format"] is not None
+
+
+def test_openai_generator_raises_on_sdk_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    sdk_error = OpenAIAPIError(
+        message="openai api error",
+        request=Request("POST", "https://api.openai.com/v1/chat/completions"),
+        body=None,
+    )
+    generator = OpenAINarrativeGenerator(
+        client=_build_openai_client(monkeypatch, _OpenAIParseRecorder(error=sdk_error)),
+        model="gpt-5.5",
+    )
+
+    with pytest.raises(NarrativeGenerationError):
+        _ = generator.generate(_make_summary(), [_make_issue()])
+
+
+def test_openai_generator_raises_on_parse_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    generator = OpenAINarrativeGenerator(
+        client=_build_openai_client(monkeypatch, _OpenAIParseRecorder(parsed_output=None)),
+        model="gpt-5.5",
+    )
+
+    with pytest.raises(NarrativeGenerationError):
         _ = generator.generate(_make_summary(), [_make_issue()])

@@ -3,7 +3,7 @@
 > 유통 프로모션 등록 **전에** 행사·상품·재고 파일을 검수해, 가격·기간·마진·재고·증정 조건의 운영 리스크를 사전에 잡아내는 도구.
 > **핵심 원칙: 판단은 결정론적 규칙 엔진이, 서술만 LLM이 한다.**
 
-FastAPI · Pandas · Pydantic · (선택) Anthropic Claude
+FastAPI · Pandas · Pydantic · (선택) OpenAI / Anthropic
 
 ---
 
@@ -97,12 +97,14 @@ curl -s -X POST http://127.0.0.1:8000/api/preflight \
 
 ## LLM 사용 (선택)
 
-- 모델: **Claude Sonnet 5** (`claude-sonnet-5`), Anthropic SDK `messages.parse`로 구조화 출력(JSON 스키마) 강제.
-- **키 판정**: `use_llm=true`이고 환경변수 `ANTHROPIC_API_KEY`가 있을 때만 LLM을 시도한다. 키가 없거나 호출이 실패하면 자동으로 fallback으로 전환하고 `generated_by="fallback"`로 표시한다. (프로필 인증(`ant auth`)이 아니라 **환경변수** 기준.)
+- 서술 공급자는 교체 가능하며, 판정은 언제나 결정론 규칙 엔진이 맡는다.
+- 우선순위는 `OPENAI_API_KEY`가 있으면 OpenAI structured outputs, 없고 `ANTHROPIC_API_KEY`가 있으면 Anthropic, 둘 다 없거나 호출이 실패하면 fallback이다.
+- 기본 모델은 OpenAI `gpt-5.5`, Anthropic `claude-sonnet-5`다. 둘 다 Pydantic 스키마 기반 구조화 출력을 사용한다.
 
 ```bash
-export ANTHROPIC_API_KEY=sk-...
-# 이후 use_llm=true 요청은 Claude 서사를 생성, 실패 시 fallback
+export OPENAI_API_KEY=sk-proj-...
+# 또는 export ANTHROPIC_API_KEY=sk-...
+# 이후 use_llm=true 요청은 사용 가능한 공급자로 서사를 생성하고, 실패 시 fallback
 ```
 
 ## 테스트 전략
@@ -120,14 +122,15 @@ uv run pytest            # 68 tests, 네트워크/실 LLM 호출 없음
 
 ## 범위 밖 (의도적 제외)
 
-실시간 POS/ERP 연동, 수요예측. 3주 MVP 스코프를 통제하기 위한 명시적 제외다. 로그인은 검수 경로가 아니라 이력 대시보드에만 선택적으로 붙는 스텁 seam까지 포함한다.
+실시간 POS/ERP 연동, 수요예측. 3주 MVP 스코프를 통제하기 위한 명시적 제외다. 로그인은 검수 경로가 아니라 이력 대시보드에만 선택적으로 붙는다.
 
-## 선택 로그인 · 이력 대시보드 (스텁)
+## 선택 로그인 · 이력 대시보드
 
 - 검수 파이프라인은 **비로그인도 그대로 200**이다.
-- 로그인 스텁 상태에서는 브라우저가 `X-MD-Preflight-User-Id` 헤더를 함께 보내고, 서버는 그 값을 `user_id` seam으로 받아 **집계 이력만** append/query 한다.
-- `GET /api/preflight/history?granularity=day|month|year` 는 로그인 상태에서만 동작하는 읽기 전용 스텁 API다.
-- 실제 Clerk 연동은 다음 라운드 범위다. 예정 env: `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`.
+- `GET /api/preflight/history?granularity=day|month|year` 와 `GET /api/preflight/history/runs` 는 로그인 상태에서만 동작한다.
+- 서버는 `CLERK_SECRET_KEY` 와 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` 가 함께 설정되면 Clerk 세션 토큰(`Authorization: Bearer ...` 또는 `__session` 쿠키)을 검증해 실제 user ID를 얻는다. 이때 `aud` 대신 `iss` 와 `azp`(허용 origin 목록) 기준으로 검증한다.
+- 두 키가 없으면 기존 스텁 경로(`X-MD-Preflight-User-Id` 헤더 / `md_preflight_user_id` 쿠키)로 자동 fallback 하므로 로컬 데모와 테스트는 계속 가볍게 유지된다.
+- 이력 저장소는 `DATABASE_URL` 이 설정되면 Neon/Postgres `run_history` 테이블에 append/query 하고, 비설정 환경에서는 `InMemoryHistoryStore` 로 fallback 한다. 스토어 초기화가 실패해도 검수 요청은 메모리 스토어로 degrade 되어 200을 유지한다.
 
 ## 문서
 

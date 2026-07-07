@@ -1,7 +1,7 @@
 # MD Preflight — 백엔드 아키텍처 설계안 (3주 MVP)
 
 > 역할: Tech Lead 설계안 · 대상: `md-preflight/` · 상태: 설계 확정용 초안
-> 전제: FastAPI + Pandas + Pydantic · 검수는 deterministic rule engine · LLM은 요약/체크리스트 전용
+> 전제: FastAPI + Pandas + Pydantic · 검수는 deterministic rule engine · LLM은 요약/체크리스트 전용(공급자 교체 가능)
 > 범위 제외: ERP, POS, 로그인, 멀티테넌트, 수요예측
 
 ---
@@ -56,7 +56,7 @@ md-preflight/
 │  │  └─ benefit_condition.py     # MISSING_BENEFIT_CONDITION
 │  └─ services/
 │     ├─ validation_engine.py     # ingest → 룰 실행 → PreflightReport 조립 (오케스트레이터)
-│     ├─ llm_service.py           # 현재는 fallback 서사 생성만 담당 (실제 LLM 연동은 T6 예정)
+│     ├─ llm_service.py           # 결정된 summary/issues를 공급자(OpenAI/Anthropic) 서사로 변환
 │     └─ report_service.py        # PreflightReport → Markdown 렌더 (PDF는 계획, P2)
 ├─ data/
 │  └─ samples/
@@ -154,7 +154,7 @@ class PreflightReport(BaseModel):
     failed_rules: list[str]          # 예외로 스킵된 룰 code 목록
 ```
 
-- `generated_by`는 스키마상 `llm | fallback`이지만 현재 `validate_context()`는 항상 `fallback`을 반환한다.
+- `generated_by`는 스키마상 `llm | fallback`이고, 실제 공급자 성공 시 `llm`, 키 없음/장애 시 `fallback`이다.
 - `failed_rules`는 개별 룰 예외를 전체 500으로 터뜨리지 않고 격리했을 때, 스킵된 룰 code를 담는 실제 응답 필드다.
 
 ---
@@ -179,8 +179,8 @@ class PreflightReport(BaseModel):
       ▼
 ④ summary 집계            심각도/룰별 카운트, passed 판정 → PreflightSummary
       ▼
-⑤ llm_service             현재는 fallback 서사만 생성
-      │                    실제 LLM 연동은 T6 예정, 지금은 generated_by="fallback" 고정
+⑤ llm_service             결정된 `summary`/`issues`만 받아 공급자(OpenAI/Anthropic) 서사 생성
+      │                    키 없음·SDK 오류·파싱 실패 시 fallback으로 자동 전환
       ▼
    PreflightReport         (⑥ report_service가 요청 시 Markdown으로 렌더, PDF는 계획)
 ```
@@ -220,8 +220,8 @@ class Rule(Protocol):
 
 ### 3.3 LLM 경계 (`services/llm_service.py`)
 
-- **현재 구현**: `FallbackNarrativeGenerator`, `LLMNarrativeGenerator`, `FallbackOnErrorNarrativeGenerator`가 존재한다. 입력은 확정된 `PreflightSummary` + `list[ValidationIssue]`, 출력은 `ai_summary`, `checklist`, `source`(`llm`/`fallback`)다.
-- **동작 방식**: `use_llm=false`면 무조건 fallback을 사용한다. `use_llm=true`면서 `ANTHROPIC_API_KEY`가 있으면 Claude structured output을 시도하고, SDK 예외나 parse 실패가 나면 자동으로 fallback으로 전환한다.
+- **현재 구현**: `FallbackNarrativeGenerator`, Anthropic용 `LLMNarrativeGenerator`, OpenAI용 `OpenAINarrativeGenerator`, `FallbackOnErrorNarrativeGenerator`가 존재한다. 입력은 확정된 `PreflightSummary` + `list[ValidationIssue]`, 출력은 `ai_summary`, `checklist`, `source`(`llm`/`fallback`)다.
+- **동작 방식**: `use_llm=false`면 무조건 fallback을 사용한다. `use_llm=true`면 `OPENAI_API_KEY` 우선, 없으면 `ANTHROPIC_API_KEY`, 둘 다 없거나 SDK 예외/parse 실패가 나면 자동으로 fallback으로 전환한다.
 - **프롬프트 경계**: LLM에는 `summary`와 issue의 제한된 필드(`code`, `severity`, `title`, `observed`, `expected`, `suggestion`)만 전달된다. 판정 데이터(`issues`, `summary`, `passed`)는 규칙 엔진 결과가 그대로 유지되고, LLM은 서술만 담당한다.
 - **`generated_by`**: 실제로 LLM 서사가 성공하면 `"llm"`, fallback 경로면 `"fallback"`이다. `/api/preflight/validate`는 룰 전용 경로라 항상 fallback을 반환한다.
 - **의미**: 현재 `llm_service.py`는 "규칙 엔진 결과를 서술로 변환하는 경계"다. 데모는 fallback으로 항상 살아 있고, LLM은 성공 시에만 narrative 계층에 개입한다.
@@ -235,17 +235,17 @@ class Rule(Protocol):
 | Method | Path | 설명 |
 |--------|------|------|
 | `POST` | `/api/preflight/validate` | 3파일 multipart 업로드 → ingest + rule engine → `PreflightReport` (항상 fallback 서사) |
-| `POST` | `/api/preflight` | 3파일 multipart 업로드 → 전체 파이프라인. `use_llm=true`면 Claude narrative를 시도하고 실패 시 fallback |
+| `POST` | `/api/preflight` | 3파일 multipart 업로드 → 전체 파이프라인. `use_llm=true`면 사용 가능한 공급자(OpenAI/Anthropic) narrative를 시도하고 실패 시 fallback |
 | `GET` | `/api/preflight/runs/{run_id}` | 저장된 결과 재조회 |
 | `GET` | `/api/preflight/runs/{run_id}/report.md` | Markdown 리포트 다운로드 |
 | `GET` | `/api/preflight/runs/{run_id}/report.pdf` | 계획만 존재 (P2), 현재 라우트 없음 |
 | `GET` | `/api/preflight/rules` | 룰 메타데이터 목록(code/severity/description) |
 | `GET` | `/api/preflight/health` | 헬스체크 |
-| `GET` | `/api/preflight/history?granularity=day|month|year` | 로그인 사용자 검수 이력 집계 조회(스텁) |
+| `GET` | `/api/preflight/history?granularity=day|month|year` | 로그인 사용자 검수 이력 집계 조회 |
 
 **요청 예 (`POST /api/preflight`)**: `multipart/form-data`
 - `promotion_plan`: file, `product_master`: file, `inventory`: file
-- `use_llm`: bool = true (활성화 시 Claude API 연동 서술 생성, 비활성화 혹은 호출 실패 시 fallback 자동 전환)
+- `use_llm`: bool = true (활성화 시 사용 가능한 공급자 API 연동 서술 생성, 비활성화 혹은 호출 실패 시 fallback 자동 전환)
 
 **응답**: `PreflightReport` (§2.4).
 
@@ -257,13 +257,14 @@ class Rule(Protocol):
 
 라우터는 얇게: 업로드를 `build_uploaded_context(...)`로 넘기고 `validate_context(...)` 호출만 수행한다. 비즈니스 로직은 서비스에 둔다.
 
-## 4.2 인증 seam (선택 로그인 스텁)
+## 4.2 인증 seam (선택 로그인)
 
 - 검수 라우트(`POST /api/preflight`, `/validate`)는 **인증 없이도 동작**한다.
-- 다만 요청 헤더 `X-MD-Preflight-User-Id` 또는 쿠키 `md_preflight_user_id`가 있으면 이를 `get_current_user_id(request)` seam으로 읽어, 판정 완료 뒤 `RunHistoryRecord`를 append-only 이력 스토어에 저장한다.
-- 이 seam은 Clerk 배선을 위한 자리만 제공하며, 실제 Clerk SDK/미들웨어 연결은 다음 라운드다.
+- `CLERK_SECRET_KEY` 와 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` 가 함께 있으면 서버는 `Authorization: Bearer <token>` 또는 `__session` 쿠키의 Clerk 세션 토큰을 검증해 실제 user ID를 얻는다.
+- 두 키가 없으면 요청 헤더 `X-MD-Preflight-User-Id` 또는 쿠키 `md_preflight_user_id`를 읽는 스텁 경로로 fallback 하므로 테스트와 데모는 가볍게 유지된다.
+- user ID가 확보된 경우에만 판정 완료 뒤 `RunHistoryRecord`를 append-only 이력 스토어에 저장한다.
 
-## 부록 A. 이력 영속화 스키마 (스텁)
+## 부록 A. 이력 영속화 스키마
 
 이력 저장은 규칙 엔진 밖의 append-only 감사 로그이며, **원본 파일·셀값·PII를 저장하지 않고 판정 집계만** 남긴다.
 
@@ -282,9 +283,9 @@ run_history(
 )
 ```
 
-- 현재 구현은 `HistoryStore` 인터페이스와 `InMemoryHistoryStore` 스텁만 제공한다.
+- 현재 구현은 `HistoryStore` 프로토콜 뒤에 `PostgresHistoryStore` 와 `InMemoryHistoryStore` 를 함께 두고, `DATABASE_URL` 이 있으면 Postgres/Neon으로 실배선한다.
 - 집계는 `date_trunc('day'|'month'|'year', created_at)`에 해당하는 버킷으로 합산한다.
-- 실제 DB 후보는 Vercel Postgres / Neon이며, `DATABASE_URL` 배선과 마이그레이션은 다음 라운드 범위다.
+- `DATABASE_URL_UNPOOLED` 가 있으면 DDL과 인덱스 생성을 여기에 우선 연결하고, 없으면 런타임 URL로 스키마를 보장한다.
 
 ## 4.1 입력 소스 추상화 (로드맵)
 

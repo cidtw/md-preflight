@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -25,6 +26,7 @@ from app.services.validation_engine import UploadedFiles, build_uploaded_context
 from app.sources import SOURCE_CATALOG
 
 router = APIRouter(prefix="/api/preflight", tags=["preflight"])
+logger = logging.getLogger(__name__)
 
 
 def build_report_download_filename(report: PreflightReport) -> str:
@@ -71,7 +73,10 @@ async def build_report_from_uploads(
     )
     run_store.save(report)
     if user_id is not None:
-        history_store.append(RunHistoryRecord.from_report(user_id, report.run_id, report))
+        try:
+            history_store.append(RunHistoryRecord.from_report(user_id, report.run_id, report))
+        except Exception:
+            logger.exception("history persistence failed for run %s", report.run_id)
     return report
 
 
@@ -200,6 +205,20 @@ def get_history(
             detail="Login required for history dashboard",
         )
     return history_store.query(user_id, granularity)
+
+
+@router.get("/history/runs", response_model=list[RunHistoryRecord])
+def get_history_runs(
+    history_store: Annotated[HistoryStore, Depends(get_history_store)],
+    user_id: Annotated[str | None, Depends(get_current_user_id)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[RunHistoryRecord]:
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Login required for history dashboard",
+        )
+    return history_store.list_runs(user_id, limit=limit)
 
 
 @router.get("/health")
