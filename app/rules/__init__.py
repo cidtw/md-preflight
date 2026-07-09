@@ -1,3 +1,8 @@
+import hashlib
+import json
+from collections.abc import Sequence
+
+from app.core.rule_config import RuleThresholds
 from app.rules.base import Rule
 from app.rules.benefit_condition import MISSING_BENEFIT_CONDITION_RULE
 from app.rules.date_range import INVALID_DATE_RANGE_RULE
@@ -22,3 +27,21 @@ RULES: list[Rule] = [
     INBOUND_DATE_CONFLICT_RULE,
     MISSING_BENEFIT_CONDITION_RULE,
 ]
+
+
+def compute_rule_set_version(
+    thresholds: RuleThresholds,
+    *,
+    rules: Sequence[Rule] = RULES,
+) -> str:
+    """Deterministic fingerprint of which rules + thresholds produced a report.
+
+    Same rule codes + same threshold values -> same version, so two reports can
+    be compared to know whether they were judged by the same rule configuration.
+    """
+    payload = {
+        "codes": sorted(rule.code for rule in rules),
+        "thresholds": thresholds.model_dump(mode="json"),
+    }
+    digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+    return digest[:12]

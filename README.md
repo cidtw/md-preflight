@@ -13,6 +13,15 @@ FastAPI · Pandas · Pydantic · (선택) OpenAI / Anthropic
 
 파일 3개(프로모션 계획 / 상품 마스터 / 재고)를 업로드하면 → 이슈 목록 · 요약 · 담당자 체크리스트 · Markdown 리포트를 돌려준다.
 
+## 사용자 스토리 (MD의 하루)
+
+유통 MD 김대리는 다가오는 대형 초특가 기획전 행사 등록을 앞두고 있습니다. 만약 파일 오입력으로 정상가보다 행사가가 높게 등록되거나 마진율이 음수가 되면 점포 혼선과 마진 손실을 입게 되는 상황입니다.
+
+1. **파일 업로드**: 김대리는 프로모션 계획, 상품 마스터, 재고 파일을 MD Preflight에 업로드합니다.
+2. **규칙 엔진 검수 (결정론적 판정)**: 시스템은 등록 전 10대 핵심 규칙을 순회하며 검수합니다. 이 과정에서 입고일이 행사 시작일보다 늦는 오류(`INBOUND_DATE_CONFLICT`)와 마진율이 마이너스인 오입력(`LOW_MARGIN_RATE`)을 즉시 포착합니다.
+3. **AI 서술 및 체크리스트 생성**: 검수가 완료되면, 이미 판정된 이슈 목록을 바탕으로 AI가 직관적인 한국어 요약 리포트와 조치가 필요한 실행 체크리스트를 즉시 생성해 줍니다.
+4. **리스크 예방**: 김대리는 요약 리포트를 통해 리스크 항목을 즉각 인지하고, 파트너사와 입고 일정을 조율하여 수억 원대의 영업 손실 및 점포 혼선을 미연에 방지합니다.
+
 ## 설계의 핵심 — 왜 판정을 LLM에 안 맡겼나
 
 검수 판단(pass/fail)을 LLM에 맡기면 **비결정론·환각·감사 불가**라는 세 가지 문제가 생긴다. 같은 파일이 실행할 때마다 다른 결과를 낼 수 있고, "왜 이게 통과됐는가"를 설명할 수 없다. 운영·규제 도메인에서 이는 치명적이다.
@@ -90,8 +99,11 @@ FastAPI · Pandas · Pydantic · (선택) OpenAI / Anthropic
 
 ```bash
 uv sync
+cp .env.example .env.local   # 선택: LLM/DB/Clerk 키를 채우면 각 기능이 실 배선으로 켜진다
 uv run uvicorn app.main:app --reload      # http://127.0.0.1:8000
 ```
+
+`.env.local`을 만들지 않아도(또는 비워둬도) 서버는 완전히 동작한다 — LLM은 fallback 서사, 이력은 인메모리, 인증은 `off` 모드로 degrade된다. 각 변수의 의미는 [`.env.example`](.env.example) 참고.
 
 30초 데모 (서버 기동 → clean/dirty 검수 → 리포트):
 
@@ -120,9 +132,19 @@ curl -s -X POST http://127.0.0.1:8000/api/preflight \
 | `GET` | `/api/preflight/runs/{run_id}` | 저장된 결과 재조회 |
 | `GET` | `/api/preflight/runs/{run_id}/report.md` | Markdown 리포트 다운로드 |
 | `GET` | `/api/preflight/rules` | 룰 메타데이터 목록 |
-| `GET` | `/api/preflight/health` | 헬스체크 |
+| `GET` | `/api/preflight/health` | 헬스체크 — `auth_mode`(`clerk`\|`stub`\|`off`) · `run_backend`/`history_backend`(`postgres`\|`in_memory`)를 비밀값 없이 노출 |
+
+**룰 세트 버전(`rule_set_version`)**: `PreflightReport`와 이력 레코드마다 룰 코드 목록 + 임계값(`RuleThresholds`)의 결정론적 해시(sha256 앞 12자)가 찍힌다. 어떤 룰 구성이 이 리포트를 만들었는지 감사·비교하는 용도 — 같은 룰·임계값이면 항상 같은 버전, 하나라도 바뀌면 값이 달라진다.
 
 **에러 규약**: 확장자 오류 `400` · 파일 크기 초과 `413` · 컬럼 누락/타입 오류 `422`. 개별 룰 예외는 500으로 새지 않고 격리되어 `failed_rules`에 담긴다.
+
+**업로드 제한값 단일 출처**: `max_upload_bytes`/`allowed_extensions`는 서버 `Settings`가 유일한 정본이다. `/`가 서빙하는 index.html에 `window.__MDP_CONFIG__.maxUploadBytes`/`.allowedExtensions`로 주입되고, `app/web/config_helpers.mjs`의 `getUploadLimits()`가 이를 읽어 프런트 검증(드롭존 accept 속성, 크기/확장자 에러 메시지)에 쓴다. 주입이 없는 컨텍스트에서만 동일한 기본값(5MB, `.csv`/`.xlsx`)으로 fallback한다.
+
+**대용량 CSV 인라인 편집 가드**: 브라우저 편집기는 셀마다 `<input>`을 렌더링하므로, 1,000행을 넘는 CSV는 `app/web/csv_tools.mjs`의 `shouldDisableInlineEditing()`이 인라인 편집을 자동 비활성화하고 안내 문구만 보여준다. 검수 자체(서버 제출)는 원본 업로드 파일을 그대로 쓰므로 영향받지 않는다.
+
+**Run 조회 권한**: `run_id`는 검수 시점에 로그인 상태였는지에 따라 소유자가 갈린다.
+- 비로그인 상태로 만든 run(소유자 없음) — `run_id`(uuid4 hex, 사실상 추측 불가) 자체가 캐퍼빌리티 토큰이라 누구나 조회 가능.
+- 로그인 상태로 만든 run(소유자 있음) — `GET /api/preflight/runs/{run_id}` · `.../report.md`는 인증 없이 조회 시 `401`, 다른 사용자가 조회 시 `403`, 존재하지 않는 run_id는 `404`, 소유자 본인은 `200`.
 
 ## LLM 사용 (선택)
 
@@ -143,7 +165,8 @@ export OPENAI_API_KEY=sk-proj-...
 ```bash
 uv run ruff check app tests
 uv run basedpyright app tests
-uv run pytest            # 104 tests, 네트워크/실 LLM 호출 없음
+uv run pytest            # 132 tests, 네트워크/실 LLM 호출 없음
+for f in scripts/verify_*.mjs; do node "$f"; done   # 프런트 순수 헬퍼(csv/editor/auth 등)
 ```
 
 - **CI에서 실제 LLM 호출 금지** — LLM 경로는 전부 목킹. `tests/test_narrative_contract.py`가 "LLM이 판정을 못 바꾼다"를 적대적으로 증명한다(악의적 서사·프롬프트 주입·범위 이탈 케이스).
@@ -157,9 +180,13 @@ uv run pytest            # 104 tests, 네트워크/실 LLM 호출 없음
 
 - 검수 파이프라인은 **비로그인도 그대로 200**이다.
 - `GET /api/preflight/history?granularity=day|month|year` 와 `GET /api/preflight/history/runs` 는 로그인 상태에서만 동작한다.
-- 서버는 `CLERK_SECRET_KEY` 와 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` 가 함께 설정되면 Clerk 세션 토큰(`Authorization: Bearer ...` 또는 `__session` 쿠키)을 검증해 실제 user ID를 얻는다. 이때 `aud` 대신 `iss` 와 `azp`(허용 origin 목록) 기준으로 검증한다.
-- 두 키가 없으면 기존 스텁 경로(`X-MD-Preflight-User-Id` 헤더 / `md_preflight_user_id` 쿠키)로 자동 fallback 하므로 로컬 데모와 테스트는 계속 가볍게 유지된다.
+- 인증 모드는 `Settings.auth_mode`(`clerk` | `stub` | `off`)로 명시적으로 결정된다: 두 Clerk 키가 모두 설정되면 `clerk`, 아니면 `MDPREFLIGHT_ALLOW_STUB_AUTH=true`(또는 `ALLOW_STUB_AUTH=true`)일 때만 `stub`, 그 외엔 `off`다.
+- `clerk` 모드: `CLERK_SECRET_KEY` 와 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` 가 함께 설정되면 Clerk 세션 토큰(`Authorization: Bearer ...` 또는 `__session` 쿠키)을 검증해 실제 user ID를 얻는다. 이때 `aud` 대신 `iss` 와 `azp`(허용 origin 목록) 기준으로 검증한다.
+- `stub` 모드: `X-MD-Preflight-User-Id` 헤더 / `md_preflight_user_id` 쿠키를 그대로 신뢰한다 — **위조 가능**하므로 로컬 데모·테스트 전용이며 명시적으로 켜야만 활성화된다.
+- `off` 모드(Clerk 미설정 + 스텁 미허용, 배포 기본값): `get_current_user_id`가 항상 `None`을 반환한다. 검수 자체는 그대로 `200`을 반환하지만(이력 저장 생략), 이력/대시보드 조회는 `401`이다.
 - 이력 저장소는 `DATABASE_URL` 이 설정되면 Neon/Postgres `run_history` 테이블에 append/query 하고, 비설정 환경에서는 `InMemoryHistoryStore` 로 fallback 한다. 스토어 초기화가 실패해도 검수 요청은 메모리 스토어로 degrade 되어 200을 유지한다.
+- `run_id` 전체 리포트(재조회·`.md` 다운로드용)도 같은 원칙으로 저장된다: `DATABASE_URL` 이 설정되면 `preflight_runs` 테이블(run_id·owner_user_id·report_json)에 저장하고, 비설정 시 프로세스 로컬 `InMemoryRunStore`(최대 128개, LRU)로 fallback한다. 멀티 워커/서버리스 환경에서는 `DATABASE_URL` 없이는 재조회가 인스턴스마다 갈릴 수 있다. 저장 실패는 검수 응답(`200`)을 막지 않지만, 저장이 실패한 run은 이후 재조회 시 `404`가 될 수 있다(POST 응답 본문에 이미 전체 리포트가 담겨 있으므로 최초 응답은 항상 온전하다).
+- 프런트(`app/web/`)는 서버가 주입한 `window.__MDP_CONFIG__.authMode`를 그대로 읽는다. `off`일 때 로그인 버튼은 비활성화되고 "로그인 불가 — 이력은 Clerk 인증 필요"를 노출한다 — 위조 가능한 스텁 로그인을 흉내 내지 않는다.
 
 ## 문서
 

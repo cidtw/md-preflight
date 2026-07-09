@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Literal, Protocol, cast
 
@@ -10,12 +10,12 @@ from psycopg.types.json import Json
 
 from app.core.config import get_settings
 from app.schemas.history import HistoryBucket, RuleTrigger, RunHistoryRecord
+from app.services.db import ConnectionFactory, default_connection_factory
 
 HistoryGranularity = Literal["day", "month", "year"]
 HistoryAggregateRow = tuple[datetime, int, int, int, float]
-RunRow = tuple[int, str, str, datetime, bool, int, int, int, str | None, object]
+RunRow = tuple[int, str, str, datetime, bool, int, int, int, str | None, object, str | None]
 JsonRuleTrigger = dict[str, str | int]
-ConnectionFactory = Callable[[str], psycopg.Connection[tuple[object, ...]]]
 
 
 class HistoryStore(Protocol):
@@ -58,14 +58,6 @@ class InMemoryHistoryStore:
         )[:limit]
 
 
-def default_connection_factory(database_url: str) -> psycopg.Connection[tuple[object, ...]]:
-    return psycopg.connect(
-        database_url,
-        autocommit=True,
-        prepare_threshold=None,
-    )
-
-
 class PostgresHistoryStore:
     _database_url: str
     _migration_url: str
@@ -96,9 +88,10 @@ class PostgresHistoryStore:
                     warning_count,
                     total_issues,
                     source_label,
-                    rules_triggered
+                    rules_triggered,
+                    rule_set_version
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     record.user_id,
@@ -110,6 +103,7 @@ class PostgresHistoryStore:
                     record.total_issues,
                     record.source_label,
                     Json(serialize_rule_triggers(record.rules_triggered)),
+                    record.rule_set_version,
                 ),
             )
 
@@ -156,7 +150,8 @@ class PostgresHistoryStore:
                     warning_count,
                     total_issues,
                     source_label,
-                    rules_triggered
+                    rules_triggered,
+                    rule_set_version
                 FROM run_history
                 WHERE user_id = %s
                 ORDER BY created_at DESC
@@ -181,7 +176,8 @@ class PostgresHistoryStore:
                     warning_count INTEGER NOT NULL,
                     total_issues INTEGER NOT NULL,
                     source_label TEXT NULL,
-                    rules_triggered JSONB NOT NULL DEFAULT '[]'::jsonb
+                    rules_triggered JSONB NOT NULL DEFAULT '[]'::jsonb,
+                    rule_set_version TEXT NULL
                 )
                 """
             )
@@ -189,6 +185,13 @@ class PostgresHistoryStore:
                 """
                 CREATE INDEX IF NOT EXISTS run_history_user_created_idx
                 ON run_history (user_id, created_at DESC)
+                """
+            )
+            # Idempotent migration for tables created before rule_set_version existed.
+            _ = cursor.execute(
+                """
+                ALTER TABLE run_history
+                ADD COLUMN IF NOT EXISTS rule_set_version TEXT NULL
                 """
             )
 
@@ -239,6 +242,7 @@ def record_from_row(row: RunRow) -> RunHistoryRecord:
         total_issues,
         source_label,
         rules_triggered,
+        rule_set_version,
     ) = row
     return RunHistoryRecord(
         id=record_id,
@@ -251,6 +255,7 @@ def record_from_row(row: RunRow) -> RunHistoryRecord:
         total_issues=total_issues,
         source_label=source_label,
         rules_triggered=deserialize_rule_triggers(rules_triggered),
+        rule_set_version=rule_set_version,
     )
 
 

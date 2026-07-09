@@ -1,8 +1,10 @@
 import {
   buildEditedCsvFilename,
+  buildLargeFileWarning,
   isCsvFilename,
   isSpreadsheetFilename,
   parseCsv,
+  shouldDisableInlineEditing,
   toCsv,
 } from "./csv_tools.mjs";
 import {
@@ -18,8 +20,11 @@ import {
   buildAuthHeaders,
   getClerkPublishableKey,
   hasClerkMode,
+  isAuthUnavailable,
   isSignedIn,
+  isStubAuthAvailable,
 } from "./auth_helpers.mjs";
+import { getUploadLimits } from "./config_helpers.mjs";
 import { renderHistoryDashboard } from "./history_dashboard.mjs";
 import { buildHistoryRunsUrl, buildHistoryUrl, normalizeGranularity } from "./history_helpers.mjs";
 import { SOURCE_LABELS, displayLabel } from "./labels.mjs";
@@ -32,8 +37,7 @@ const FIELDS = [
   { key: "product_master", role: "상품 마스터", hint: "product_master.xlsx / .csv" },
   { key: "inventory", role: "재고", hint: "inventory.xlsx / .csv" },
 ];
-const ALLOWED = [".csv", ".xlsx"];
-const MAX_BYTES = 5 * 1024 * 1024;
+const { maxBytes: MAX_BYTES, allowedExtensions: ALLOWED } = getUploadLimits();
 const SOURCE_REQUEST_ID = "__request__";
 const state = {
   files: { promotion_plan: null, product_master: null, inventory: null },
@@ -62,7 +66,7 @@ const state = {
     signedIn: false,
     userId: null,
     sessionToken: null,
-    provider: hasClerkMode() ? "clerk" : "stub",
+    provider: hasClerkMode() ? "clerk" : (isStubAuthAvailable() ? "stub" : "off"),
   },
   history: {
     granularity: "day",
@@ -122,15 +126,24 @@ function persistAuth() {
 
 function renderAuthControls() {
   const signedIn = isSignedIn(state.auth);
+  const authUnavailable = isAuthUnavailable();
   const status = $("#auth-status");
   if (status) {
-    status.textContent = signedIn ? `${state.auth.userId} 로그인됨` : "비로그인";
+    status.textContent = signedIn
+      ? `${state.auth.userId} 로그인됨`
+      : authUnavailable
+        ? "로그인 불가 — 이력은 Clerk 인증 필요"
+        : "비로그인";
   }
   const login = $("#auth-login");
   const logout = $("#auth-logout");
   const dashboard = $("#nav-dashboard");
   if (login) {
     login.classList.toggle("hidden", signedIn);
+    login.disabled = authUnavailable;
+    login.title = authUnavailable
+      ? "이 배포는 로그인이 설정되지 않았습니다. 검수 자체는 계속 이용 가능합니다."
+      : "";
   }
   if (logout) {
     logout.classList.toggle("hidden", !signedIn);
@@ -145,7 +158,7 @@ function setSignedOutAuth() {
     signedIn: false,
     userId: null,
     sessionToken: null,
-    provider: hasClerkMode() ? "clerk" : "stub",
+    provider: hasClerkMode() ? "clerk" : (isStubAuthAvailable() ? "stub" : "off"),
   };
 }
 
@@ -173,7 +186,10 @@ function signOutStub() {
 }
 
 function initAuth() {
-  if (hasClerkMode()) {
+  if (hasClerkMode() || !isStubAuthAvailable()) {
+    // Stub sessions from a prior deploy (e.g. stub used to be allowed here)
+    // can never authenticate against a server that no longer accepts them —
+    // don't restore a fake "signed in" state that just 401s on every call.
     setSignedOutAuth();
     renderAuthControls();
     return;
@@ -279,6 +295,10 @@ async function syncAuthFromClerk() {
 
 async function signIn() {
   if (!hasClerkMode()) {
+    if (isAuthUnavailable()) {
+      toast("로그인을 사용할 수 없습니다 — 이력 대시보드는 Clerk 인증이 필요합니다.");
+      return;
+    }
     signInStub();
     return;
   }
@@ -318,7 +338,7 @@ function buildDropzones() {
       <span class="dz-role">${f.role}</span>
       <span class="dz-body caption mute">파일을 끌어다 놓거나 클릭해서 선택</span>
       <span class="dz-hint">${f.hint}</span>
-      <input type="file" accept=".csv,.xlsx" />`;
+      <input type="file" accept="${ALLOWED.join(",")}" />`;
     const input = zone.querySelector("input");
 
     input.addEventListener("change", () => {
@@ -352,7 +372,7 @@ async function setFile(key, file, zone) {
     state.files[key] = null;
     zone.classList.add("error");
     body.className = "dz-body dz-err";
-    body.textContent = `지원하지 않는 형식: ${ext(file.name) || "확장자 없음"} · .csv 또는 .xlsx만`;
+    body.textContent = `지원하지 않는 형식: ${ext(file.name) || "확장자 없음"} · ${ALLOWED.join(" 또는 ")}만`;
     refreshRunBtn();
     return;
   }
@@ -360,7 +380,7 @@ async function setFile(key, file, zone) {
     state.files[key] = null;
     zone.classList.add("error");
     body.className = "dz-body dz-err";
-    body.textContent = `크기 초과: ${fmtSize(file.size)} · 최대 5MB`;
+    body.textContent = `크기 초과: ${fmtSize(file.size)} · 최대 ${fmtSize(MAX_BYTES)}`;
     refreshRunBtn();
     return;
   }
@@ -658,9 +678,10 @@ async function buildParsedState(file) {
   if (isCsvFilename(file.name)) {
     try {
       const parsed = parseCsv(await file.text());
+      const tooLarge = shouldDisableInlineEditing(parsed.rows.length);
       return {
         kind: "csv",
-        editable: true,
+        editable: !tooLarge,
         headers: parsed.headers,
         rows: parsed.rows,
         pristine: {
@@ -674,6 +695,7 @@ async function buildParsedState(file) {
         addedColumnIndexes: new Set(),
         dirty: false,
         sourceName: file.name,
+        sizeWarning: tooLarge ? buildLargeFileWarning(parsed.rows.length) : null,
       };
     } catch (error) {
       toast(error.message || "CSV 파싱에 실패했습니다.");
@@ -791,7 +813,9 @@ function renderFileEditors() {
     } else if (parsed.kind === "xlsx") {
       body.append(el("p", "caption mute", "xlsx는 보기 전용입니다. 편집하려면 CSV로 다시 업로드하세요."));
     } else if (!parsed.editable) {
-      body.append(el("p", "caption mute", parsed.parseError || "이 파일은 편집할 수 없습니다."));
+      body.append(
+        el("p", "caption mute", parsed.parseError || parsed.sizeWarning || "이 파일은 편집할 수 없습니다."),
+      );
     } else {
       body.append(renderFileEditorActions(field.key, parsed));
       body.append(buildEditorTable(field.key, parsed));

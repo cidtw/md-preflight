@@ -7,8 +7,7 @@ from dataclasses import dataclass
 from typing import ClassVar, Final, Protocol
 
 from anthropic import Anthropic, AnthropicError
-from openai import APIError as OpenAIAPIError
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import override
 
@@ -156,7 +155,7 @@ class OpenAINarrativeGenerator:
                 ],
                 response_format=LLMNarrative,
             )
-        except OpenAIAPIError as exc:
+        except OpenAIError as exc:
             raise NarrativeGenerationError(
                 provider="openai",
                 model=self.model,

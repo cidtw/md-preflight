@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 from pathlib import Path
 
 import pandas as pd
@@ -186,10 +187,19 @@ def clean_context(thresholds: RuleThresholds, sample_files_dir: Path) -> Preflig
 
 
 @pytest.fixture(autouse=True)
-def isolate_history_store(monkeypatch: pytest.MonkeyPatch) -> None:
+def isolate_history_store(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
     monkeypatch.setenv("DATABASE_URL", "")
     monkeypatch.setenv("DATABASE_URL_UNPOOLED", "")
     monkeypatch.setenv("CLERK_SECRET_KEY", "")
     monkeypatch.setenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "")
+    # Most existing tests simulate a signed-in user via the X-MD-Preflight-User-Id
+    # stub header. Tests that specifically exercise the "stub disabled" path
+    # (auth_mode == "off") must override this back to "" themselves.
+    monkeypatch.setenv("MDPREFLIGHT_ALLOW_STUB_AUTH", "true")
     monkeypatch.setattr(api_deps, "history_store_instance", InMemoryHistoryStore())
     monkeypatch.setattr(api_deps, "_history_store_initialized", True)
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()

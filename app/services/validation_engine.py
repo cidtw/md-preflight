@@ -14,7 +14,7 @@ from app.core.rule_config import RuleThresholds
 from app.domain.context import PreflightContext
 from app.ingest.loader import load_table
 from app.ingest.normalize import build_context
-from app.rules import RULES
+from app.rules import RULES, compute_rule_set_version
 from app.rules.base import Rule
 from app.schemas.issue import ValidationIssue
 from app.schemas.report import PreflightReport, PreflightSummary
@@ -84,6 +84,7 @@ def validate_context(
         generated_by=narrative.source,
         failed_rules=failed_rules,
         created_at=datetime.now(tz=UTC),
+        rule_set_version=compute_rule_set_version(ctx.thresholds, rules=active_rules),
     )
 
 

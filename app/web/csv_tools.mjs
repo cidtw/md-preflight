@@ -83,6 +83,21 @@ export function toCsv(headers, rows) {
   return `${lines.join("\r\n")}\r\n`;
 }
 
+// Above this row count, the inline editor (one <input> per cell) renders
+// enough DOM nodes to noticeably jank the page — disable interactive editing
+// and fall back to a read-only summary. The preflight run itself is
+// unaffected: it always submits the original uploaded file, not this parsed
+// state.
+export const MAX_EDITABLE_ROWS = 1000;
+
+export function shouldDisableInlineEditing(rowCount) {
+  return rowCount > MAX_EDITABLE_ROWS;
+}
+
+export function buildLargeFileWarning(rowCount) {
+  return `행이 너무 많아(${rowCount.toLocaleString("ko-KR")}행) 인라인 편집을 비활성화했습니다. 검수는 정상 진행됩니다.`;
+}
+
 export function isCsvFilename(name) {
   return name.toLowerCase().endsWith(".csv");
 }

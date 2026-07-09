@@ -1,4 +1,10 @@
-import { parseCsv, toCsv } from "../app/web/csv_tools.mjs";
+import {
+  MAX_EDITABLE_ROWS,
+  buildLargeFileWarning,
+  parseCsv,
+  shouldDisableInlineEditing,
+  toCsv,
+} from "../app/web/csv_tools.mjs";
 
 const cases = [
   "name,price\r\napple,1000\r\nbanana,2000\r\n",
@@ -26,6 +32,16 @@ const expandedRows = [
 const expandedRoundTrip = parseCsv(toCsv(expandedHeaders, expandedRows));
 if (JSON.stringify(expandedRoundTrip) !== JSON.stringify({ headers: expandedHeaders, rows: expandedRows })) {
   throw new Error("CSV structure expansion round-trip failed");
+}
+
+if (shouldDisableInlineEditing(MAX_EDITABLE_ROWS)) {
+  throw new Error("threshold row count itself should still be editable");
+}
+if (!shouldDisableInlineEditing(MAX_EDITABLE_ROWS + 1)) {
+  throw new Error("row count above threshold should disable inline editing");
+}
+if (!buildLargeFileWarning(5000).includes("5,000")) {
+  throw new Error("large file warning should mention the row count");
 }
 
 console.log("csv tools verification passed");

@@ -22,10 +22,13 @@ def verify_clerk_session_token(
     *,
     token: str,
     publishable_key: str,
-    secret_key: str,
     authorized_parties: frozenset[str],
 ) -> VerifiedClerkSession:
-    del secret_key
+    # No secret_key parameter: this is Clerk's documented "networkless" verification
+    # path — the session JWT is RS256-signed and verified against Clerk's public
+    # JWKS (derived from publishable_key) plus iss/azp checks below. secret_key is
+    # only needed for Clerk's backend API (session revocation, user management,
+    # etc.), which this codebase does not call.
     jwk_client = build_jwk_client(build_clerk_jwks_url(publishable_key))
     signing_key = jwk_client.get_signing_key_from_jwt(token)
     try:

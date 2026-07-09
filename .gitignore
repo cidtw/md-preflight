@@ -11,3 +11,4 @@ outputs/*
 !outputs/.gitkeep
 .vercel
 .env*
+!.env.example

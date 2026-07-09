@@ -1,10 +1,12 @@
 from functools import lru_cache
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.rule_config import RuleThresholds
+
+AuthMode = Literal["clerk", "stub", "off"]
 
 
 class Settings(BaseSettings):
@@ -52,6 +54,13 @@ class Settings(BaseSettings):
             "MDPREFLIGHT_CLERK_AUTHORIZED_ORIGINS",
         ),
     )
+    allow_stub_auth: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "MDPREFLIGHT_ALLOW_STUB_AUTH",
+            "ALLOW_STUB_AUTH",
+        ),
+    )
     max_upload_bytes: int = 5 * 1024 * 1024
     allowed_extensions: tuple[str, ...] = (".csv", ".xlsx")
     cors_origins: list[str] = Field(
@@ -61,6 +70,14 @@ class Settings(BaseSettings):
         ],
     )
     rule_thresholds: RuleThresholds = Field(default_factory=RuleThresholds)
+
+    @property
+    def auth_mode(self) -> AuthMode:
+        if self.clerk_secret_key and self.clerk_publishable_key:
+            return "clerk"
+        if self.allow_stub_auth:
+            return "stub"
+        return "off"
 
 
 @lru_cache(maxsize=1)

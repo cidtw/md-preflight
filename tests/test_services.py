@@ -117,12 +117,14 @@ def test_render_markdown_report_when_report_exists() -> None:
         checklist_items=[],
         generated_by=GenerationSource.FALLBACK,
         created_at=datetime(2026, 7, 6, 14, 32, tzinfo=UTC),
+        rule_set_version="test-version",
     )
     markdown = render_markdown_report(report)
     assert "# MD Preflight Report" in markdown
     assert "## Per-file Summary" in markdown
     assert "INVALID_PROMO_PRICE" in markdown
     assert "행사가를 수정하세요." in markdown
+    assert "Rule Set Version: `test-version`" in markdown
 
 
 def test_discount_rate_has_suggested_value() -> None:

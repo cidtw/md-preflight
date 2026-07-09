@@ -59,7 +59,6 @@ def test_verify_clerk_session_token_accepts_clerk_style_token_without_aud(
     session = verify_clerk_session_token(
         token=token,
         publishable_key=publishable_key,
-        secret_key="sk_test_123",
         authorized_parties=frozenset({"http://localhost:3000"}),
     )
 
@@ -93,7 +92,6 @@ def test_verify_clerk_session_token_rejects_invalid_claims(
         _ = verify_clerk_session_token(
             token=token,
             publishable_key=publishable_key,
-            secret_key="sk_test_123",
             authorized_parties=frozenset({"http://localhost:3000"}),
         )
 
@@ -118,7 +116,6 @@ def test_verify_clerk_session_token_rejects_expired_token(
         _ = verify_clerk_session_token(
             token=token,
             publishable_key=publishable_key,
-            secret_key="sk_test_123",
             authorized_parties=frozenset({"http://localhost:3000"}),
         )
 

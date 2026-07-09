@@ -55,3 +55,4 @@ class PreflightReport(BaseModel):
     generated_by: GenerationSource
     failed_rules: list[str] = Field(default_factory=list)
     created_at: datetime
+    rule_set_version: str

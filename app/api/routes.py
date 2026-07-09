@@ -71,7 +71,10 @@ async def build_report_from_uploads(
         context,
         generator=get_narrative_generator(settings=settings, use_llm=use_llm),
     )
-    run_store.save(report)
+    try:
+        run_store.save(report, owner_user_id=user_id)
+    except Exception:
+        logger.exception("run persistence failed for run %s", report.run_id)
     if user_id is not None:
         try:
             history_store.append(RunHistoryRecord.from_report(user_id, report.run_id, report))
@@ -153,25 +156,47 @@ async def validate_files(
         ) from None
 
 
+def authorize_run_access(
+    *,
+    run_store: RunStore,
+    run_id: str,
+    user_id: str | None,
+) -> PreflightReport:
+    stored = run_store.get_stored(run_id)
+    if stored is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    # owner_user_id is None for runs created without a signed-in user: the run_id
+    # itself (a uuid4 hex) is the unguessable capability token for those.
+    if stored.owner_user_id is not None:
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Login required to view this run",
+            )
+        if user_id != stored.owner_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view this run",
+            )
+    return stored.report
+
+
 @router.get("/runs/{run_id}", response_model=PreflightReport)
 def get_run(
     run_id: str,
     run_store: Annotated[RunStore, Depends(get_run_store)],
+    user_id: Annotated[str | None, Depends(get_current_user_id)],
 ) -> PreflightReport:
-    report = run_store.get(run_id)
-    if report is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
-    return report
+    return authorize_run_access(run_store=run_store, run_id=run_id, user_id=user_id)
 
 
 @router.get("/runs/{run_id}/report.md")
 def download_markdown_report(
     run_id: str,
     run_store: Annotated[RunStore, Depends(get_run_store)],
+    user_id: Annotated[str | None, Depends(get_current_user_id)],
 ) -> Response:
-    report = run_store.get(run_id)
-    if report is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+    report = authorize_run_access(run_store=run_store, run_id=run_id, user_id=user_id)
     return Response(
         content=render_markdown_report(report),
         media_type="text/markdown; charset=utf-8",
@@ -222,5 +247,18 @@ def get_history_runs(
 
 
 @router.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health(
+    settings: Annotated[Settings, Depends(get_app_settings)],
+    run_store: Annotated[RunStore, Depends(get_run_store)],
+    history_store: Annotated[HistoryStore, Depends(get_history_store)],
+) -> dict[str, str]:
+    run_backend = "postgres" if type(run_store).__name__ == "PostgresRunStore" else "in_memory"
+    history_backend = (
+        "postgres" if type(history_store).__name__ == "PostgresHistoryStore" else "in_memory"
+    )
+    return {
+        "status": "ok",
+        "auth_mode": settings.auth_mode,
+        "run_backend": run_backend,
+        "history_backend": history_backend,
+    }

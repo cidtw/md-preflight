@@ -389,6 +389,27 @@ def test_openai_generator_raises_on_sdk_errors(monkeypatch: pytest.MonkeyPatch) 
         _ = generator.generate(_make_summary(), [_make_issue()])
 
 
+def test_openai_generator_raises_on_non_api_error_sdk_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # ContentFilterFinishReasonError/LengthFinishReasonError are raised by
+    # chat.completions.parse() specifically, and subclass OpenAIError directly
+    # (NOT APIError) — a narrower `except APIError` would let these escape
+    # uncaught and turn a degrade-gracefully case into a 500.
+    from openai import ContentFilterFinishReasonError
+
+    generator = OpenAINarrativeGenerator(
+        client=_build_openai_client(
+            monkeypatch,
+            _OpenAIParseRecorder(error=ContentFilterFinishReasonError()),
+        ),
+        model="gpt-5.5",
+    )
+
+    with pytest.raises(NarrativeGenerationError):
+        _ = generator.generate(_make_summary(), [_make_issue()])
+
+
 def test_openai_generator_raises_on_parse_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     generator = OpenAINarrativeGenerator(
         client=_build_openai_client(monkeypatch, _OpenAIParseRecorder(parsed_output=None)),

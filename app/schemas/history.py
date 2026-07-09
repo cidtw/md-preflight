@@ -31,6 +31,7 @@ class RunHistoryRecord(BaseModel):
     total_issues: int
     rules_triggered: list[RuleTrigger] = Field(default_factory=list)
     source_label: str | None = None
+    rule_set_version: str | None = None
 
     @classmethod
     def from_report(
@@ -64,6 +65,7 @@ class RunHistoryRecord(BaseModel):
                 for code, count in sorted(by_rule.items())
             ],
             source_label=source_label,
+            rule_set_version=report.rule_set_version,
         )
 
 

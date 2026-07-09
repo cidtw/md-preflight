@@ -380,11 +380,11 @@ body {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   cursor: pointer; text-decoration: none; transition: background .12s, border-color .12s, opacity .12s;
 }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn-primary { background: var(--primary); color: var(--on-primary); }
 .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
-.btn-primary:disabled { opacity: .45; cursor: not-allowed; }
 .btn-secondary { background: var(--canvas); color: var(--ink); border-color: var(--hairline-strong); }
-.btn-secondary:hover { background: var(--surface-1); }
+.btn-secondary:hover:not(:disabled) { background: var(--surface-1); }
 .btn-ghost { background: transparent; color: var(--body); height: 28px; padding: 0 var(--s-sm); }
 .btn-ghost:hover { background: var(--surface-1); color: var(--ink); }
 .btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }

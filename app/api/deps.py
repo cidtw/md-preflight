@@ -17,15 +17,27 @@ from app.services.llm_service import (
     NarrativeGenerator,
     OpenAINarrativeGenerator,
 )
-from app.services.run_store import RUN_STORE, RunStore
+from app.services.run_store import RUN_STORE as DEFAULT_RUN_STORE
+from app.services.run_store import InMemoryRunStore, RunStore, build_run_store
 
 _history_store_initialized = False
 history_store_instance: HistoryStore = DEFAULT_HISTORY_STORE
+_run_store_initialized = False
+run_store_instance: RunStore = DEFAULT_RUN_STORE
 logger = logging.getLogger(__name__)
 
 
 def get_run_store() -> RunStore:
-    return RUN_STORE
+    global run_store_instance, _run_store_initialized
+    if not _run_store_initialized:
+        if type(run_store_instance).__name__ == "InMemoryRunStore":
+            try:
+                run_store_instance = build_run_store()
+            except Exception:
+                logger.exception("run store initialization failed; degrading to in-memory store")
+                run_store_instance = InMemoryRunStore()
+        _run_store_initialized = True
+    return run_store_instance
 
 
 def get_history_store() -> HistoryStore:
@@ -74,7 +86,12 @@ def get_narrative_generator(*, settings: Settings, use_llm: bool) -> NarrativeGe
 
 def get_current_user_id(request: Request) -> str | None:
     settings = get_settings()
-    if settings.clerk_secret_key and settings.clerk_publishable_key:
+    mode = settings.auth_mode
+    if mode == "clerk":
+        # auth_mode derivation guarantees clerk_publishable_key is non-None here
+        # (clerk_secret_key is also guaranteed set, but only gates auth_mode --
+        # see clerk_auth.verify_clerk_session_token for why it isn't used below).
+        assert settings.clerk_publishable_key is not None
         token = extract_clerk_token(request)
         if token is None:
             return None
@@ -82,13 +99,14 @@ def get_current_user_id(request: Request) -> str | None:
             verified = verify_clerk_session_token(
                 token=token,
                 publishable_key=settings.clerk_publishable_key,
-                secret_key=settings.clerk_secret_key,
                 authorized_parties=resolve_clerk_authorized_parties(settings),
             )
         except ClerkAuthenticationError:
             return None
         return verified.user_id
-    return extract_stub_user_id(request)
+    if mode == "stub":
+        return extract_stub_user_id(request)
+    return None
 
 
 def extract_clerk_token(request: Request) -> str | None:

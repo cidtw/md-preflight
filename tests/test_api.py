@@ -78,6 +78,7 @@ def test_validate_endpoint_when_uploading_sample_files() -> None:
     assert payload.failed_rules == []
     assert payload.created_at.tzinfo is not None
     assert sum(item.issue_count for item in payload.file_summaries) == payload.summary.total_issues
+    assert payload.rule_set_version
 
     stored = client.get(f"/api/preflight/runs/{payload.run_id}")
 
@@ -243,10 +244,9 @@ def test_history_endpoint_accepts_verified_clerk_bearer_token(
         *,
         token: str,
         publishable_key: str,
-        secret_key: str,
         authorized_parties: frozenset[str],
     ) -> VerifiedClerkSession:
-        del token, publishable_key, secret_key, authorized_parties
+        del token, publishable_key, authorized_parties
         return VerifiedClerkSession(user_id="user_clerk")
 
     publishable_key = "pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk"
@@ -316,6 +316,38 @@ def test_index_html_injects_clerk_publishable_key() -> None:
     assert "pk_test_value" in html
 
 
+def test_index_html_injects_upload_limits_matching_server_settings() -> None:
+    from app.core.config import Settings
+
+    settings = Settings.model_construct(
+        clerk_publishable_key=None,
+        max_upload_bytes=1234,
+        allowed_extensions=(".csv", ".xlsx", ".tsv"),
+    )
+    html = build_index_html(settings)
+
+    assert '"maxUploadBytes": 1234' in html
+    assert '".csv", ".xlsx", ".tsv"' in html
+
+
+def test_index_html_injects_auth_mode() -> None:
+    from app.core.config import Settings
+
+    off_settings = Settings.model_construct(
+        clerk_publishable_key=None,
+        clerk_secret_key=None,
+        allow_stub_auth=False,
+    )
+    stub_settings = Settings.model_construct(
+        clerk_publishable_key=None,
+        clerk_secret_key=None,
+        allow_stub_auth=True,
+    )
+
+    assert '"authMode": "off"' in build_index_html(off_settings)
+    assert '"authMode": "stub"' in build_index_html(stub_settings)
+
+
 @pytest.fixture(autouse=True)
 def clear_settings_cache() -> Generator[None, None, None]:
     from app.core.config import get_settings
@@ -323,6 +355,21 @@ def clear_settings_cache() -> Generator[None, None, None]:
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
+
+
+def test_health_reports_auth_mode_and_backends_without_secrets() -> None:
+    client = TestClient(app)
+
+    response = client.get("/api/preflight/health")
+
+    assert response.status_code == 200
+    payload = TypeAdapter(dict[str, str]).validate_python(response.json())
+    assert payload["status"] == "ok"
+    assert payload["auth_mode"] in {"clerk", "stub", "off"}
+    assert payload["run_backend"] in {"postgres", "in_memory"}
+    assert payload["history_backend"] in {"postgres", "in_memory"}
+    assert "secret" not in str(payload).lower()
+    assert "key" not in str(payload).lower()
 
 
 def test_rules_endpoint_returns_registry() -> None:

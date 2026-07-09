@@ -38,7 +38,12 @@ def create_app() -> FastAPI:
 
 def build_index_html(settings: Settings) -> str:
     config_payload = json.dumps(
-        {"clerkPublishableKey": settings.clerk_publishable_key},
+        {
+            "clerkPublishableKey": settings.clerk_publishable_key,
+            "maxUploadBytes": settings.max_upload_bytes,
+            "allowedExtensions": list(settings.allowed_extensions),
+            "authMode": settings.auth_mode,
+        },
         ensure_ascii=True,
     )
     html = (WEB_DIR / "index.html").read_text(encoding="utf-8")

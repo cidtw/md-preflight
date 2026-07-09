@@ -33,6 +33,7 @@ def test_run_history_record_from_report_uses_aggregate_fields(
     assert record.warning_count == report.summary.by_severity["warning"]
     assert record.total_issues == report.summary.total_issues
     assert {item.code: item.count for item in record.rules_triggered} == report.summary.by_rule
+    assert record.rule_set_version == report.rule_set_version
 
 
 def test_inmemory_history_store_groups_day_month_year() -> None:
@@ -149,11 +150,13 @@ def test_record_from_postgres_row_parses_json_payload() -> None:
                 {"code": "LOW_MARGIN_RATE", "severity": "warning", "count": 1},
                 {"code": "INVALID_PROMO_PRICE", "severity": "error", "count": 2},
             ],
+            "abc123def456",
         )
     )
 
     assert record.id == 7
     assert record.user_id == "user-1"
+    assert record.rule_set_version == "abc123def456"
     assert [rule.code for rule in record.rules_triggered] == [
         "LOW_MARGIN_RATE",
         "INVALID_PROMO_PRICE",

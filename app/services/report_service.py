@@ -8,6 +8,7 @@ def render_markdown_report(report: PreflightReport) -> str:
         "# MD Preflight Report",
         "",
         f"- Run ID: `{report.run_id}`",
+        f"- Rule Set Version: `{report.rule_set_version}`",
         f"- Created At (UTC): {report.created_at.isoformat()}",
         f"- Total Issues: {report.summary.total_issues}",
         f"- Passed: {report.summary.passed}",
