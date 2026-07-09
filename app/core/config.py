@@ -24,6 +24,14 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("DATABASE_URL_UNPOOLED", "MDPREFLIGHT_DATABASE_URL_UNPOOLED"),
     )
+    openai_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("OPENAI_API_KEY", "MDPREFLIGHT_OPENAI_API_KEY"),
+    )
+    anthropic_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ANTHROPIC_API_KEY", "MDPREFLIGHT_ANTHROPIC_API_KEY"),
+    )
     clerk_secret_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("CLERK_SECRET_KEY", "MDPREFLIGHT_CLERK_SECRET_KEY"),

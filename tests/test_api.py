@@ -703,3 +703,14 @@ def test_missing_column_still_422() -> None:
         files=build_preflight_upload_files(promotions=promotions),
     )
     assert response.status_code == 422
+
+
+def test_settings_loads_api_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.config import Settings
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
+
+    settings = Settings()
+    assert settings.openai_api_key == "test-openai-key"
+    assert settings.anthropic_api_key == "test-anthropic-key"

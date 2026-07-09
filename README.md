@@ -20,18 +20,47 @@ FastAPI · Pandas · Pydantic · (선택) OpenAI / Anthropic
 그래서 이 프로젝트는 역할을 **엄격히 격리**한다.
 
 ```
-                       ┌─ 판단(deterministic) ─┐   ┌─ 서술(LLM, 선택) ─┐
-[3개 파일] → ingest →   │  rule engine          │ → │  요약 · 체크리스트  │ → PreflightReport
-  업로드              │  10개 순수 함수 룰     │   │  (실패 시 fallback) │
-                       │  → list[Issue] + 판정  │   └────────────────────┘
-                       └────────────────────────┘
-                        여기서 pass/fail 확정.       LLM은 이 확정된 사실을
-                        LLM은 절대 개입 못 함.       "사람 말"로 바꿀 뿐.
+                            ┌─ [무상태 판정 경로 (Stateless Path)] ────────────────────┐
+                            │                                                          │
+                            │   ingest ─> 판단(deterministic) ───────────┐             │
+                            │             rule engine                    │             │
+                            │             (10개 순수 함수 룰)             │             │
+                            │             │                              │             │
+                            │             ▼                              │             │
+[3개 파일] ────────────────>│             list[Issue] + 판정             │             │
+  업로드                    │             │                              │             │
+                            │             ├───────────────────┐          │             │
+                            │             ▼                   ▼          │             │
+                            │           [성공]              [실패]       │             │
+                            │             │                   │          │             │
+                            │             ▼                   ▼          │             │
+                            │           서술(LLM)           Fallback     │             │
+                            │          (OpenAI/Anthropic)    (로컬)      │             │
+                            │             │                   │          │             │
+                            │             └─────────┬─────────┘          │             │
+                            │                       ▼                    │             │
+                            │                PreflightReport             │────┐        │
+                            └────────────────────────────────────────────┘    │        │
+                                                                              │        │
+                            ┌─ [격리된 이력 & 인증 경로 (Isolated Path)] ────────┐  │ (비동기)│
+                            │                                                 │  ▼        │
+                            │   PreflightReport                               │ <───────┘
+                            │        │                                        │
+                            │        ▼ (append-only 저장)                      │
+                            │   Neon Postgres (run_history)                   │
+                            │        ▲                                        │
+                            │        │ (선택 로그인 사용자만 조회 가능)            │
+                            │   [선택적 인증 게이트]                          │
+                            │   Clerk Auth / Local Stub                       │
+                            │                                                 │
+                            └─────────────────────────────────────────────────┘
 ```
 
 - **결정론**: 같은 입력 → 항상 같은 이슈. 재현·감사 가능.
 - **LLM은 판정선 밖**: LLM 생성기는 **이미 확정된 `summary`와 `issues`만** 입력받는다(타입으로 강제). 원본 셀 값·`product_name`은 프롬프트에 들어가지 않는다 → **프롬프트 주입으로 판정을 뒤집을 수 없음**(구조적 방어 + 계약 테스트로 증명).
-- **데모는 안 죽는다**: LLM 키가 없거나 호출이 실패해도 결정론적 fallback 서사로 `200`을 반환한다. 응답의 `generated_by` 필드(`llm` / `fallback`)로 어느 경로였는지 투명하게 노출한다.
+- **교체 가능한 서술 공급자**: `OPENAI_API_KEY`(OpenAI structured outputs) 또는 `ANTHROPIC_API_KEY`(Anthropic)를 탐색하여 사용 가능한 최적의 LLM으로 서술(요약/체크리스트)을 생성합니다. LLM 키가 없거나 호출이 실패해도 결정론적 fallback 서사로 `200`을 반환합니다.
+- **append-only 감사 이력**: 검수 성공 여부 및 발생 룰 집계 데이터는 Neon Postgres(`run_history` 테이블)에 추가(append-only) 저장됩니다. 이력 저장을 실패하거나 DB 가용성이 낮아도 검수 자체는 인메모리로 격리 동작하므로 API 전체 장애로 이어지지 않습니다.
+- **선택적 로그인**: 검수 실행 API 자체는 비로그인 상태에서도 항시 동작(`200 OK`)하며, 이력 및 대시보드 조회 기능만 Clerk 인증 및 로컬 스텁을 경유하여 로그인 세션 기반으로 안전하게 보호됩니다.
 
 ## 검수 룰 (10개)
 
@@ -114,7 +143,7 @@ export OPENAI_API_KEY=sk-proj-...
 ```bash
 uv run ruff check app tests
 uv run basedpyright app tests
-uv run pytest            # 68 tests, 네트워크/실 LLM 호출 없음
+uv run pytest            # 104 tests, 네트워크/실 LLM 호출 없음
 ```
 
 - **CI에서 실제 LLM 호출 금지** — LLM 경로는 전부 목킹. `tests/test_narrative_contract.py`가 "LLM이 판정을 못 바꾼다"를 적대적으로 증명한다(악의적 서사·프롬프트 주입·범위 이탈 케이스).

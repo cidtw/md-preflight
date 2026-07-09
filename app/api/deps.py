@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 
 from anthropic import Anthropic
 from fastapi import Request
@@ -52,23 +51,21 @@ def get_narrative_generator(*, settings: Settings, use_llm: bool) -> NarrativeGe
     if not use_llm:
         return FallbackNarrativeGenerator()
 
-    openai_api_key = os.environ.get("OPENAI_API_KEY")
-    if openai_api_key:
+    if settings.openai_api_key:
         return FallbackOnErrorNarrativeGenerator(
             primary=OpenAINarrativeGenerator(
-                client=OpenAI(api_key=openai_api_key),
+                client=OpenAI(api_key=settings.openai_api_key),
                 model=settings.openai_model,
             ),
             fallback=FallbackNarrativeGenerator(),
         )
 
-    anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not anthropic_api_key:
+    if not settings.anthropic_api_key:
         return FallbackNarrativeGenerator()
 
     return FallbackOnErrorNarrativeGenerator(
         primary=LLMNarrativeGenerator(
-            client=Anthropic(api_key=anthropic_api_key),
+            client=Anthropic(api_key=settings.anthropic_api_key),
             model=settings.llm_model,
         ),
         fallback=FallbackNarrativeGenerator(),

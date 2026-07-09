@@ -43,11 +43,8 @@ def build_index_html(settings: Settings) -> str:
     )
     html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
     return html.replace(
-        '<script type="module" src="/static/app.js?v=2"></script>',
-        (
-            f'<script>window.__MDP_CONFIG__ = {config_payload};</script>\n'
-            '  <script type="module" src="/static/app.js?v=2"></script>'
-        ),
+        "<!-- __MDP_CONFIG_PLACEHOLDER__ -->",
+        f"<script>window.__MDP_CONFIG__ = {config_payload};</script>",
     )
 
 
