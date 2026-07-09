@@ -671,16 +671,35 @@ body {
   color: var(--mute);
   background: var(--surface-2);
   padding: var(--s-xs) var(--s-sm);
+  /* Keep th as table-cell — never set display:grid/flex on th/td */
+  white-space: nowrap;
+  min-width: 120px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 .file-editor-rowhead {
-  width: 64px;
+  width: 72px;
+  min-width: 72px;
   font-family: var(--mono);
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--surface-2);
 }
-.file-editor-column-head,
-.file-editor-rowhead {
-  display: grid;
+.file-editor-table tbody .file-editor-rowhead {
+  background: var(--canvas);
+  z-index: 1;
+}
+/* Layout label + delete control inside the cell, not on the th itself */
+.file-editor-head-inner {
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  align-items: start;
+  align-items: flex-start;
+}
+.file-editor-col-name {
+  font-weight: 500;
 }
 .file-editor-delete-btn {
   width: fit-content;

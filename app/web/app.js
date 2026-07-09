@@ -932,19 +932,31 @@ function removeEditorColumn(fileKey, columnIndex) {
   refreshEditedActions();
 }
 
+function buildEditorHeadInner(labelText, deleteLabel, onDelete) {
+  const inner = el("div", "file-editor-head-inner");
+  inner.append(el("span", "file-editor-col-name", labelText));
+  if (onDelete) {
+    const removeButton = el("button", "file-editor-delete-btn", deleteLabel);
+    removeButton.type = "button";
+    removeButton.addEventListener("click", onDelete);
+    inner.append(removeButton);
+  }
+  return inner;
+}
+
 function buildEditorTable(fileKey, parsed) {
   const scroller = el("div", "file-editor-table-wrap");
   const table = el("table", "file-editor-table");
   const thead = el("thead");
   const headRow = el("tr");
-  headRow.append(el("th", "file-editor-rowhead", "행"));
+  const cornerHead = el("th", "file-editor-rowhead");
+  cornerHead.append(buildEditorHeadInner("행"));
+  headRow.append(cornerHead);
   parsed.headers.forEach((header, columnIndex) => {
     const th = el("th", "file-editor-column-head");
-    th.append(el("span", null, header));
-    const removeButton = el("button", "file-editor-delete-btn", "열 삭제");
-    removeButton.type = "button";
-    removeButton.addEventListener("click", () => removeEditorColumn(fileKey, columnIndex));
-    th.append(removeButton);
+    th.append(
+      buildEditorHeadInner(header, "열 삭제", () => removeEditorColumn(fileKey, columnIndex)),
+    );
     headRow.append(th);
   });
   thead.append(headRow);
@@ -957,11 +969,11 @@ function buildEditorTable(fileKey, parsed) {
     tr.dataset.file = fileKey;
     tr.dataset.row = String(csvRowNumber);
     const rowHead = el("th", "file-editor-rowhead");
-    rowHead.append(el("span", null, String(csvRowNumber)));
-    const removeButton = el("button", "file-editor-delete-btn", "행 삭제");
-    removeButton.type = "button";
-    removeButton.addEventListener("click", () => removeEditorRow(fileKey, rowIndex));
-    rowHead.append(removeButton);
+    rowHead.append(
+      buildEditorHeadInner(String(csvRowNumber), "행 삭제", () =>
+        removeEditorRow(fileKey, rowIndex),
+      ),
+    );
     tr.append(rowHead);
     row.forEach((value, columnIndex) => {
       const td = el("td");
