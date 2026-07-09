@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 720pt;
+      height: 405pt;
+      font-family: 'Manrope', 'Pretendard', sans-serif;
+      background: #FFFFFF;
+      color: #010821;
+      padding: 40pt 48pt;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+    .top-hairline {
+      position: absolute;
+      top: 14pt;
+      left: 48pt;
+      right: 48pt;
+      height: 1.3pt;
+      background: #D8DBE2;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 10pt;
+    }
+    .header h2 {
+      font-size: 16pt;
+      font-weight: 700;
+      color: #010821;
+      word-break: keep-all;
+    }
+    .header .wordmark {
+      font-size: 10pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #0028A8;
+    }
+    .key-message {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #0028A8;
+      margin-top: 24pt;
+      line-height: 1.4;
+      word-break: keep-all;
+    }
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16pt;
+      margin-top: 24pt;
+      flex: 1;
+    }
+    .card {
+      background: #F6F8FA;
+      padding: 16pt;
+      border-radius: 4pt;
+      display: flex;
+      flex-direction: column;
+      gap: 8pt;
+    }
+    .card-title {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #010821;
+      display: flex;
+      align-items: center;
+      gap: 6pt;
+      word-break: keep-all;
+    }
+    .card-title::before {
+      content: "";
+      display: inline-block;
+      width: 4pt;
+      height: 4pt;
+      background: #0028A8;
+      border-radius: 50%;
+    }
+    .card-text {
+      font-size: 11.5pt;
+      color: #5C6B90;
+      line-height: 1.5;
+      word-break: keep-all;
+      text-wrap: balance;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-hairline"></div>
+  
+  <div class="header">
+    <h2>01. 도입 배경 및 문제 해결</h2>
+    <span class="wordmark">MD PREFLIGHT</span>
+  </div>
+
+  <div class="key-message">
+    수동 프로모션 검수 오류로 인한 비용 및 공수 손실을 0으로 차단합니다.
+  </div>
+
+  <div class="content-grid">
+    <div class="card">
+      <h3 class="card-title">프로모션의 복잡성</h3>
+      <p class="card-text">가격, 기간, 마진, 재고, 증정 유형 등 다양한 실행 요소의 유기적 맞물림 필요. 한 영역의 실수가 전체 프로모션의 오작동으로 연결됩니다.</p>
+    </div>
+    <div class="card">
+      <h3 class="card-title">오입력의 치명성</h3>
+      <p class="card-text">행사가 > 정상가, 마진 음수, 입고일 지연 등 사소한 오류가 고객 클레임, 가맹점 혼선 및 원가 구조 악화 등 비즈니스 손실로 번집니다.</p>
+    </div>
+    <div class="card">
+      <h3 class="card-title">사전 검수 솔루션</h3>
+      <p class="card-text">등록 버튼을 누르기 전 계획/마스터/재고 3개 파일을 교차하여 실시간 자동 검수 수행. 발생 가능한 모든 비즈니스 리스크를 사전 차단합니다.</p>
+    </div>
+  </div>
+
+</body>
+</html>

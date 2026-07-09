@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 720pt;
+      height: 405pt;
+      font-family: 'Manrope', 'Pretendard', sans-serif;
+      background: #FFFFFF;
+      color: #010821;
+      padding: 40pt 48pt;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+    .top-hairline {
+      position: absolute;
+      top: 14pt;
+      left: 48pt;
+      right: 48pt;
+      height: 1.3pt;
+      background: #D8DBE2;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 10pt;
+    }
+    .header h2 {
+      font-size: 16pt;
+      font-weight: 700;
+      color: #010821;
+      word-break: keep-all;
+    }
+    .header .wordmark {
+      font-size: 10pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #0028A8;
+    }
+    .key-message {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #0028A8;
+      margin-top: 24pt;
+      line-height: 1.4;
+      word-break: keep-all;
+    }
+    .layout-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32pt;
+      margin-top: 24pt;
+      flex: 1;
+    }
+    .col {
+      display: flex;
+      flex-direction: column;
+      gap: 16pt;
+    }
+    .col-title {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #010821;
+      border-left: 3px solid #0028A8;
+      padding-left: 8pt;
+      word-break: keep-all;
+    }
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10pt;
+    }
+    .item {
+      display: flex;
+      flex-direction: column;
+      gap: 2pt;
+    }
+    .item-title {
+      font-size: 10pt;
+      font-weight: 600;
+      color: #010821;
+      word-break: keep-all;
+    }
+    .item-desc {
+      font-size: 11.5pt;
+      color: #5C6B90;
+      line-height: 1.5;
+      word-break: keep-all;
+      text-wrap: balance;
+    }
+    .highlight-link {
+      color: #0028A8;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-hairline"></div>
+  
+  <div class="header">
+    <h2>04. 실배포 및 대시보드 라이브 시연</h2>
+    <span class="wordmark">MD PREFLIGHT</span>
+  </div>
+
+  <div class="key-message">
+    클라우드 실배포를 완료하고, 사용자별 검수 이력 통계를 실시간으로 관리합니다.
+  </div>
+
+  <div class="layout-split">
+    <div class="col">
+      <h3 class="col-title">Vercel & Neon 클라우드 배포</h3>
+      <div class="item-list">
+        <div class="item">
+          <h4 class="item-title">실환경 Vercel 배포 완료</h4>
+          <p class="item-desc">서비스 주소: <span class="highlight-link">https://md-preflight.vercel.app</span></p>
+        </div>
+        <div class="item">
+          <h4 class="item-title">Neon Postgres 클라우드 연동</h4>
+          <p class="item-desc">런타임용 pooled 연결 및 DDL용 unpooled 연결을 완벽 격리하여 안정적이고 유연한 DB 트랜잭션 처리 보장</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3 class="col-title">Clerk 인증 및 이력 대시보드</h3>
+      <div class="item-list">
+        <div class="item">
+          <h4 class="item-title">선택적 로그인 및 Clerk 세션 검증</h4>
+          <p class="item-desc">JWT 토큰의 azp, iss 기반 실 세션 서명 유효성 검증을 통해 보안 게이팅 및 사용자별 데이터 격리 실현</p>
+        </div>
+        <div class="item">
+          <h4 class="item-title">시드 적재 및 추이 대시보드 시연</h4>
+          <p class="item-desc">지난 30일 간의 20개 테스트 런 이력을 적재하여, 유통 대시보드 화면상에서 일/월별 룰 적출 추이 실시간 차트 시연</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

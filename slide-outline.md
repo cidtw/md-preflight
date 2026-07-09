@@ -21,7 +21,7 @@
 - **Items**:
   - 01. 도입 배경 및 문제 해결 (Problem & Solution)
   - 02. 핵심 아키텍처 (Stateless vs Isolated Path)
-  - 03. 구현 및 검증 성과 (104개 테스트)
+  - 03. 구현 및 검증 성과 (132개 테스트)
   - 04. 실배포 및 대시보드 라이브 시연 (Vercel & Neon Postgres)
   - 05. Q&A 및 맺음말
 
@@ -41,12 +41,12 @@
   - **교체 가능한 서술 공급자**: OpenAI(Structured Outputs) 및 Anthropic 어댑터 자동 전환 및 로컬 Fallback 구성
   - **인증 및 이력 격리**: Neon Postgres 이력 적재 및 Clerk 세션 토큰 검증은 비로그인 검수 성능과 무관하게 격리 작동
 
-### Slide 5 - 구현 및 검증 성과 (104개 테스트)
+### Slide 5 - 구현 및 검증 성과 (132개 테스트)
 - **Type**: Statistics
-- **Key Message**: 10개 검수 규칙 완결 및 104개 유닛 테스트 100% 통과로 무결성을 입증했습니다.
+- **Key Message**: 10개 검수 규칙 완결 및 132개 유닛 테스트 100% 통과로 무결성을 입증했습니다.
 - **Details**:
   - **10대 핵심 룰셋**: 유효기간 검증, 마스터 매칭 누락, 할인율/마진율 임계치 위반, 입고 지연 등 완벽 감지
-  - **104개 Pytest 케이스**: 정상가/원가 결측, 프롬프트 주입(Prompt Injection) 방어 계약 테스트 및 Clerk 세션 검증 완료
+  - **132개 Pytest 케이스**: 정상가/원가 결측, 프롬프트 주입(Prompt Injection) 방어 계약 테스트 및 Clerk 세션 검증 완료
   - **정적 품질 보증**: `ruff` 및 `basedpyright` 정적 분석 0개 오류 통과
 
 ### Slide 6 - 실배포 및 대시보드 라이브 시연 (Vercel & Neon Postgres)

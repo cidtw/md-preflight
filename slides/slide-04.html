@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 720pt;
+      height: 405pt;
+      font-family: 'Manrope', 'Pretendard', sans-serif;
+      background: #FFFFFF;
+      color: #010821;
+      padding: 40pt 48pt;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+    .top-hairline {
+      position: absolute;
+      top: 14pt;
+      left: 48pt;
+      right: 48pt;
+      height: 1.3pt;
+      background: #D8DBE2;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 10pt;
+    }
+    .header h2 {
+      font-size: 16pt;
+      font-weight: 700;
+      color: #010821;
+      word-break: keep-all;
+    }
+    .header .wordmark {
+      font-size: 10pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #0028A8;
+    }
+    .key-message {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #0028A8;
+      margin-top: 24pt;
+      line-height: 1.4;
+      word-break: keep-all;
+    }
+    .layout-split {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 32pt;
+      margin-top: 20pt;
+      flex: 1;
+    }
+    .diagram-container {
+      background: #F6F8FA;
+      border: 1px solid #D8DBE2;
+      border-radius: 4pt;
+      padding: 16pt;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12pt;
+    }
+    .diagram-box {
+      border: 1.5pt solid #0028A8;
+      background: #FFFFFF;
+      padding: 8pt;
+      text-align: center;
+      border-radius: 4pt;
+      font-size: 11pt;
+      font-weight: 700;
+      color: #010821;
+      word-break: keep-all;
+    }
+    .diagram-box-sub {
+      border: 1px dashed #A5B3C6;
+      background: #F6F8FA;
+      padding: 6pt;
+      text-align: center;
+      border-radius: 4pt;
+      font-size: 10pt;
+      color: #5C6B90;
+      word-break: keep-all;
+    }
+    .bullet-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12pt;
+      justify-content: center;
+    }
+    .bullet-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4pt;
+    }
+    .bullet-title {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #010821;
+      word-break: keep-all;
+    }
+    .bullet-text {
+      font-size: 11.5pt;
+      color: #5C6B90;
+      line-height: 1.45;
+      word-break: keep-all;
+      text-wrap: balance;
+    }
+    .arrow {
+      text-align: center;
+      color: #A5B3C6;
+      font-size: 10pt;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-hairline"></div>
+  
+  <div class="header">
+    <h2>02. 핵심 아키텍처 (Stateless vs Isolated Path)</h2>
+    <span class="wordmark">MD PREFLIGHT</span>
+  </div>
+
+  <div class="key-message">
+    판정은 100% 결정론 규칙 엔진이, 서술과 이력 관리는 격리된 주변부가 수행합니다.
+  </div>
+
+  <div class="layout-split">
+    <div class="diagram-container">
+      <div class="diagram-box">
+        무상태 판정 경로 (Stateless Validation Path)
+        <div style="font-weight: 400; font-size: 10pt; margin-top: 4pt; color: #5C6B90; word-break: keep-all;">3개 파일 업로드 ─> Ingest ─> 결정론 규칙 엔진 ─> 결과 확정</div>
+      </div>
+      <div class="arrow">▼ (비동기 결과 전달 / 격리 저장)</div>
+      <div class="diagram-box-sub">
+        격리된 이력 & 인증 경로 (Isolated Path)
+        <div style="font-size: 10pt; margin-top: 4pt; color: #A5B3C6; word-break: keep-all;">Neon Postgres 이력 적재 & Clerk 사용자 세션 인증</div>
+      </div>
+    </div>
+
+    <div class="bullet-list">
+      <div class="bullet-item">
+        <h3 class="bullet-title" style="color: #0028A8;">결정론적 무상태 판정</h3>
+        <p class="bullet-text">동일 입력 시 동일 결과 보장. LLM은 판정선 밖에 존재하여 프롬프트 주입 등으로 인한 오판을 원천 차단합니다.</p>
+      </div>
+      <div class="bullet-item">
+        <h3 class="bullet-title">교체 가능한 서술 엔진</h3>
+        <p class="bullet-text">OpenAI Structured Outputs와 Anthropic SDK를 결합하여 최적의 서사 생성 및 로컬 Fallback 체인을 완비했습니다.</p>
+      </div>
+      <div class="bullet-item">
+        <h3 class="bullet-title">성능 및 장애 격리</h3>
+        <p class="bullet-text">Neon DB 장애 시에도 인메모리 대체 장치를 통해 비로그인 핵심 검수 기능은 100% 무장애 가동을 유지합니다.</p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

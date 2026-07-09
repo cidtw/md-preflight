@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 720pt;
+      height: 405pt;
+      font-family: 'Manrope', 'Pretendard', sans-serif;
+      background: #FFFFFF;
+      color: #010821;
+      padding: 40pt 48pt;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+    .top-hairline {
+      position: absolute;
+      top: 14pt;
+      left: 48pt;
+      right: 48pt;
+      height: 1.3pt;
+      background: #D8DBE2;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 10pt;
+    }
+    .header h2 {
+      font-size: 16pt;
+      font-weight: 700;
+      color: #010821;
+      word-break: keep-all;
+    }
+    .header .wordmark {
+      font-size: 10pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #0028A8;
+    }
+    .key-message {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #0028A8;
+      margin-top: 24pt;
+      line-height: 1.4;
+      word-break: keep-all;
+    }
+    .kpi-section {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 1fr;
+      margin-top: 30pt;
+      flex: 1;
+      align-items: center;
+      text-align: center;
+    }
+    .kpi-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6pt;
+      border-right: 1px solid #D8DBE2;
+    }
+    .kpi-item:last-child {
+      border-right: none;
+    }
+    .kpi-label {
+      font-size: 10.5pt;
+      font-weight: 600;
+      color: #5C6B90;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .kpi-number {
+      font-size: 48pt;
+      font-weight: 800;
+      color: #0028A8;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .kpi-suffix {
+      font-size: 16pt;
+      font-weight: 700;
+      color: #0028A8;
+      margin-left: 2pt;
+    }
+    .kpi-desc {
+      font-size: 10.5pt;
+      color: #A5B3C6;
+      margin-top: 4pt;
+      word-break: keep-all;
+      text-wrap: balance;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-hairline"></div>
+  
+  <div class="header">
+    <h2>03. 구현 및 검증 성과</h2>
+    <span class="wordmark">MD PREFLIGHT</span>
+  </div>
+
+  <div class="key-message">
+    10개 검수 규칙 완결 및 132개 유닛 테스트 100% 통과로 무결성을 입증했습니다.
+  </div>
+
+  <div class="kpi-section">
+    <div class="kpi-item">
+      <span class="kpi-label">Core Rules</span>
+      <span class="kpi-number">10<span class="kpi-suffix">개</span></span>
+      <p class="kpi-desc">가격, 마진, 재고, 혜택, 기간 등 핵심 검수 순수 함수 구현</p>
+    </div>
+    <div class="kpi-item">
+      <span class="kpi-label">Pytest Suite</span>
+      <span class="kpi-number">132<span class="kpi-suffix">PASS</span></span>
+      <p class="kpi-desc">프롬프트 주입(Injection) 방어 계약 및 Clerk 예외 테스트 완비</p>
+    </div>
+    <div class="kpi-item">
+      <span class="kpi-label">Static Analysis</span>
+      <span class="kpi-number">0<span class="kpi-suffix">ERR</span></span>
+      <p class="kpi-desc">Ruff linter 및 Basedpyright 엄격 타입 체크 100% 통과</p>
+    </div>
+  </div>
+
+</body>
+</html>

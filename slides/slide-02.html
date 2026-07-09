@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 720pt;
+      height: 405pt;
+      font-family: 'Manrope', 'Pretendard', sans-serif;
+      background: #030414;
+      color: #FFFFFF;
+      padding: 40pt 48pt;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #15202F;
+      padding-bottom: 12pt;
+    }
+    .header h2 {
+      font-size: 18pt;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .header .wordmark {
+      font-size: 11pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #0028A8;
+    }
+    .contents-list {
+      margin-top: 30pt;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14pt;
+    }
+    .contents-item {
+      display: flex;
+      align-items: center;
+      gap: 24pt;
+      padding-bottom: 8pt;
+      border-bottom: 1px dashed #15202F;
+    }
+    .num {
+      font-size: 14pt;
+      font-weight: 800;
+      color: #0028A8;
+      width: 32pt;
+    }
+    .title {
+      font-size: 13pt;
+      font-weight: 500;
+      color: #FFFFFF;
+      word-break: keep-all;
+    }
+    .eng-sub {
+      font-size: 10pt;
+      color: #A5B3C6;
+      margin-left: auto;
+    }
+    .footer {
+      font-size: 10pt;
+      color: #A5B3C6;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>목차</h2>
+    <span class="wordmark">MD PREFLIGHT</span>
+  </div>
+
+  <div class="contents-list">
+    <div class="contents-item">
+      <span class="num">01</span>
+      <span class="title">도입 배경 및 문제 해결</span>
+      <span class="eng-sub">Problem & Solution</span>
+    </div>
+    <div class="contents-item">
+      <span class="num">02</span>
+      <span class="title">핵심 아키텍처</span>
+      <span class="eng-sub">Stateless vs Isolated Path</span>
+    </div>
+    <div class="contents-item">
+      <span class="num">03</span>
+      <span class="title">구현 및 검증 성과</span>
+      <span class="eng-sub">132 unit tests passed</span>
+    </div>
+    <div class="contents-item">
+      <span class="num">04</span>
+      <span class="title">실배포 및 대시보드 라이브 시연</span>
+      <span class="eng-sub">Vercel & Neon Postgres</span>
+    </div>
+    <div class="contents-item">
+      <span class="num">05</span>
+      <span class="title">Q&A 및 맺음말</span>
+      <span class="eng-sub">Closing</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>MD Preflight Presentation Outline</p>
+  </div>
+</body>
+</html>

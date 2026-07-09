@@ -67,7 +67,8 @@ def validate_context(
     for rule in active_rules:
         try:
             issues.extend(rule.apply(ctx))
-        except Exception:  # noqa: BROAD_EXCEPT_OK
+        except Exception:
+            # Isolate per-rule failures so one broken rule cannot fail the whole run.
             logger.exception("rule execution failed: %s", rule.code)
             failed_rules.append(rule.code)
     summary = build_summary(issues, checked_rows=len(ctx.promotions))
