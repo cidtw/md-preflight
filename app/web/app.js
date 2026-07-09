@@ -65,6 +65,7 @@ const state = {
   auth: {
     signedIn: false,
     userId: null,
+    displayName: null,
     sessionToken: null,
     provider: hasClerkMode() ? "clerk" : (isStubAuthAvailable() ? "stub" : "off"),
   },
@@ -124,16 +125,51 @@ function persistAuth() {
   } catch (_) {}
 }
 
+function clerkDisplayName(user) {
+  if (!user) return null;
+  const fullName = typeof user.fullName === "string" ? user.fullName.trim() : "";
+  if (fullName) return fullName;
+  const username = typeof user.username === "string" ? user.username.trim() : "";
+  if (username) return username;
+  const first = typeof user.firstName === "string" ? user.firstName.trim() : "";
+  const last = typeof user.lastName === "string" ? user.lastName.trim() : "";
+  const combined = `${first} ${last}`.trim();
+  if (combined) return combined;
+  const email =
+    user.primaryEmailAddress?.emailAddress ||
+    user.emailAddresses?.[0]?.emailAddress ||
+    "";
+  if (typeof email === "string" && email.includes("@")) {
+    return email.split("@")[0];
+  }
+  if (typeof email === "string" && email.trim()) return email.trim();
+  return null;
+}
+
+function authStatusLabel() {
+  if (!isSignedIn(state.auth)) {
+    return isAuthUnavailable() ? "로그인 불가 — 이력은 Clerk 인증 필요" : "비로그인";
+  }
+  const name =
+    (typeof state.auth.displayName === "string" && state.auth.displayName.trim()) ||
+    null;
+  // Never show raw Clerk ids like user_xxx in the nav chrome.
+  if (name && !name.startsWith("user_")) {
+    return name;
+  }
+  if (state.auth.provider === "stub") {
+    return "데모 사용자";
+  }
+  return "로그인됨";
+}
+
 function renderAuthControls() {
   const signedIn = isSignedIn(state.auth);
   const authUnavailable = isAuthUnavailable();
   const status = $("#auth-status");
   if (status) {
-    status.textContent = signedIn
-      ? `${state.auth.userId} 로그인됨`
-      : authUnavailable
-        ? "로그인 불가 — 이력은 Clerk 인증 필요"
-        : "비로그인";
+    status.textContent = authStatusLabel();
+    status.title = signedIn && state.auth.userId ? `계정 ID: ${state.auth.userId}` : "";
   }
   const login = $("#auth-login");
   const logout = $("#auth-logout");
@@ -157,6 +193,7 @@ function setSignedOutAuth() {
   state.auth = {
     signedIn: false,
     userId: null,
+    displayName: null,
     sessionToken: null,
     provider: hasClerkMode() ? "clerk" : (isStubAuthAvailable() ? "stub" : "off"),
   };
@@ -166,6 +203,7 @@ function signInStub() {
   state.auth = {
     signedIn: true,
     userId: "demo-user",
+    displayName: "데모 사용자",
     sessionToken: null,
     provider: "stub",
   };
@@ -200,6 +238,12 @@ function initAuth() {
       state.auth = {
         signedIn: Boolean(saved.signedIn),
         userId: typeof saved.userId === "string" ? saved.userId : null,
+        displayName:
+          typeof saved.displayName === "string" && saved.displayName.trim()
+            ? saved.displayName.trim()
+            : saved.userId === "demo-user"
+              ? "데모 사용자"
+              : null,
         sessionToken: null,
         provider: "stub",
       };
@@ -279,6 +323,7 @@ async function refreshAuthSession() {
   state.auth = {
     signedIn: true,
     userId: user.id,
+    displayName: clerkDisplayName(user),
     sessionToken,
     provider: "clerk",
   };
