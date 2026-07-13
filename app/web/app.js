@@ -17,10 +17,7 @@ import {
   sanitizeChecklistCellValue,
 } from "./editor_state.mjs";
 import {
-  buildAuthHeaders,
-  getClerkPublishableKey,
   hasClerkMode,
-  isAuthUnavailable,
   isSignedIn,
   isStubAuthAvailable,
 } from "./auth_helpers.mjs";
@@ -31,6 +28,11 @@ import { SOURCE_LABELS, displayLabel } from "./labels.mjs";
 import { bindWordmarkHome } from "./nav_helpers.mjs";
 import { checklistItemKey, diffIssueKeys, issueKey } from "./review_status.mjs";
 import { buildServiceRequestUrl } from "./source_request.mjs";
+import { $, el, ext, fmtSize, toast, showView } from "./dom_util.mjs";
+import { initTheme } from "./theme.mjs";
+import { createAuthUi } from "./auth_ui.mjs";
+import { createIssueView, groupIssuesByFile } from "./issue_view.mjs";
+import { createReportView } from "./report_view.mjs";
 
 const FIELDS = [
   { key: "promotion_plan", role: "프로모션 계획", hint: "promotion_plan.xlsx / .csv" },
@@ -76,302 +78,48 @@ const state = {
   },
 };
 
-const $ = (sel) => document.querySelector(sel);
-const el = (tag, cls, text) => {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (text != null) n.textContent = text;
-  return n;
-};
+/* ---------- extracted modules (PR1–3) ---------- */
+const authUi = createAuthUi({
+  state,
+  $,
+  toast,
+  showView,
+  renderDashboard: () => renderDashboard(),
+  loadHistory: (granularity) => loadHistory(granularity),
+});
+const {
+  authHeaders,
+  initAuth,
+  loadClerk,
+  signIn,
+  signOut,
+} = authUi;
 
-function ext(name) {
-  const i = name.lastIndexOf(".");
-  return i < 0 ? "" : name.slice(i).toLowerCase();
-}
-function fmtSize(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
+const issueView = createIssueView({
+  el,
+  state,
+  SOURCE_LABELS,
+  displayLabel,
+  jumpToIssueLocation: (location, related) => jumpToIssueLocation(location, related),
+  FIELDS,
+});
+const {
+  renderIssueGroups,
+  buildReviewStatusBadge,
+} = issueView;
 
-/* ---------- toast ---------- */
-let toastTimer;
-function toast(msg) {
-  const t = $("#toast");
-  t.textContent = msg;
-  t.classList.remove("hidden");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.add("hidden"), 4000);
-}
-
-/* ---------- view switching ---------- */
-function showView(id) {
-  ["view-upload", "view-loading", "view-result", "view-dashboard"].forEach((v) =>
-    $(`#${v}`).classList.toggle("hidden", v !== id),
-  );
-}
-
-async function authHeaders() {
-  await refreshAuthSession();
-  return buildAuthHeaders(state.auth);
-}
-
-function persistAuth() {
-  if (state.auth.provider !== "stub") {
-    return;
-  }
-  try {
-    localStorage.setItem("mdp-auth", JSON.stringify(state.auth));
-  } catch (_) {}
-}
-
-function clerkDisplayName(user) {
-  if (!user) return null;
-  const fullName = typeof user.fullName === "string" ? user.fullName.trim() : "";
-  if (fullName) return fullName;
-  const username = typeof user.username === "string" ? user.username.trim() : "";
-  if (username) return username;
-  const first = typeof user.firstName === "string" ? user.firstName.trim() : "";
-  const last = typeof user.lastName === "string" ? user.lastName.trim() : "";
-  const combined = `${first} ${last}`.trim();
-  if (combined) return combined;
-  const email =
-    user.primaryEmailAddress?.emailAddress ||
-    user.emailAddresses?.[0]?.emailAddress ||
-    "";
-  if (typeof email === "string" && email.includes("@")) {
-    return email.split("@")[0];
-  }
-  if (typeof email === "string" && email.trim()) return email.trim();
-  return null;
-}
-
-function authStatusLabel() {
-  if (!isSignedIn(state.auth)) {
-    return isAuthUnavailable() ? "로그인 불가 — 이력은 Clerk 인증 필요" : "비로그인";
-  }
-  const name =
-    (typeof state.auth.displayName === "string" && state.auth.displayName.trim()) ||
-    null;
-  // Never show raw Clerk ids like user_xxx in the nav chrome.
-  if (name && !name.startsWith("user_")) {
-    return name;
-  }
-  if (state.auth.provider === "stub") {
-    return "데모 사용자";
-  }
-  return "로그인됨";
-}
-
-function renderAuthControls() {
-  const signedIn = isSignedIn(state.auth);
-  const authUnavailable = isAuthUnavailable();
-  const status = $("#auth-status");
-  if (status) {
-    status.textContent = authStatusLabel();
-    status.title = signedIn && state.auth.userId ? `계정 ID: ${state.auth.userId}` : "";
-  }
-  const login = $("#auth-login");
-  const logout = $("#auth-logout");
-  const dashboard = $("#nav-dashboard");
-  if (login) {
-    login.classList.toggle("hidden", signedIn);
-    login.disabled = authUnavailable;
-    login.title = authUnavailable
-      ? "이 배포는 로그인이 설정되지 않았습니다. 검수 자체는 계속 이용 가능합니다."
-      : "";
-  }
-  if (logout) {
-    logout.classList.toggle("hidden", !signedIn);
-  }
-  if (dashboard) {
-    dashboard.classList.toggle("hidden", !signedIn);
-  }
-}
-
-function setSignedOutAuth() {
-  state.auth = {
-    signedIn: false,
-    userId: null,
-    displayName: null,
-    sessionToken: null,
-    provider: hasClerkMode() ? "clerk" : (isStubAuthAvailable() ? "stub" : "off"),
-  };
-}
-
-function signInStub() {
-  state.auth = {
-    signedIn: true,
-    userId: "demo-user",
-    displayName: "데모 사용자",
-    sessionToken: null,
-    provider: "stub",
-  };
-  persistAuth();
-  renderAuthControls();
-  renderDashboard();
-}
-
-function signOutStub() {
-  setSignedOutAuth();
-  state.history = { granularity: "day", buckets: [], runs: [] };
-  persistAuth();
-  renderAuthControls();
-  renderDashboard();
-  if ($("#view-dashboard") && !$("#view-dashboard").classList.contains("hidden")) {
-    showView("view-upload");
-  }
-}
-
-function initAuth() {
-  if (hasClerkMode() || !isStubAuthAvailable()) {
-    // Stub sessions from a prior deploy (e.g. stub used to be allowed here)
-    // can never authenticate against a server that no longer accepts them —
-    // don't restore a fake "signed in" state that just 401s on every call.
-    setSignedOutAuth();
-    renderAuthControls();
-    return;
-  }
-  try {
-    const saved = JSON.parse(localStorage.getItem("mdp-auth") || "null");
-    if (saved && typeof saved.signedIn === "boolean") {
-      state.auth = {
-        signedIn: Boolean(saved.signedIn),
-        userId: typeof saved.userId === "string" ? saved.userId : null,
-        displayName:
-          typeof saved.displayName === "string" && saved.displayName.trim()
-            ? saved.displayName.trim()
-            : saved.userId === "demo-user"
-              ? "데모 사용자"
-              : null,
-        sessionToken: null,
-        provider: "stub",
-      };
-    }
-  } catch (_) {}
-  renderAuthControls();
-}
-
-async function loadClerk() {
-  const publishableKey = getClerkPublishableKey();
-  if (!publishableKey) {
-    return null;
-  }
-  const encodedDomain = publishableKey.split("_")[2];
-  const clerkDomain = atob(encodedDomain).slice(0, -1);
-  await Promise.all([
-    loadScript(`https://${clerkDomain}/npm/@clerk/ui@1/dist/ui.browser.js`),
-    loadScript(`https://${clerkDomain}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`, {
-      "data-clerk-publishable-key": publishableKey,
-    }),
-  ]);
-  await window.Clerk.load({
-    ui: { ClerkUI: window.__internal_ClerkUICtor },
-  });
-  window.Clerk.addListener(() => {
-    void syncAuthFromClerk();
-  });
-  await syncAuthFromClerk();
-  return window.Clerk;
-}
-
-function loadScript(src, attributes = {}) {
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${src}"]`);
-    if (existing) {
-      if (existing.dataset.loaded === "true") {
-        resolve();
-        return;
-      }
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error(`스크립트를 불러오지 못했습니다: ${src}`)), {
-        once: true,
-      });
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = src;
-    script.defer = true;
-    script.crossOrigin = "anonymous";
-    Object.entries(attributes).forEach(([name, value]) => {
-      script.setAttribute(name, value);
-    });
-    script.addEventListener("load", () => {
-      script.dataset.loaded = "true";
-      resolve();
-    }, { once: true });
-    script.addEventListener("error", () => reject(new Error(`스크립트를 불러오지 못했습니다: ${src}`)), {
-      once: true,
-    });
-    document.head.append(script);
-  });
-}
-
-async function refreshAuthSession() {
-  if (!hasClerkMode() || !window.Clerk?.loaded) {
-    return;
-  }
-  const session = window.Clerk.session;
-  const user = window.Clerk.user;
-  if (!session || !user) {
-    if (state.auth.signedIn) {
-      signOutStub();
-    }
-    return;
-  }
-  const sessionToken = await session.getToken();
-  state.auth = {
-    signedIn: true,
-    userId: user.id,
-    displayName: clerkDisplayName(user),
-    sessionToken,
-    provider: "clerk",
-  };
-  renderAuthControls();
-}
-
-async function syncAuthFromClerk() {
-  await refreshAuthSession();
-  renderDashboard();
-  if (isSignedIn(state.auth) && !$("#view-dashboard")?.classList.contains("hidden")) {
-    await loadHistory(state.history.granularity);
-  }
-}
-
-async function signIn() {
-  if (!hasClerkMode()) {
-    if (isAuthUnavailable()) {
-      toast("로그인을 사용할 수 없습니다 — 이력 대시보드는 Clerk 인증이 필요합니다.");
-      return;
-    }
-    signInStub();
-    return;
-  }
-  if (!window.Clerk?.loaded) {
-    toast("로그인 모듈을 아직 불러오지 못했습니다.");
-    return;
-  }
-  await window.Clerk.openSignIn({
-    withSignUp: true,
-    fallbackRedirectUrl: window.location.href,
-    signUpFallbackRedirectUrl: window.location.href,
-  });
-}
-
-async function signOut() {
-  if (!hasClerkMode()) {
-    signOutStub();
-    return;
-  }
-  if (!window.Clerk?.loaded) {
-    signOutStub();
-    return;
-  }
-  await window.Clerk.signOut();
-  signOutStub();
-}
+const reportView = createReportView({
+  $,
+  el,
+  renderIssueGroups,
+  renderChecklist: (report) => renderChecklist(report),
+  renderFileEditors: () => renderFileEditors(),
+  refreshEditedActions: () => refreshEditedActions(),
+});
+const { renderReport } = reportView;
 
 /* ---------- dropzones ---------- */
+
 function buildDropzones() {
   const grid = $("#dropzones");
   grid.innerHTML = "";
@@ -489,149 +237,6 @@ async function runPreflight(filesOverride = null) {
   }
 }
 
-/* ---------- render report ---------- */
-const SEV_LABEL = { error: "error", warning: "warning", info: "info" };
-
-function renderReport(r) {
-  const s = r.summary;
-
-  // download link
-  const dl = $("#download-md");
-  dl.href = `/api/preflight/runs/${r.run_id}/report.md`;
-
-  // verdict
-  const verdict = $("#verdict");
-  const errCount = s.by_severity.error || 0;
-  const warnCount = s.by_severity.warning || 0;
-  if (s.passed) {
-    verdict.className = "verdict pass";
-    verdict.innerHTML = `검수 통과 <span class="v-sub">차단 이슈 없음 · 상품 ${s.checked_rows}건 검수</span>`;
-  } else {
-    verdict.className = "verdict fail";
-    verdict.innerHTML = `검수 실패 <span class="v-sub">error ${errCount}건 · warning ${warnCount}건 · 상품 ${s.checked_rows}건 검수</span>`;
-  }
-
-  // stat tiles
-  const stats = $("#stats");
-  stats.innerHTML = "";
-  const tiles = [
-    { label: "전체 이슈", value: s.total_issues, cls: "" },
-    { label: "error", value: errCount, cls: errCount ? "is-error" : "" },
-    { label: "warning", value: warnCount, cls: warnCount ? "is-warning" : "" },
-    { label: "검수 상품", value: s.checked_rows, cls: "" },
-  ];
-  tiles.forEach((t) => {
-    const tile = el("div", `stat-tile ${t.cls}`);
-    tile.append(el("div", "stat-value", String(t.value)));
-    tile.append(el("div", "stat-label", t.label));
-    stats.append(tile);
-  });
-
-  // issues
-  $("#issue-count").textContent = r.issues.length;
-  const list = $("#issues");
-  list.innerHTML = "";
-  if (r.issues.length === 0) {
-    list.classList.remove("issue-list");
-    list.append(el("div", "empty-clean", "✓ 검수 통과 — 발견된 문제가 없습니다."));
-  } else {
-    list.classList.remove("issue-list");
-    renderIssueGroups(r.issues, list);
-  }
-
-  // ai summary + provenance
-  const ai = $("#ai-summary");
-  const isFallback = r.generated_by !== "llm";
-  ai.className = `ai-panel has-badge ${isFallback ? "is-fallback" : "is-llm"}`;
-  ai.innerHTML = "";
-  const badge = el("span", `prov-badge ${r.generated_by === "llm" ? "llm" : "fallback"}`, r.generated_by);
-  const note = el(
-    "div",
-    "ai-note",
-    isFallback
-      ? "표준 요약 · 미리 정해둔 규칙 결과를 바탕으로 정리한 문장입니다."
-      : "AI 요약 · 이번 검수에서 먼저 봐야 할 포인트를 정리했습니다.",
-  );
-  ai.append(note);
-  ai.append(badge);
-  ai.append(el("div", "ai-text", r.ai_summary || "요약이 생성되지 않았습니다."));
-
-  renderFileSummaries(r.file_summaries || []);
-
-  // checklist
-  renderChecklist(r);
-  renderFileEditors();
-  refreshEditedActions();
-}
-
-function sevRank(sev) {
-  return { error: 3, warning: 2, info: 1 }[sev] || 0;
-}
-
-function renderIssue(iss) {
-  const row = el("div", `issue-row sev-${iss.severity}`);
-
-  row.append(el("span", `badge sev-${iss.severity}`, SEV_LABEL[iss.severity] || iss.severity));
-
-  const bodyEl = el("div", "issue-body");
-  bodyEl.append(el("div", "issue-title", iss.title || iss.code));
-  if (iss.message) bodyEl.append(el("div", "issue-msg", iss.message));
-
-  const detail = el("div", "issue-detail");
-  const entity = iss.entity || {};
-  Object.entries(entity).forEach(([k, v]) => {
-    const span = el("span");
-    span.append(document.createTextNode(`${displayLabel(k)}: `));
-    span.append(el("b", null, String(v)));
-    detail.append(span);
-  });
-  if (iss.observed != null) {
-    const span = el("span");
-    span.append(document.createTextNode("관측: "));
-    span.append(el("b", null, String(iss.observed)));
-    detail.append(span);
-  }
-  if (iss.expected != null) {
-    const span = el("span");
-    span.append(document.createTextNode("기대: "));
-    span.append(el("b", null, String(iss.expected)));
-    detail.append(span);
-  }
-  if (detail.childNodes.length) bodyEl.append(detail);
-  if (iss.suggestion) {
-    const sug = el("div", "issue-msg");
-    sug.style.color = "var(--mute)";
-    sug.textContent = `→ ${iss.suggestion}`;
-    bodyEl.append(sug);
-  }
-  const review = state.reviewResults[issueKey(iss)];
-  if (review) {
-    bodyEl.append(buildReviewStatusBadge(review));
-  }
-  bodyEl.append(el("span", "rule-chip rule-chip-muted", iss.code));
-  if (iss.location?.file) {
-    const jump = el("button", "btn btn-ghost issue-jump-btn", "파일에서 보기");
-    jump.type = "button";
-    jump.addEventListener("click", () =>
-      jumpToIssueLocation(iss.location, iss.related_locations || []),
-    );
-    bodyEl.append(jump);
-  }
-  row.append(bodyEl);
-
-  const loc = iss.location || {};
-  const locText = [
-    SOURCE_LABELS[loc.file] ?? loc.file,
-    loc.row != null ? `행 ${loc.row}` : null,
-    loc.column ? displayLabel(loc.column) : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  row.append(el("span", "issue-loc", locText));
-
-  return row;
-}
-
 /* ---------- reset ---------- */
 function resetToUpload() {
   state.files = { promotion_plan: null, product_master: null, inventory: null };
@@ -650,41 +255,6 @@ function resetToUpload() {
   refreshRunBtn();
   refreshEditedActions();
   showView("view-upload");
-}
-
-/* ---------- theme (light / dark / system) ---------- */
-const mql = window.matchMedia("(prefers-color-scheme: dark)");
-
-function applyTheme(pref) {
-  const dark = pref === "dark" || (pref === "system" && mql.matches);
-  document.documentElement.dataset.theme = dark ? "dark" : "light";
-  document.documentElement.dataset.themePref = pref;
-  document.querySelectorAll(".theme-btn").forEach((b) =>
-    b.classList.toggle("active", b.dataset.themeSet === pref),
-  );
-}
-
-function initTheme() {
-  let pref = "system";
-  try {
-    pref = localStorage.getItem("mdp-theme") || "system";
-  } catch (_) {}
-  applyTheme(pref);
-  document.querySelectorAll(".theme-btn").forEach((b) =>
-    b.addEventListener("click", () => {
-      const p = b.dataset.themeSet;
-      try {
-        localStorage.setItem("mdp-theme", p);
-      } catch (_) {}
-      applyTheme(p);
-    }),
-  );
-  // 시스템 모드일 때 OS 테마 변경을 실시간 반영
-  mql.addEventListener("change", () => {
-    if ((document.documentElement.dataset.themePref || "system") === "system") {
-      applyTheme("system");
-    }
-  });
 }
 
 /* ---------- init ---------- */
@@ -780,35 +350,7 @@ async function buildParsedState(file) {
   return null;
 }
 
-function groupIssuesByFile(issues) {
-  return issues.reduce((acc, issue) => {
-    const file = issue.location?.file;
-    if (!file) {
-      return acc;
-    }
-    const bucket = acc[file] || [];
-    bucket.push(issue);
-    acc[file] = bucket;
-    return acc;
-  }, {});
-}
 
-function renderFileSummaries(fileSummaries) {
-  let host = $("#ai-file-summaries");
-  if (!host) {
-    host = el("div", "ai-file-summaries");
-    host.id = "ai-file-summaries";
-    $("#ai-summary").append(host);
-  }
-  host.innerHTML = "";
-  fileSummaries.forEach((summary) => {
-    const card = el("div", "ai-file-card");
-    card.append(el("div", "ai-file-name", summary.file));
-    card.append(el("div", "ai-file-meta", `${summary.issue_count}건`));
-    card.append(el("div", "ai-file-headline", summary.headline));
-    host.append(card);
-  });
-}
 
 function renderDashboard() {
   const host = $("#history-dashboard");
@@ -1255,54 +797,7 @@ function syncEditorPresentation(fileKey, parsed) {
   }
 }
 
-function renderIssueGroups(issues, host) {
-  const grouped = groupIssuesByFile(issues);
-  const commonIssues = issues.filter((issue) => !issue.location?.file);
 
-  FIELDS.forEach((field) => {
-    const fileIssues = grouped[field.key] || [];
-    if (fileIssues.length === 0) {
-      return;
-    }
-    host.append(buildIssueGroup(SOURCE_LABELS[field.key], fileIssues));
-  });
-
-  if (commonIssues.length > 0) {
-    host.append(buildIssueGroup("공통 / 교차 참조", commonIssues));
-  }
-}
-
-function buildIssueGroup(label, issues) {
-  const wrap = el("section", "issue-group");
-  const head = el("div", "issue-group-head");
-  const title = el("h3", "issue-group-title", label);
-  const meta = el("div", "issue-group-meta");
-  const errorCount = issues.filter((issue) => issue.severity === "error").length;
-  const warningCount = issues.filter((issue) => issue.severity === "warning").length;
-  const infoCount = issues.filter((issue) => issue.severity === "info").length;
-
-  if (errorCount > 0) {
-    meta.append(el("span", "issue-group-badge error", `error ${errorCount}`));
-  }
-  if (warningCount > 0) {
-    meta.append(el("span", "issue-group-badge warning", `warning ${warningCount}`));
-  }
-  if (infoCount > 0) {
-    meta.append(el("span", "issue-group-badge info", `info ${infoCount}`));
-  }
-
-  head.append(title);
-  head.append(meta);
-  wrap.append(head);
-
-  const list = el("div", "issue-list");
-  const sorted = [...issues].sort(
-    (a, b) => sevRank(b.severity) - sevRank(a.severity) || a.code.localeCompare(b.code),
-  );
-  sorted.forEach((issue) => list.append(renderIssue(issue)));
-  wrap.append(list);
-  return wrap;
-}
 
 async function rerunWithEditedFiles() {
   const overrides = {};
@@ -1518,17 +1013,6 @@ function buildChecklistInlineEditor(itemKey, item) {
   return wrap;
 }
 
-function buildReviewStatusBadge(review) {
-  if (review.status === "fixed") {
-    return el("span", "review-status status-fixed", "수정완료");
-  }
-  const badge = el(
-    "span",
-    `review-status status-failed sev-${review.severity}`,
-    "수정실패",
-  );
-  return badge;
-}
 
 function mergeChecklistItems(currentItems) {
   const merged = [...currentItems];
