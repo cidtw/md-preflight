@@ -381,7 +381,7 @@ ruff · basedpyright · pytest 143 · verify_router/error_format/dom_util
 | **T57** | N파일 업로드 · `POST /detect-roles` · 역할 매핑 UI |
 | **T58** | 멀티시트 xlsx 시트 단위 아티팩트 분리 · `promotion_sheet` 등 선택자 · `multisheet` 샘플 |
 | **T59** | `role_mappings` 폼 → Report/MD/결과 UI 감사 기록 |
-| **커밋** | `8c38c20` (T56–57) · 본 세션 (T58–59) |
+| **커밋** | `8c38c20` (T56–57) · `ded69df` (T58–59) · pytest **150** |
 
 ---
 
