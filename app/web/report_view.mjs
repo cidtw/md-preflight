@@ -80,6 +80,48 @@ export function createReportView(deps) {
       });
     }
 
+    // role mappings (T59)
+    const roleMaps = Array.isArray(r.role_mappings) ? r.role_mappings : [];
+    const roleCount = $("#role-mapping-count");
+    if (roleCount) roleCount.textContent = String(roleMaps.length);
+    const roleHost = $("#role-mappings");
+    if (roleHost) {
+      roleHost.innerHTML = "";
+      if (roleMaps.length === 0) {
+        roleHost.append(
+          el(
+            "div",
+            "empty-mapping",
+            "역할 매핑 기록 없음 — 직접 3프레임 업로드이거나 어댑터를 거치지 않았습니다.",
+          ),
+        );
+      } else {
+        const table = el("table", "mapping-table");
+        const thead = el("thead");
+        const hr = el("tr");
+        ["프레임", "소스 파일", "시트", "신뢰도"].forEach((label) => {
+          hr.append(el("th", null, label));
+        });
+        thead.append(hr);
+        table.append(thead);
+        const tbody = el("tbody");
+        roleMaps.forEach((m) => {
+          const tr = el("tr");
+          tr.append(el("td", "mono mapping-canonical", m.frame || "—"));
+          tr.append(el("td", null, m.label || m.source_filename || "—"));
+          tr.append(el("td", "mono", m.sheet_name || "—"));
+          const conf =
+            typeof m.confidence === "number"
+              ? `${Math.round(m.confidence * 100)}%`
+              : "—";
+          tr.append(el("td", "mono", conf));
+          tbody.append(tr);
+        });
+        table.append(tbody);
+        roleHost.append(table);
+      }
+    }
+
     // column mappings (T50)
     const mappings = Array.isArray(r.column_mappings) ? r.column_mappings : [];
     const mapCount = $("#mapping-count");

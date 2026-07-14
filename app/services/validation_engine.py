@@ -17,7 +17,12 @@ from app.ingest.normalize import build_context
 from app.rules import RULES, compute_rule_set_version
 from app.rules.base import Rule
 from app.schemas.issue import ValidationIssue
-from app.schemas.report import ColumnMappingItem, PreflightReport, PreflightSummary
+from app.schemas.report import (
+    ColumnMappingItem,
+    PreflightReport,
+    PreflightSummary,
+    RoleMappingItem,
+)
 from app.services.checklist_service import build_checklist_items
 from app.services.llm_service import FallbackNarrativeGenerator, NarrativeGenerator
 
@@ -31,6 +36,15 @@ class UploadedFiles:
     inventory: UploadFile
 
 
+@dataclass(frozen=True, slots=True)
+class SheetSelectors:
+    """Optional worksheet names when a frame is backed by a multi-sheet workbook (T58)."""
+
+    promotion_sheet: str | None = None
+    product_sheet: str | None = None
+    inventory_sheet: str | None = None
+
+
 async def read_upload(file: UploadFile) -> tuple[str, bytes]:
     content = await file.read()
     if not content:
@@ -42,14 +56,29 @@ async def read_upload(file: UploadFile) -> tuple[str, bytes]:
 async def build_uploaded_context(
     files: UploadedFiles,
     thresholds: RuleThresholds,
+    *,
+    sheets: SheetSelectors | None = None,
 ) -> PreflightContext:
+    selectors = sheets or SheetSelectors()
     promotion_name, promotion_content = await read_upload(files.promotion_plan)
     product_name, product_content = await read_upload(files.product_master)
     inventory_name, inventory_content = await read_upload(files.inventory)
     return build_context(
-        load_table(promotion_name, promotion_content),
-        load_table(product_name, product_content),
-        load_table(inventory_name, inventory_content),
+        load_table(
+            promotion_name,
+            promotion_content,
+            sheet_name=selectors.promotion_sheet,
+        ),
+        load_table(
+            product_name,
+            product_content,
+            sheet_name=selectors.product_sheet,
+        ),
+        load_table(
+            inventory_name,
+            inventory_content,
+            sheet_name=selectors.inventory_sheet,
+        ),
         thresholds,
     )
 
@@ -59,6 +88,7 @@ def validate_context(
     *,
     rules: Sequence[Rule] | None = None,
     generator: NarrativeGenerator | None = None,
+    role_mappings: Sequence[RoleMappingItem] | None = None,
 ) -> PreflightReport:
     issues: list[ValidationIssue] = []
     failed_rules: list[str] = []
@@ -95,6 +125,7 @@ def validate_context(
         created_at=datetime.now(tz=UTC),
         rule_set_version=compute_rule_set_version(ctx.thresholds, rules=active_rules),
         column_mappings=column_mappings,
+        role_mappings=list(role_mappings or ()),
     )
 
 

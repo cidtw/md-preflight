@@ -17,6 +17,8 @@ class ArtifactRoleSuggestion(BaseModel):
 
     artifact_id: str
     filename: str
+    source_filename: str | None = None
+    sheet_name: str | None = None
     headers: list[str] = Field(default_factory=list)
     suggested_role: str | None = None
     assigned_role: str | None = None

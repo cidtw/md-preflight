@@ -94,7 +94,7 @@ const state = {
     runs: [],
   },
   catalog: null,
-  /** @type {Array<{id: string, file: File, filename: string, role: string|null, suggestedRole: string|null, confidence: number, headers: string[], scores: object[]}>} */
+  /** @type {Array<{id: string, file: File, filename: string, sourceFilename: string, sheetName: string|null, role: string|null, suggestedRole: string|null, confidence: number, headers: string[], scores: object[]}>} */
   artifacts: [],
   detectBusy: false,
 };
@@ -371,6 +371,8 @@ async function addArtifacts(fileList) {
       id: newArtifactId(),
       file,
       filename: file.name,
+      sourceFilename: file.name,
+      sheetName: null,
       role: null,
       suggestedRole: null,
       confidence: 0,
@@ -386,9 +388,28 @@ async function addArtifacts(fileList) {
   await runRoleDetection();
 }
 
+function uniqueSourceFiles() {
+  const map = new Map();
+  state.artifacts.forEach((artifact) => {
+    const key = `${artifact.file.name}::${artifact.file.size}`;
+    map.set(key, artifact.file);
+  });
+  return [...map.values()];
+}
+
+function priorRoleByKey(sourceFilename, sheetName) {
+  const hit = state.artifacts.find(
+    (a) =>
+      (a.sourceFilename || a.file.name) === sourceFilename &&
+      (a.sheetName || null) === (sheetName || null) &&
+      a.role,
+  );
+  return hit?.role || null;
+}
+
 async function runRoleDetection() {
   if (state.artifacts.length === 0) {
-    syncFilesFromRoles();
+    await syncFilesFromRoles();
     renderRoleMapper();
     renderFrameReadyBar();
     refreshRunBtn();
@@ -397,9 +418,10 @@ async function runRoleDetection() {
   state.detectBusy = true;
   renderFrameReadyBar();
   try {
+    const sources = uniqueSourceFiles();
     const fd = new FormData();
-    state.artifacts.forEach((artifact) => {
-      fd.append("files", artifact.file, artifact.filename);
+    sources.forEach((file) => {
+      fd.append("files", file, file.name);
     });
     const res = await fetch("/api/preflight/detect-roles", {
       method: "POST",
@@ -414,30 +436,36 @@ async function runRoleDetection() {
       throw new Error(detail);
     }
     const payload = await res.json();
-    const byName = new Map();
-    (payload.artifacts || []).forEach((item) => {
-      byName.set(item.filename, item);
-    });
-    // Match by order when filenames collide
     const ordered = payload.artifacts || [];
-    state.artifacts.forEach((artifact, index) => {
-      const hit = ordered[index] || byName.get(artifact.filename);
-      if (!hit) return;
-      artifact.headers = hit.headers || [];
-      artifact.suggestedRole = hit.suggested_role || null;
-      artifact.confidence = hit.confidence || 0;
-      artifact.scores = hit.scores || [];
-      // Keep manual role if user already set; else use greedy assignment
-      if (!artifact.role) {
-        artifact.role = hit.assigned_role || hit.suggested_role || null;
-      }
+    const fileByName = new Map(sources.map((file) => [file.name, file]));
+    state.artifacts = ordered.map((hit) => {
+      const sourceName = hit.source_filename || hit.filename;
+      const sheetName = hit.sheet_name || null;
+      const file = fileByName.get(sourceName) || sources[0];
+      const kept = priorRoleByKey(sourceName, sheetName);
+      return {
+        id: hit.artifact_id || newArtifactId(),
+        file,
+        filename: hit.filename || sourceName,
+        sourceFilename: sourceName,
+        sheetName,
+        role: kept || hit.assigned_role || hit.suggested_role || null,
+        suggestedRole: hit.suggested_role || null,
+        confidence: hit.confidence || 0,
+        headers: hit.headers || [],
+        scores: hit.scores || [],
+      };
     });
     resolveRoleConflicts();
+    const sheets = state.artifacts.filter((a) => a.sheetName).length;
+    if (sheets > 0) {
+      toast(`워크북 시트 ${sheets}개를 테이블로 분리했습니다.`, { durationMs: 3500 });
+    }
   } catch (err) {
     toast(err.message || "역할 추정에 실패했습니다.");
   } finally {
     state.detectBusy = false;
-    syncFilesFromRoles();
+    await syncFilesFromRoles();
     renderRoleMapper();
     renderFrameReadyBar();
     refreshRunBtn();
@@ -557,16 +585,13 @@ function renderRoleMapper() {
 
   state.artifacts.forEach((artifact) => {
     const tr = el("tr");
-    const nameCell = el("td", null, artifact.filename);
-    nameCell.append(
-      el(
-        "div",
-        "caption mute",
-        artifact.headers?.length
-          ? `헤더 ${artifact.headers.length}개`
-          : fmtSize(artifact.file.size),
-      ),
-    );
+    const nameCell = el("td");
+    nameCell.append(el("div", null, artifact.filename));
+    const metaBits = [];
+    if (artifact.sheetName) metaBits.push(`시트 ${artifact.sheetName}`);
+    if (artifact.headers?.length) metaBits.push(`헤더 ${artifact.headers.length}개`);
+    else metaBits.push(fmtSize(artifact.file.size));
+    nameCell.append(el("div", "caption mute", metaBits.join(" · ")));
     tr.append(nameCell);
 
     const suggestLabel = artifact.suggestedRole
@@ -629,6 +654,23 @@ function refreshRunBtn() {
 }
 
 /* ---------- run preflight ---------- */
+function buildRoleMappingsPayload() {
+  return FIELDS.map((field) => {
+    const artifact = state.artifacts.find((a) => a.role === field.key);
+    if (!artifact) return null;
+    return {
+      frame: field.key,
+      source_filename: artifact.sourceFilename || artifact.file.name,
+      sheet_name: artifact.sheetName || null,
+      label: artifact.filename,
+      confidence:
+        typeof artifact.confidence === "number" ? artifact.confidence : null,
+      suggested_role: artifact.suggestedRole || null,
+      confirmed: true,
+    };
+  }).filter(Boolean);
+}
+
 async function runPreflight(filesOverride = null) {
   const fd = new FormData();
   FIELDS.forEach((f) => {
@@ -636,6 +678,23 @@ async function runPreflight(filesOverride = null) {
     fd.append(f.key, file);
   });
   fd.append("use_llm", $("#use-llm").checked ? "true" : "false");
+  // T58: sheet selectors when a frame is backed by a workbook sheet
+  const sheetFields = {
+    promotion_plan: "promotion_sheet",
+    product_master: "product_sheet",
+    inventory: "inventory_sheet",
+  };
+  FIELDS.forEach((f) => {
+    const artifact = state.artifacts.find((a) => a.role === f.key);
+    if (artifact?.sheetName) {
+      fd.append(sheetFields[f.key], artifact.sheetName);
+    }
+  });
+  // T59: adapter role mapping audit trail
+  const roleMappings = buildRoleMappingsPayload();
+  if (roleMappings.length > 0) {
+    fd.append("role_mappings", JSON.stringify(roleMappings));
+  }
 
   showView("view-loading");
   try {

@@ -96,6 +96,8 @@
 | T55 | 회귀·문서 · freeze | 7/23–24 | 예정 |
 | T56 | 입력 어댑터 ADR (X/Z) | 7/14 | **DONE** |
 | T57 | N파일 업로드 + 역할 매핑 UI | 7/14 | **DONE** |
+| T58 | 단일 xlsx 멀티시트 → 프레임 분리 | 7/14 | **DONE** |
+| T59 | 역할 매핑 Report/MD 기록 | 7/14 | **DONE** |
 
 ---
 
@@ -331,7 +333,7 @@
 | 일자 | pytest | 비고 |
 |------|--------|------|
 | 7/14 시작 직전 | 132 | 발표 KPI |
-| **7/14 종료** | **143** | T48–T53 |
+| **7/14 종료** | **143+** | T48–T59 (별칭·어댑터·시트·역할 감사) |
 
 ---
 
@@ -369,6 +371,17 @@ ruff · basedpyright · pytest 143 · verify_router/error_format/dom_util
 
 #### 한 줄 회고
 > 중간발표가 남긴 구멍을 final RC 전체가 아니라 **ingest 유연성 + 화면 구조 + 설정 SSOT**로 닫았다. 판정 경계(D3)는 유지.
+
+#### 1.12 연속 세션 — T56–T59 (입력 어댑터 X/Z)
+
+| 항목 | 내용 |
+|------|------|
+| **결정** | X/Z 채택 — 정규 3프레임 유지, 어댑터로 입력 개방 (Y 폐기) |
+| **T56** | ADR `docs/adr/0001-input-adapter-canonical-frames.md` · Frame/Role/Mapping 용어 |
+| **T57** | N파일 업로드 · `POST /detect-roles` · 역할 매핑 UI |
+| **T58** | 멀티시트 xlsx 시트 단위 아티팩트 분리 · `promotion_sheet` 등 선택자 · `multisheet` 샘플 |
+| **T59** | `role_mappings` 폼 → Report/MD/결과 UI 감사 기록 |
+| **커밋** | `8c38c20` (T56–57) · 본 세션 (T58–59) |
 
 ---
 

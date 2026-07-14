@@ -52,6 +52,20 @@ class ColumnMappingItem(BaseModel):
     canonical: str
 
 
+class RoleMappingItem(BaseModel):
+    """Audit record: upload artifact assigned to a canonical frame (T59)."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
+    frame: str
+    source_filename: str
+    sheet_name: str | None = None
+    label: str | None = None
+    confidence: float | None = None
+    suggested_role: str | None = None
+    confirmed: bool = True
+
+
 class PreflightReport(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
@@ -67,3 +81,4 @@ class PreflightReport(BaseModel):
     created_at: datetime
     rule_set_version: str
     column_mappings: list[ColumnMappingItem] = Field(default_factory=list)
+    role_mappings: list[RoleMappingItem] = Field(default_factory=list)

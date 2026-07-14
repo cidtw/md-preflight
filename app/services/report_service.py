@@ -24,6 +24,38 @@ def render_markdown_report(report: PreflightReport) -> str:
     lines.extend(
         f"- {item.file}: {item.issue_count}건 · {item.headline}" for item in report.file_summaries
     )
+    if report.role_mappings:
+        lines.extend(
+            [
+                "",
+                "## Role Mapping",
+                "",
+                "Upload artifacts assigned to canonical frames:",
+                "",
+            ]
+        )
+        lines.extend(
+            (
+                f"- `{item.frame}` ← `{item.source_filename}`"
+                + (f" · sheet `{item.sheet_name}`" if item.sheet_name else "")
+                + (
+                    f" · confidence {item.confidence:.0%}"
+                    if item.confidence is not None
+                    else ""
+                )
+            )
+            for item in report.role_mappings
+        )
+    else:
+        lines.extend(
+            [
+                "",
+                "## Role Mapping",
+                "",
+                "No adapter role mappings recorded (direct three-frame upload).",
+                "",
+            ]
+        )
     if report.column_mappings:
         lines.extend(
             [

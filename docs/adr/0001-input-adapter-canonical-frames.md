@@ -41,7 +41,7 @@ Column aliases (T48) only relax header *names*, not role assignment or multi-fil
 
 ## Follow-ups
 
-- T57: N-file upload + auto role detect + manual confirm  
-- T58: multi-sheet workbook split  
-- T59: persist mapping on `PreflightReport`  
-- T60: promotion-type profiles (optional fields / rule packs)
+- [x] T57: N-file upload + auto role detect + manual confirm  
+- [x] T58: multi-sheet workbook split  
+- [x] T59: persist mapping on `PreflightReport`  
+- [ ] T60: promotion-type profiles (optional fields / rule packs)

@@ -137,6 +137,7 @@
           <a href="/samples/alias_ko/product_master.csv" download>한글 마스터</a>
           <a href="/samples/alias_ko/inventory.csv" download>한글 재고</a>
           <a href="/samples/clean/promotion_plan.csv" download>clean (이슈 0)</a>
+          <a href="/samples/multisheet/preflight_bundle.xlsx" download>멀티시트 xlsx</a>
         </div>
       </div>
     </section>
@@ -177,6 +178,12 @@
       <div class="result-section result-summary panel">
         <h2 class="display-sm section-title">검수 요약</h2>
         <div id="ai-summary" class="ai-panel"></div>
+      </div>
+
+      <div class="result-section panel" id="role-mapping-section">
+        <h2 class="display-sm section-title">역할 매핑 <span id="role-mapping-count" class="count-chip"></span></h2>
+        <p class="caption mute">어댑터가 업로드(·시트)를 정규 프레임에 할당한 내역입니다 (T59).</p>
+        <div id="role-mappings" class="column-mapping-list"></div>
       </div>
 
       <div class="result-section panel" id="column-mapping-section">
@@ -296,6 +303,6 @@
   <div id="toast" class="toast hidden" role="alert"></div>
 
   <!-- __MDP_CONFIG_PLACEHOLDER__ -->
-  <script type="module" src="/static/app.js?v=7"></script>
+  <script type="module" src="/static/app.js?v=8"></script>
 </body>
 </html>

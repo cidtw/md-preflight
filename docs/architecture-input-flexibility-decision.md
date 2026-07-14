@@ -154,3 +154,5 @@ Z = **X를 시간축으로 깐 것**. Y로 점프하지 않는다.
 ### 실행 상태
 - [x] T56 ADR: `docs/adr/0001-input-adapter-canonical-frames.md`
 - [x] T57 detect-roles API + N파일 역할 매핑 UI (2026-07-14)
+- [x] T58 멀티시트 xlsx 분리 + sheet selectors (2026-07-14)
+- [x] T59 role_mappings on PreflightReport / MD / UI (2026-07-14)

@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
+from pydantic import TypeAdapter, ValidationError
 
 from app.api.deps import (
     get_app_settings,
@@ -17,7 +18,7 @@ from app.core.errors import IngestError, UploadValidationError
 from app.rules import RULES
 from app.schemas.catalog import PreflightCatalog
 from app.schemas.history import HistoryBucket, RunHistoryRecord
-from app.schemas.report import PreflightReport
+from app.schemas.report import PreflightReport, RoleMappingItem
 from app.schemas.role_detect import DetectRolesResponse
 from app.schemas.rule_meta import RuleMeta
 from app.schemas.source_meta import SourceMeta
@@ -26,7 +27,12 @@ from app.services.history_store import HistoryGranularity, HistoryStore
 from app.services.report_service import render_markdown_report
 from app.services.role_detect_service import detect_roles_from_uploads
 from app.services.run_store import RunStore
-from app.services.validation_engine import UploadedFiles, build_uploaded_context, validate_context
+from app.services.validation_engine import (
+    SheetSelectors,
+    UploadedFiles,
+    build_uploaded_context,
+    validate_context,
+)
 from app.sources import SOURCE_CATALOG
 
 router = APIRouter(prefix="/api/preflight", tags=["preflight"])
@@ -40,6 +46,28 @@ def build_report_download_filename(report: PreflightReport) -> str:
 
 def _iter_uploads(files: UploadedFiles) -> tuple[UploadFile, UploadFile, UploadFile]:
     return files.promotion_plan, files.product_master, files.inventory
+
+
+def _normalize_sheet_name(value: str | None) -> str | None:
+    if value is None:
+        return None
+    text = value.strip()
+    return text or None
+
+
+_ROLE_MAPPINGS_ADAPTER = TypeAdapter(list[RoleMappingItem])
+
+
+def parse_role_mappings_form(raw: str | None) -> list[RoleMappingItem]:
+    if raw is None or not str(raw).strip():
+        return []
+    try:
+        return _ROLE_MAPPINGS_ADAPTER.validate_json(raw)
+    except ValidationError as exc:
+        raise UploadValidationError(
+            message=f"Invalid role_mappings: {exc}",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        ) from exc
 
 
 async def validate_uploaded_files(files: UploadedFiles, settings: Settings) -> None:
@@ -68,12 +96,19 @@ async def build_report_from_uploads(
     settings: Settings,
     use_llm: bool,
     user_id: str | None,
+    sheets: SheetSelectors | None = None,
+    role_mappings: list[RoleMappingItem] | None = None,
 ) -> PreflightReport:
     await validate_uploaded_files(files, settings)
-    context = await build_uploaded_context(files, settings.rule_thresholds)
+    context = await build_uploaded_context(
+        files,
+        settings.rule_thresholds,
+        sheets=sheets,
+    )
     report = validate_context(
         context,
         generator=get_narrative_generator(settings=settings, use_llm=use_llm),
+        role_mappings=role_mappings,
     )
     try:
         run_store.save(report, owner_user_id=user_id)
@@ -97,6 +132,10 @@ async def preflight_files(
     settings: Annotated[Settings, Depends(get_app_settings)],
     user_id: Annotated[str | None, Depends(get_current_user_id)],
     use_llm: Annotated[bool, Form()] = True,
+    promotion_sheet: Annotated[str | None, Form()] = None,
+    product_sheet: Annotated[str | None, Form()] = None,
+    inventory_sheet: Annotated[str | None, Form()] = None,
+    role_mappings: Annotated[str | None, Form()] = None,
 ) -> PreflightReport:
     files = UploadedFiles(
         promotion_plan=promotion_plan,
@@ -111,6 +150,12 @@ async def preflight_files(
             settings=settings,
             use_llm=use_llm,
             user_id=user_id,
+            sheets=SheetSelectors(
+                promotion_sheet=_normalize_sheet_name(promotion_sheet),
+                product_sheet=_normalize_sheet_name(product_sheet),
+                inventory_sheet=_normalize_sheet_name(inventory_sheet),
+            ),
+            role_mappings=parse_role_mappings_form(role_mappings),
         )
     except UploadValidationError as exc:
         raise HTTPException(
@@ -133,6 +178,10 @@ async def validate_files(
     history_store: Annotated[HistoryStore, Depends(get_history_store)],
     settings: Annotated[Settings, Depends(get_app_settings)],
     user_id: Annotated[str | None, Depends(get_current_user_id)],
+    promotion_sheet: Annotated[str | None, Form()] = None,
+    product_sheet: Annotated[str | None, Form()] = None,
+    inventory_sheet: Annotated[str | None, Form()] = None,
+    role_mappings: Annotated[str | None, Form()] = None,
 ) -> PreflightReport:
     files = UploadedFiles(
         promotion_plan=promotion_plan,
@@ -147,6 +196,12 @@ async def validate_files(
             settings=settings,
             use_llm=False,
             user_id=user_id,
+            sheets=SheetSelectors(
+                promotion_sheet=_normalize_sheet_name(promotion_sheet),
+                product_sheet=_normalize_sheet_name(product_sheet),
+                inventory_sheet=_normalize_sheet_name(inventory_sheet),
+            ),
+            role_mappings=parse_role_mappings_form(role_mappings),
         )
     except UploadValidationError as exc:
         raise HTTPException(
