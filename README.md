@@ -79,6 +79,7 @@ app/web/          # 폼 → 로딩 → 리포트
 
 | 문서 | 경로 |
 |------|------|
+| **아키텍처 요약 (정본)** | [`docs/architecture.md`](docs/architecture.md) |
 | 서비스 플로우 | `2026-07-14-New-Service-Flow.md` |
 | 재설계 판 | `docs/redesign/` |
 | 개발 일지 | `docs/dev-journal-2026-07.md` |

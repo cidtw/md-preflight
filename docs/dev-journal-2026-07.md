@@ -542,6 +542,10 @@ R0–R6 **DONE** · R7+ (배포·실 KB·실 Agent) backlog
 
 #### 한 줄
 > 스켈레톤 quality/cost/risk 를 걷어내고, 플로우 문서의 ROP 재조정 제품을 결정론 파이프라인으로 채웠다.
+#### 아키텍처 요약 발행
+- 정본: `docs/architecture.md` (전체 구조 · 3단 파이프라인 · 공식 · 코드맵 · 배포 · v1 경계)
+- README / redesign 인덱스 링크 추가
+
 
 ### 2026-07-15 이후 — ROP 고도화 (예정)
 
