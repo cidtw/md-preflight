@@ -33,11 +33,27 @@ import { initTheme } from "./theme.mjs";
 import { createAuthUi } from "./auth_ui.mjs";
 import { createIssueView, groupIssuesByFile } from "./issue_view.mjs";
 import { createReportView } from "./report_view.mjs";
+import { createRouter, ROUTES } from "./router.mjs";
 
 const FIELDS = [
-  { key: "promotion_plan", role: "프로모션 계획", hint: "promotion_plan.xlsx / .csv" },
-  { key: "product_master", role: "상품 마스터", hint: "product_master.xlsx / .csv" },
-  { key: "inventory", role: "재고", hint: "inventory.xlsx / .csv" },
+  {
+    key: "promotion_plan",
+    role: "프로모션 계획",
+    hint: "csv / xlsx · 행사코드·행사가 별칭 가능",
+    blurb: "기간 · 행사가 · 증정 조건",
+  },
+  {
+    key: "product_master",
+    role: "상품 마스터",
+    hint: "csv / xlsx · SKU·품명·정상가·원가",
+    blurb: "정상가 · 원가 · 상품명",
+  },
+  {
+    key: "inventory",
+    role: "재고",
+    hint: "csv / xlsx · 재고수량·입고일·예상수요",
+    blurb: "재고 · 입고 · 예상 수요",
+  },
 ];
 const { maxBytes: MAX_BYTES, allowedExtensions: ALLOWED } = getUploadLimits();
 const SOURCE_REQUEST_ID = "__request__";
@@ -79,11 +95,19 @@ const state = {
 };
 
 /* ---------- extracted modules (PR1–3) ---------- */
+/** Late-bound so auth sign-out can return to hash home after router exists. */
+let goHome = () => showView("view-upload");
 const authUi = createAuthUi({
   state,
   $,
   toast,
-  showView,
+  showView: (id) => {
+    if (id === "view-upload") {
+      goHome();
+      return;
+    }
+    showView(id);
+  },
   renderDashboard: () => renderDashboard(),
   loadHistory: (granularity) => loadHistory(granularity),
 });
@@ -118,6 +142,101 @@ const reportView = createReportView({
 });
 const { renderReport } = reportView;
 
+const router = createRouter(showView, {
+  hasResult: () => Boolean(state.result),
+  onAfterRoute: (route) => {
+    if (route === ROUTES.dashboard) {
+      void loadHistory(state.history.granularity);
+    }
+    if (route === ROUTES.settings) {
+      renderSettings();
+    }
+  },
+});
+
+/** Canonical column aliases catalog for Settings (mirrors server T48 groups). */
+const COLUMN_ALIAS_CATALOG = [
+  {
+    source: "프로모션 계획",
+    columns: [
+      { canonical: "promotion_id", aliases: "행사코드, 프로모션ID, event_id" },
+      { canonical: "product_code", aliases: "상품코드, 품번, SKU" },
+      { canonical: "start_date", aliases: "시작일, 행사시작일" },
+      { canonical: "end_date", aliases: "종료일, 행사종료일" },
+      { canonical: "promo_price", aliases: "행사가, 할인가, 프로모션가" },
+      { canonical: "benefit_type", aliases: "혜택유형, 증정유형" },
+      { canonical: "benefit_condition", aliases: "혜택조건, 증정조건" },
+    ],
+  },
+  {
+    source: "상품 마스터",
+    columns: [
+      { canonical: "product_code", aliases: "상품코드, 품번, SKU" },
+      { canonical: "product_name", aliases: "상품명, 품명, 제품명" },
+      { canonical: "normal_price", aliases: "정상가, 정가, 판매가" },
+      { canonical: "cost", aliases: "원가, 매입가, 공급가" },
+    ],
+  },
+  {
+    source: "재고",
+    columns: [
+      { canonical: "product_code", aliases: "상품코드, 품번, SKU" },
+      { canonical: "stock_qty", aliases: "재고, 재고수량, 현재고" },
+      { canonical: "inbound_date", aliases: "입고일, 입고예정일" },
+      { canonical: "expected_demand", aliases: "예상수요, 예상판매량" },
+    ],
+  },
+];
+
+function renderSettings() {
+  const cfg = window.__MDP_CONFIG__ || {};
+  const authModeEl = $("#settings-auth-mode");
+  const sessionEl = $("#settings-auth-session");
+  const nameEl = $("#settings-auth-name");
+  const maxBytesEl = $("#settings-max-bytes");
+  const extEl = $("#settings-extensions");
+  if (authModeEl) {
+    authModeEl.textContent = cfg.authMode || state.auth.provider || "off";
+  }
+  if (sessionEl) {
+    sessionEl.textContent = isSignedIn(state.auth) ? "로그인됨" : "비로그인";
+  }
+  if (nameEl) {
+    nameEl.textContent =
+      (isSignedIn(state.auth) && (state.auth.displayName || state.auth.userId)) || "—";
+  }
+  if (maxBytesEl) {
+    maxBytesEl.textContent = fmtSize(MAX_BYTES);
+  }
+  if (extEl) {
+    extEl.textContent = (ALLOWED || []).join(", ") || "—";
+  }
+  const host = $("#settings-aliases");
+  if (!host) return;
+  host.replaceChildren();
+  COLUMN_ALIAS_CATALOG.forEach((group) => {
+    const block = el("div", "settings-alias-group");
+    block.append(el("h3", "settings-alias-source", group.source));
+    const table = el("table", "settings-alias-table");
+    const thead = el("thead");
+    const hr = el("tr");
+    hr.append(el("th", null, "정규 컬럼"));
+    hr.append(el("th", null, "허용 별칭 (일부)"));
+    thead.append(hr);
+    table.append(thead);
+    const tbody = el("tbody");
+    group.columns.forEach((row) => {
+      const tr = el("tr");
+      tr.append(el("td", "mono", row.canonical));
+      tr.append(el("td", null, row.aliases));
+      tbody.append(tr);
+    });
+    table.append(tbody);
+    block.append(table);
+    host.append(block);
+  });
+}
+
 /* ---------- dropzones ---------- */
 
 function buildDropzones() {
@@ -127,9 +246,13 @@ function buildDropzones() {
     const zone = el("label", "dropzone");
     zone.dataset.key = f.key;
     zone.innerHTML = `
-      <p class="eyebrow">${f.key}</p>
+      <div class="dz-top">
+        <span class="dz-index" aria-hidden="true">${String(FIELDS.indexOf(f) + 1).padStart(2, "0")}</span>
+        <p class="eyebrow">${f.key}</p>
+      </div>
       <span class="dz-role">${f.role}</span>
-      <span class="dz-body caption mute">파일을 끌어다 놓거나 클릭해서 선택</span>
+      <span class="dz-blurb caption mute">${f.blurb || ""}</span>
+      <span class="dz-body caption mute">끌어다 놓거나 클릭</span>
       <span class="dz-hint">${f.hint}</span>
       <input type="file" accept="${ALLOWED.join(",")}" />`;
     const input = zone.querySelector("input");
@@ -230,9 +353,9 @@ async function runPreflight(filesOverride = null) {
     state.result = report;
     state.fileIssues = groupIssuesByFile(report.issues);
     renderReport(report);
-    showView("view-result");
+    router.navigate(ROUTES.run);
   } catch (err) {
-    showView("view-upload");
+    router.navigate(ROUTES.home);
     toast(err.message || "검수 중 오류가 발생했습니다.");
   }
 }
@@ -254,7 +377,7 @@ function resetToUpload() {
   buildDropzones();
   refreshRunBtn();
   refreshEditedActions();
-  showView("view-upload");
+  router.navigate(ROUTES.home);
 }
 
 /* ---------- init ---------- */
@@ -268,6 +391,7 @@ if (hasClerkMode()) {
 }
 void loadSources();
 renderDashboard();
+renderSettings();
 $("#run-btn").addEventListener("click", () => {
   void runPreflight();
 });
@@ -282,12 +406,22 @@ $("#auth-login")?.addEventListener("click", () => {
 $("#auth-logout")?.addEventListener("click", () => {
   void signOut();
 });
-$("#nav-dashboard")?.addEventListener("click", () => {
-  showView("view-dashboard");
-  void loadHistory(state.history.granularity);
+document.querySelectorAll("[data-nav-route]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const route = btn.getAttribute("data-nav-route");
+    if (!route) return;
+    if (route === ROUTES.run && !state.result) {
+      toast("먼저 검수를 실행하면 결과 화면으로 이동합니다.");
+      router.navigate(ROUTES.home);
+      return;
+    }
+    router.navigate(route);
+  });
 });
-$("#dashboard-back")?.addEventListener("click", () => showView("view-upload"));
-bindWordmarkHome(document.querySelector(".wordmark"), () => showView("view-upload"));
+$("#dashboard-back")?.addEventListener("click", () => router.navigate(ROUTES.home));
+bindWordmarkHome(document.querySelector(".wordmark"), () => router.navigate(ROUTES.home));
+goHome = () => router.navigate(ROUTES.home);
+router.start();
 
 async function buildParsedState(file) {
   if (isCsvFilename(file.name)) {

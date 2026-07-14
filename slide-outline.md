@@ -1,5 +1,7 @@
 # MD Preflight 최종 발표자료
 
+> **일정 변경 (2026-07-09):** 발표일 **7/10 → 7/13(월)**. 일정 정본은 `handoff/2026-07-09-replan-through-0713.md`.
+
 ## Meta
 - **Topic**: MD Preflight 프로젝트 성과 및 최종 아키텍처 발표
 - **Target Audience**: 유통 비즈니스 이해관계자 및 테크 리드
@@ -7,6 +9,7 @@
 - **Slide Count**: 7 slides
 - **Aspect Ratio**: 16:9
 - **Style**: ppt-samsung-ir-restrained
+- **Presentation date**: 2026-07-13
 
 ## Slide Composition
 

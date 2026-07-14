@@ -95,6 +95,22 @@ FastAPI · Pandas · Pydantic · (선택) OpenAI / Anthropic
 - `joined` 뷰는 프로모션 행과 **1:1**을 보장한다. 마스터/재고의 중복 코드는 조인 입력에서 dedup(첫 행 기준)하고, 중복 자체는 `DUPLICATE_MASTER_CODE`로 표면화한다. 조인 후 행 수가 어긋나면 `IngestError`.
 - 마스터에 매칭됐지만 정상가/원가가 빈 상품은 조용히 통과시키지 않고 `INCOMPLETE_PRODUCT_MASTER`(error)로 잡는다.
 
+## 컬럼 별칭 (헤더 유연성)
+
+ERP·본사 양식마다 컬럼명이 달라도 검수할 수 있도록, 업로드 헤더는 **정규 키로 수렴**한 뒤 룰을 적용한다.
+
+| 정규 키 (예시) | 허용 별칭 예 |
+|---|---|
+| `product_code` | `상품코드`, `품번`, `SKU` |
+| `promo_price` | `행사가`, `할인가`, `프로모션가` |
+| `normal_price` | `정상가`, `정가`, `판매가` |
+| `stock_qty` | `재고`, `재고수량`, `현재고` |
+
+- 별칭 표 SSOT: `app/domain/column_aliases.py`
+- 적용된 매핑은 응답 필드 `column_mappings`와 Markdown 리포트 **Column Mapping** 절, UI 결과 화면에 노출 (감사 가능)
+- 한글 헤더 dirty 샘플: `data/samples/alias_ko/` (웹: `/samples/alias_ko/...`)
+- 설정 화면(`#/settings`)에서 읽기 전용 별칭 카탈로그 확인
+
 ## 빠른 시작
 
 ```bash
@@ -121,7 +137,8 @@ curl -s -X POST http://127.0.0.1:8000/api/preflight \
   -F inventory=@data/samples/dirty/inventory.csv | python -m json.tool
 ```
 
-`data/samples/dirty`는 10개 룰을 각 1건씩 유발하고, `data/samples/clean`은 이슈 0건이다.
+`data/samples/dirty`는 10개 룰을 각 1건씩 유발하고, `data/samples/clean`은 이슈 0건이다.  
+`data/samples/alias_ko`는 dirty와 동일 이슈를 **한글/동의어 헤더**로 재현한다.
 
 ## API
 

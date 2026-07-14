@@ -33,6 +33,10 @@ def create_app() -> FastAPI:
 
         app.add_api_route("/", index, include_in_schema=False, response_class=HTMLResponse)
 
+    samples_dir = Path(__file__).resolve().parent.parent / "data" / "samples"
+    if samples_dir.is_dir():
+        app.mount("/samples", StaticFiles(directory=samples_dir), name="samples")
+
     return app
 
 

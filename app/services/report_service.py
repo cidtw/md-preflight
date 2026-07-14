@@ -24,6 +24,30 @@ def render_markdown_report(report: PreflightReport) -> str:
     lines.extend(
         f"- {item.file}: {item.issue_count}건 · {item.headline}" for item in report.file_summaries
     )
+    if report.column_mappings:
+        lines.extend(
+            [
+                "",
+                "## Column Mapping",
+                "",
+                "Uploaded headers renamed to canonical rule keys:",
+                "",
+            ]
+        )
+        lines.extend(
+            f"- `{item.file}`: `{item.original}` → `{item.canonical}`"
+            for item in report.column_mappings
+        )
+    else:
+        lines.extend(
+            [
+                "",
+                "## Column Mapping",
+                "",
+                "No header aliases applied (columns already canonical).",
+                "",
+            ]
+        )
     lines.extend(
         [
             "",

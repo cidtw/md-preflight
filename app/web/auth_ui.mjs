@@ -85,7 +85,6 @@ export function createAuthUi(deps) {
     }
     const login = $("#auth-login");
     const logout = $("#auth-logout");
-    const dashboard = $("#nav-dashboard");
     if (login) {
       login.classList.toggle("hidden", signedIn);
       login.disabled = authUnavailable;
@@ -96,9 +95,7 @@ export function createAuthUi(deps) {
     if (logout) {
       logout.classList.toggle("hidden", !signedIn);
     }
-    if (dashboard) {
-      dashboard.classList.toggle("hidden", !signedIn);
-    }
+    // Dashboard nav stays visible (hash route #/dashboard); content still requires login.
   }
 
   function setSignedOutAuth() {

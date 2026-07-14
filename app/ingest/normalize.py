@@ -6,13 +6,14 @@ import pandas as pd
 
 from app.core.errors import IngestError
 from app.core.rule_config import RuleThresholds
+from app.domain.column_aliases import build_column_rename_map, suggest_headers_for_missing
 from app.domain.columns import (
     INVENTORY_COLUMNS,
     PRODUCT_MASTER_COLUMNS,
     PROMOTION_COLUMNS,
     SourceFile,
 )
-from app.domain.context import PreflightContext
+from app.domain.context import HeaderMapping, PreflightContext
 
 
 def build_context(
@@ -21,9 +22,9 @@ def build_context(
     inventory_raw: pd.DataFrame,
     thresholds: RuleThresholds,
 ) -> PreflightContext:
-    promotions = normalize_promotions(promotion_raw)
-    products = normalize_product_master(product_raw)
-    inventory = normalize_inventory(inventory_raw)
+    promotions, promo_maps = normalize_promotions(promotion_raw)
+    products, product_maps = normalize_product_master(product_raw)
+    inventory, inventory_maps = normalize_inventory(inventory_raw)
     products_for_join = (
         products.rename(columns={"source_row": "product_source_row"})
         .drop_duplicates(subset="product_code", keep="first")
@@ -53,11 +54,12 @@ def build_context(
         inventory=inventory,
         joined=joined,
         thresholds=thresholds,
+        column_mappings=tuple(promo_maps + product_maps + inventory_maps),
     )
 
 
-def normalize_promotions(raw: pd.DataFrame) -> pd.DataFrame:
-    frame = prepare_source_frame(raw, SourceFile.PROMOTION_PLAN, PROMOTION_COLUMNS)
+def normalize_promotions(raw: pd.DataFrame) -> tuple[pd.DataFrame, list[HeaderMapping]]:
+    frame, mappings = prepare_source_frame(raw, SourceFile.PROMOTION_PLAN, PROMOTION_COLUMNS)
     normalized = pd.DataFrame(
         {
             "promotion_id": to_text(frame["promotion_id"]),
@@ -74,11 +76,13 @@ def normalize_promotions(raw: pd.DataFrame) -> pd.DataFrame:
     normalized["end_date"] = pd.to_datetime(frame["end_date"], errors="coerce")
     normalized["promo_price"] = pd.to_numeric(frame["promo_price"], errors="coerce")
     normalized["benefit_condition"] = to_text(frame["benefit_condition"])
-    return normalized
+    return normalized, mappings
 
 
-def normalize_product_master(raw: pd.DataFrame) -> pd.DataFrame:
-    frame = prepare_source_frame(raw, SourceFile.PRODUCT_MASTER, PRODUCT_MASTER_COLUMNS)
+def normalize_product_master(raw: pd.DataFrame) -> tuple[pd.DataFrame, list[HeaderMapping]]:
+    frame, mappings = prepare_source_frame(
+        raw, SourceFile.PRODUCT_MASTER, PRODUCT_MASTER_COLUMNS
+    )
     normalized = pd.DataFrame(
         {
             "product_code": to_text(frame["product_code"]),
@@ -90,11 +94,11 @@ def normalize_product_master(raw: pd.DataFrame) -> pd.DataFrame:
     normalized["source_row"] = frame["source_row"]
     normalized["normal_price"] = pd.to_numeric(frame["normal_price"], errors="coerce")
     normalized["cost"] = pd.to_numeric(frame["cost"], errors="coerce")
-    return normalized
+    return normalized, mappings
 
 
-def normalize_inventory(raw: pd.DataFrame) -> pd.DataFrame:
-    frame = prepare_source_frame(raw, SourceFile.INVENTORY, INVENTORY_COLUMNS)
+def normalize_inventory(raw: pd.DataFrame) -> tuple[pd.DataFrame, list[HeaderMapping]]:
+    frame, mappings = prepare_source_frame(raw, SourceFile.INVENTORY, INVENTORY_COLUMNS)
     normalized = pd.DataFrame(
         {
             "product_code": to_text(frame["product_code"]),
@@ -107,23 +111,48 @@ def normalize_inventory(raw: pd.DataFrame) -> pd.DataFrame:
     normalized["stock_qty"] = pd.to_numeric(frame["stock_qty"], errors="coerce")
     normalized["inbound_date"] = pd.to_datetime(frame["inbound_date"], errors="coerce")
     normalized["expected_demand"] = pd.to_numeric(frame["expected_demand"], errors="coerce")
-    return normalized
+    return normalized, mappings
 
 
 def prepare_source_frame(
     raw: pd.DataFrame,
     source_file: SourceFile,
     expected_columns: Iterable[str],
-) -> pd.DataFrame:
-    renamed = raw.copy()
-    renamed.columns = [str(column).strip() for column in renamed.columns]
-    missing = [column for column in expected_columns if column not in renamed.columns]
+) -> tuple[pd.DataFrame, list[HeaderMapping]]:
+    """Select expected columns after alias/synonym header collapse.
+
+    Exact English headers keep working. Korean / ERP synonym headers
+    (see ``app.domain.column_aliases``) are renamed to canonical keys
+    before the missing-column check so midterm "column key drift" cases
+    do not fail ingest.
+
+    Returns the prepared frame and only *renamed* header mappings
+    (original != canonical) for audit (T50).
+    """
+    working = raw.copy()
+    working.columns = [str(column).strip() for column in working.columns]
+    expected = tuple(expected_columns)
+    headers = [str(column) for column in working.columns]
+    rename_map, missing = build_column_rename_map(headers, expected)
+    if rename_map:
+        working = working.rename(columns=rename_map)
     if missing:
-        msg = f"Missing columns in {source_file}: {', '.join(missing)}"
-        raise IngestError(msg)
-    frame = renamed.loc[:, list(expected_columns)].copy()
+        suggestions = suggest_headers_for_missing(missing, headers)
+        detail = f"Missing columns in {source_file}: {', '.join(missing)}"
+        if suggestions:
+            hint_parts = [
+                f"{col}←{','.join(cands)}" for col, cands in suggestions.items()
+            ]
+            detail = f"{detail} (similar headers: {'; '.join(hint_parts)})"
+        raise IngestError(detail)
+    frame = working.loc[:, list(expected)].copy()
     frame["source_row"] = frame.index + 2
-    return frame
+    mappings = [
+        HeaderMapping(source_file=source_file, original=original, canonical=canonical)
+        for original, canonical in rename_map.items()
+        if original != canonical
+    ]
+    return frame, mappings
 
 
 def to_text(series: pd.Series) -> pd.Series:

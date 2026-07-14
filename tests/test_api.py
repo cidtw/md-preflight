@@ -79,12 +79,61 @@ def test_validate_endpoint_when_uploading_sample_files() -> None:
     assert payload.created_at.tzinfo is not None
     assert sum(item.issue_count for item in payload.file_summaries) == payload.summary.total_issues
     assert payload.rule_set_version
+    assert payload.column_mappings == []
 
     stored = client.get(f"/api/preflight/runs/{payload.run_id}")
 
     assert stored.status_code == 200
     stored_payload = PreflightReport.model_validate(stored.json())
     assert stored_payload.run_id == payload.run_id
+
+
+def test_validate_endpoint_accepts_korean_alias_headers(sample_files_dir: Path) -> None:
+    """T51: alias_ko samples map headers and match dirty English sample issues."""
+    client = TestClient(app)
+    dirty_dir = sample_files_dir / "dirty"
+    alias_dir = sample_files_dir / "alias_ko"
+
+    def pack(base: Path) -> dict[str, tuple[str, bytes, str]]:
+        return {
+            "promotion_plan": (
+                "promotion_plan.csv",
+                (base / "promotion_plan.csv").read_bytes(),
+                "text/csv",
+            ),
+            "product_master": (
+                "product_master.csv",
+                (base / "product_master.csv").read_bytes(),
+                "text/csv",
+            ),
+            "inventory": (
+                "inventory.csv",
+                (base / "inventory.csv").read_bytes(),
+                "text/csv",
+            ),
+        }
+
+    dirty = PreflightReport.model_validate(
+        client.post("/api/preflight/validate", files=pack(dirty_dir)).json()
+    )
+    response = client.post("/api/preflight/validate", files=pack(alias_dir))
+    assert response.status_code == 200
+    payload = PreflightReport.model_validate(response.json())
+
+    assert payload.summary.total_issues == dirty.summary.total_issues
+    assert payload.summary.by_rule == dirty.summary.by_rule
+    assert len(payload.column_mappings) >= 10
+    originals = {item.original for item in payload.column_mappings}
+    assert "상품코드" in originals or "SKU" in originals
+    assert "행사가" in originals
+    assert any(item.canonical == "promo_price" for item in payload.column_mappings)
+    assert dirty.column_mappings == []
+
+    md = client.get(f"/api/preflight/runs/{payload.run_id}/report.md")
+    assert md.status_code == 200
+    body = md.text
+    assert "Column Mapping" in body
+    assert "promo_price" in body
 
 
 def test_preflight_without_auth_still_returns_200(monkeypatch: pytest.MonkeyPatch) -> None:

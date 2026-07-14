@@ -17,7 +17,7 @@ from app.ingest.normalize import build_context
 from app.rules import RULES, compute_rule_set_version
 from app.rules.base import Rule
 from app.schemas.issue import ValidationIssue
-from app.schemas.report import PreflightReport, PreflightSummary
+from app.schemas.report import ColumnMappingItem, PreflightReport, PreflightSummary
 from app.services.checklist_service import build_checklist_items
 from app.services.llm_service import FallbackNarrativeGenerator, NarrativeGenerator
 
@@ -74,6 +74,14 @@ def validate_context(
     summary = build_summary(issues, checked_rows=len(ctx.promotions))
     narrative = narrative_generator.generate(summary, issues)
     checklist_items = build_checklist_items(ctx, issues)
+    column_mappings = [
+        ColumnMappingItem(
+            file=mapping.source_file.value,
+            original=mapping.original,
+            canonical=mapping.canonical,
+        )
+        for mapping in ctx.column_mappings
+    ]
     return PreflightReport(
         run_id=uuid4().hex,
         summary=summary,
@@ -86,6 +94,7 @@ def validate_context(
         failed_rules=failed_rules,
         created_at=datetime.now(tz=UTC),
         rule_set_version=compute_rule_set_version(ctx.thresholds, rules=active_rules),
+        column_mappings=column_mappings,
     )
 
 

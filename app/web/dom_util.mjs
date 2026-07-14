@@ -31,8 +31,14 @@ export function toast(msg) {
   toastTimer = setTimeout(() => t.classList.add("hidden"), 4000);
 }
 
+export const VIEW_IDS = [
+  "view-upload",
+  "view-loading",
+  "view-result",
+  "view-dashboard",
+  "view-settings",
+];
+
 export function showView(id) {
-  ["view-upload", "view-loading", "view-result", "view-dashboard"].forEach((v) =>
-    $(`#${v}`)?.classList.toggle("hidden", v !== id),
-  );
+  VIEW_IDS.forEach((v) => $(`#${v}`)?.classList.toggle("hidden", v !== id));
 }

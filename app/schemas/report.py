@@ -42,6 +42,16 @@ class ChecklistItem(BaseModel):
     rationale: str
 
 
+class ColumnMappingItem(BaseModel):
+    """Audit record: uploaded header renamed to a rule-engine canonical key."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
+
+    file: str
+    original: str
+    canonical: str
+
+
 class PreflightReport(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
@@ -56,3 +66,4 @@ class PreflightReport(BaseModel):
     failed_rules: list[str] = Field(default_factory=list)
     created_at: datetime
     rule_set_version: str
+    column_mappings: list[ColumnMappingItem] = Field(default_factory=list)
