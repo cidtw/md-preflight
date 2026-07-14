@@ -37,7 +37,7 @@ def get_template() -> InputTemplate:
         description=(
             "매장·상권·접근성 파라미터와 품목·일평균 소진량을 입력하면 "
             "Lead Time / Re-Order Point 재조정값과 근거 리포트를 반환합니다. "
-            "정확한 위치 사용 시 Google Maps로 주변 유동 유발 시설을 점수에 반영합니다."
+            "정확한 위치 사용 시 Kakao 로컬 API로 주변 유동 유발 시설을 점수에 반영합니다."
         ),
         version=TEMPLATE_VERSION,
         parameters=[
@@ -82,7 +82,7 @@ def get_template() -> InputTemplate:
                 type="boolean",
                 required=False,
                 description=(
-                    "체크 시 도로명 주소를 받아 Google Maps로 주변 지하철·버스·"
+                    "체크 시 도로명 주소를 받아 Kakao 로컬 API로 주변 지하철·버스·"
                     "랜드마크 등 유동 유발 요소를 점수에 반영합니다."
                 ),
             ),

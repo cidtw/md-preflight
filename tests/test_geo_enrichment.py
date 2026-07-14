@@ -11,7 +11,7 @@ from app.pipeline.analyze.engine import analyze
 from app.pipeline.analyze.geo_enrichment import (
     compute_foot_traffic_index,
     enrich_from_address,
-    map_google_types,
+    map_kakao_category,
 )
 from app.pipeline.input.template import validate_parameters
 from app.pipeline.types import NearbyPoi, ParameterValue
@@ -30,9 +30,10 @@ BASE: dict[str, ParameterValue] = {
 }
 
 
-def test_map_google_types() -> None:
-    assert map_google_types(["subway_station", "point_of_interest"]) == "transit_rail"
-    assert map_google_types(["cafe"]) == "other"
+def test_map_kakao_category() -> None:
+    assert map_kakao_category("SW8") == "transit_rail"
+    assert map_kakao_category("MT1") == "retail_anchor"
+    assert map_kakao_category("XX") == "other"
 
 
 def test_foot_traffic_index_increases_with_close_rail() -> None:
@@ -61,45 +62,47 @@ def test_precise_false_strips_address() -> None:
     assert "store_address" not in validated.parameters
 
 
-def _mock_fetch(url: str) -> dict[str, Any]:
-    if "geocode" in url:
+def _mock_fetch(url: str, _headers: Any) -> dict[str, Any]:
+    if "search/address.json" in url:
         return {
-            "status": "OK",
-            "results": [
+            "documents": [
                 {
-                    "formatted_address": "서울 마포구 양화로 45",
-                    "geometry": {"location": {"lat": 37.557, "lng": 126.924}},
+                    "address_name": "서울 마포구 양화로 45",
+                    "x": "126.924",
+                    "y": "37.557",
                 },
             ],
         }
-    if "nearbysearch" in url:
-        if "type=subway_station" in url or "subway_station" in url:
-            return {
-                "status": "OK",
-                "results": [
-                    {
-                        "name": "홍대입구역",
-                        "types": ["subway_station", "transit_station"],
-                        "geometry": {"location": {"lat": 37.5575, "lng": 126.9245}},
-                    },
-                ],
-            }
-        if "type=bus_station" in url:
-            return {
-                "status": "OK",
-                "results": [
-                    {
-                        "name": "홍대입구 버스정류장",
-                        "types": ["bus_station"],
-                        "geometry": {"location": {"lat": 37.5568, "lng": 126.9235}},
-                    },
-                ],
-            }
-        return {"status": "ZERO_RESULTS", "results": []}
-    return {"status": "INVALID_REQUEST"}
+    if "search/category.json" in url and "SW8" in url:
+        return {
+            "documents": [
+                {
+                    "place_name": "홍대입구역",
+                    "category_group_code": "SW8",
+                    "distance": "90",
+                    "x": "126.9245",
+                    "y": "37.5575",
+                },
+            ],
+        }
+    if "search/keyword.json" in url:
+        return {
+            "documents": [
+                {
+                    "place_name": "홍대입구 버스정류장",
+                    "category_group_code": "",
+                    "distance": "120",
+                    "x": "126.9235",
+                    "y": "37.5568",
+                },
+            ],
+        }
+    if "search/category.json" in url:
+        return {"documents": []}
+    return {"documents": []}
 
 
-def test_enrich_from_address_with_mock_google() -> None:
+def test_enrich_from_address_with_mock_kakao() -> None:
     geo = enrich_from_address(
         "서울시 마포구 양화로 45",
         api_key="test-key",
@@ -108,10 +111,11 @@ def test_enrich_from_address_with_mock_google() -> None:
     )
     assert geo.enabled is True
     assert geo.used_fallback is False
-    assert geo.provider == "google"
+    assert geo.provider == "kakao"
     assert geo.lat is not None
     assert geo.foot_traffic_index > 0
     assert any("홍대입구역" in p.name for p in geo.pois)
+    assert any(p.category == "transit_bus" for p in geo.pois)
 
 
 def test_enrich_without_api_key_falls_back() -> None:
@@ -119,6 +123,7 @@ def test_enrich_without_api_key_falls_back() -> None:
     assert geo.enabled is True
     assert geo.used_fallback is True
     assert geo.foot_traffic_index == 0.0
+    assert any("KAKAO" in n for n in geo.notes)
 
 
 def test_engine_applies_foot_traffic_to_z() -> None:
@@ -130,17 +135,18 @@ def test_engine_applies_foot_traffic_to_z() -> None:
         },
     )
     settings = Settings.model_validate(
-        {"google_maps_api_key": "test-key", "geo_radius_m": 500},
+        {"kakao_rest_api_key": "test-key", "geo_radius_m": 500},
     )
     with_geo = analyze(validated, settings=settings, geo_fetch=_mock_fetch)
     without = analyze(
         validate_parameters(BASE),
-        settings=Settings.model_validate({"google_maps_api_key": None}),
+        settings=Settings.model_validate({"kakao_rest_api_key": None}),
     )
     assert with_geo.geo.foot_traffic_index > 0
     assert with_geo.knowledge.safety_z_factor > without.knowledge.safety_z_factor
     assert with_geo.store_safety_stock >= without.store_safety_stock
     assert with_geo.geo.used_fallback is False
+    assert with_geo.geo.provider == "kakao"
 
 
 def test_run_without_precise_still_has_geo_block() -> None:

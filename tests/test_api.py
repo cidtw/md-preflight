@@ -89,7 +89,7 @@ def test_evaluate_precise_without_address(client: TestClient) -> None:
 
 
 def test_evaluate_precise_without_key_falls_back(client: TestClient) -> None:
-    """No API key → still 200 with geo fallback guidance."""
+    """No Kakao key → still 200 with geo fallback guidance."""
     response = client.post(
         "/api/evaluate",
         json={
@@ -113,6 +113,7 @@ def test_evaluate_precise_without_key_falls_back(client: TestClient) -> None:
     body = response.json()
     assert body["calc"]["geo"]["enabled"] is True
     assert body["calc"]["geo"]["used_fallback"] is True
+    assert body["calc"]["geo"]["provider"] == "kakao"
     assert any(b["id"] == "geo_poi" for b in body["evidence"])
 
 

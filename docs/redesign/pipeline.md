@@ -37,7 +37,7 @@
 ## 2. Analyze (`app/pipeline/analyze`)
 
 1. **스코어링 테이블** (`scoring.py`) — CAPA, 수요집중, 회전가중, 공급난이도, 수요변동, 접근성 ΔLT  
-2. **(선택) Google Maps 보강** (`geo_enrichment.py`) — 상세 주소 geocode + Nearby POI → `foot_traffic_index`  
+2. **(선택) Kakao Local 보강** (`geo_enrichment.py`) — 주소 검색 + 카테고리/키워드 POI → `foot_traffic_index`  
 3. **KB 매칭** (`knowledge_base.py`) — 행정동+품목+상권 시드 + 유동지수 기반 물류지연·Z계수·서술  
 4. **공식** (`engine.py`)
 

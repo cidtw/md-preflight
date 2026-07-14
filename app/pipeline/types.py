@@ -69,7 +69,7 @@ class NearbyPoi(BaseModel):
 
 
 class GeoEnrichment(BaseModel):
-    """Map-API enrichment for precise store address (Google Places)."""
+    """Map-API enrichment for precise store address (Kakao Local)."""
 
     enabled: bool = False
     lat: float | None = None

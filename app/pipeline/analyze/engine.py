@@ -45,7 +45,7 @@ def _resolve_geo(
     address = _as_str(p.get("store_address", "")).strip()
     return enrich_from_address(
         address,
-        api_key=settings.google_maps_api_key,
+        api_key=settings.kakao_rest_api_key,
         radius_m=settings.geo_radius_m,
         fetch=fetch,
     )

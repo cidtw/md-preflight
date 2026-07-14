@@ -142,7 +142,7 @@ def _geo_evidence(calc: CalcBreakdown) -> EvidenceBlock:
         points.append(f"조회 주소: {geo.address_queried}")
     return EvidenceBlock(
         id="geo_poi",
-        title="정확한 위치 · 주변 유동 유발 요소 (Google Maps)",
+        title="정확한 위치 · 주변 유동 유발 요소 (Kakao Local)",
         calc_summary=(
             f"반경 {geo.radius_m}m · POI {len(geo.pois)}곳 · "
             f"유동지수 {geo.foot_traffic_index:.3f}"

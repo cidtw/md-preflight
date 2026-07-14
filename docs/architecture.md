@@ -2,7 +2,7 @@
 
 > **상태**: Active (국면 VII)  
 > **브랜치**: `pivot/project-direction`  
-> **버전**: 0.3.1-rop  
+> **버전**: 0.3.2-rop  
 > **프로덕션**: https://md-preflight.vercel.app  
 > **지시 원문**: `2026-07-14-New-Service-Flow.md`  
 > **v1 (프로모션 검수)**: 태그 `archive/v1-md-preflight` · `archive/v1-md-preflight/`
@@ -191,7 +191,7 @@ app/
 │   ├── input/template.py
 │   ├── analyze/
 │   │   ├── scoring.py
-│   │   ├── geo_enrichment.py   # Google Maps POI (optional)
+│   │   ├── geo_enrichment.py   # Kakao Local POI (optional)
 │   │   ├── knowledge_base.py
 │   │   └── engine.py
 │   └── output/recommendation.py
@@ -233,8 +233,10 @@ app/
 | 호스팅 | Vercel (`@vercel/python`, `vercel.json` builds) |
 | 프로덕션 URL | https://md-preflight.vercel.app |
 | 로컬 | `uv run uvicorn app.main:app --reload --port 8000` |
+| 지도 POI | **Kakao Local REST** (`KAKAO_REST_API_KEY`) — 설정: `docs/setup-kakao-local.md` |
 
-**의도적으로 제거된 v1 의존성**: pandas, openpyxl, anthropic, openai, psycopg, PyJWT, Clerk.
+**의도적으로 제거된 v1 의존성**: pandas, openpyxl, anthropic, openai, psycopg, PyJWT, Clerk.  
+**제거된 지도**: Google Maps (Billing 필수) → Kakao Local로 교체.
 
 ---
 
