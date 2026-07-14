@@ -66,3 +66,8 @@ def test_index_page(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "ROP" in response.text
+    # Multi-session wizard shell
+    assert "step-welcome" in response.text
+    assert "매장 기본 정보" in response.text
+    assert "매장 세부 정보" in response.text
+    assert "품목 · 운영 기준" in response.text
