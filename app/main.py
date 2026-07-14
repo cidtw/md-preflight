@@ -33,7 +33,11 @@ def create_app() -> FastAPI:
 
         app.add_api_route("/", index, include_in_schema=False, response_class=HTMLResponse)
 
-    samples_dir = Path(__file__).resolve().parent.parent / "data" / "samples"
+    # Prefer app/web/samples so Vercel (@vercel/python includeFiles: app/web/**)
+    # ships demo CSVs. Fall back to repo data/samples for local monorepo layout.
+    web_samples = WEB_DIR / "samples"
+    data_samples = Path(__file__).resolve().parent.parent / "data" / "samples"
+    samples_dir = web_samples if web_samples.is_dir() else data_samples
     if samples_dir.is_dir():
         app.mount("/samples", StaticFiles(directory=samples_dir), name="samples")
 
