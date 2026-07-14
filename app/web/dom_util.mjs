@@ -22,13 +22,19 @@ export function fmtSize(bytes) {
 
 let toastTimer;
 
-export function toast(msg) {
+/**
+ * @param {string} msg
+ * @param {{ durationMs?: number, multiline?: boolean }} [opts]
+ */
+export function toast(msg, opts = {}) {
   const t = $("#toast");
   if (!t) return;
   t.textContent = msg;
+  t.classList.toggle("toast-multiline", Boolean(opts.multiline || (msg && msg.includes("\n"))));
   t.classList.remove("hidden");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.add("hidden"), 4000);
+  const duration = opts.durationMs ?? (opts.multiline || (msg && msg.includes("\n")) ? 8000 : 4000);
+  toastTimer = setTimeout(() => t.classList.add("hidden"), duration);
 }
 
 export const VIEW_IDS = [

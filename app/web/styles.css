@@ -1439,3 +1439,39 @@ body {
   .column-hint-actions { width: 100%; }
   .column-hint-actions .btn { flex: 1; justify-content: center; }
 }
+
+/* T52 toast multiline + T53 settings polish */
+.toast.toast-multiline {
+  white-space: pre-wrap;
+  max-width: min(420px, calc(100vw - 32px));
+  line-height: 1.45;
+  font-size: 13px;
+  text-align: left;
+  padding: 12px 14px;
+}
+.settings-guide {
+  margin: 0 0 var(--s-sm);
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--body);
+}
+.settings-guide li { padding-left: 2px; }
+.settings-rules { margin-top: var(--s-sm); overflow-x: auto; }
+.settings-rules-table .sev-cell {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+.settings-rules-table .sev-error { color: var(--error-deep); }
+.settings-rules-table .sev-warning { color: var(--warning-deep); }
+.settings-rules-table .sev-info { color: var(--info-deep); }
+.settings-card code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--code-bg);
+  padding: 1px 4px;
+  border-radius: 3px;
+}

@@ -264,6 +264,35 @@ def build_column_rename_map(
     return rename_map, missing
 
 
+def list_alias_examples(canonical: str, *, limit: int = 6) -> list[str]:
+    """Human-facing alias samples for a canonical column (excludes the canonical itself).
+
+    Prefers Korean / distinct spellings over separator-stripped English duplicates
+    like ``inbounddate`` for ``inbound_date``.
+    """
+    aliases = _ALIAS_GROUPS.get(canonical, (canonical,))
+    canon_key = normalize_header_key(canonical)
+    examples: list[str] = []
+    for alias in aliases:
+        if alias == canonical:
+            continue
+        if normalize_header_key(alias) == canon_key:
+            continue
+        examples.append(alias)
+
+    def sort_key(value: str) -> tuple[int, str]:
+        has_non_ascii = any(ord(ch) > 127 for ch in value)
+        return (0 if has_non_ascii else 1, value)
+
+    examples.sort(key=sort_key)
+    return examples[:limit]
+
+
+def catalog_alias_groups() -> dict[str, tuple[str, ...]]:
+    """Read-only view of alias groups for settings / API catalog."""
+    return dict(_ALIAS_GROUPS)
+
+
 def suggest_headers_for_missing(
     missing: list[str],
     actual_headers: list[str],
@@ -289,3 +318,28 @@ def suggest_headers_for_missing(
         if hits:
             suggestions[column] = hits[:limit]
     return suggestions
+
+
+def format_missing_columns_error(
+    source_file: SourceFile,
+    missing: list[str],
+    suggestions: dict[str, list[str]],
+) -> str:
+    """English-stable API detail with similar-header or alias-example hints (T52).
+
+    Prefix stays ``Missing columns in …`` for clients and tests; the parenthetical
+    carries either observed similar headers or example aliases when none match.
+    """
+    detail = f"Missing columns in {source_file}: {', '.join(missing)}"
+    hint_parts: list[str] = []
+    for column in missing:
+        similar = suggestions.get(column) or []
+        if similar:
+            hint_parts.append(f"{column}←{','.join(similar)}")
+            continue
+        examples = list_alias_examples(column, limit=3)
+        if examples:
+            hint_parts.append(f"{column}? 예:{','.join(examples)}")
+    if hint_parts:
+        detail = f"{detail} (similar headers: {'; '.join(hint_parts)})"
+    return detail

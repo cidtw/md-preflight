@@ -15,10 +15,12 @@ from app.api.deps import (
 from app.core.config import Settings
 from app.core.errors import IngestError, UploadValidationError
 from app.rules import RULES
+from app.schemas.catalog import PreflightCatalog
 from app.schemas.history import HistoryBucket, RunHistoryRecord
 from app.schemas.report import PreflightReport
 from app.schemas.rule_meta import RuleMeta
 from app.schemas.source_meta import SourceMeta
+from app.services.catalog_service import build_preflight_catalog
 from app.services.history_store import HistoryGranularity, HistoryStore
 from app.services.report_service import render_markdown_report
 from app.services.run_store import RunStore
@@ -211,6 +213,14 @@ def download_markdown_report(
 @router.get("/rules", response_model=list[RuleMeta])
 def get_rules() -> list[RuleMeta]:
     return [rule.meta() for rule in RULES]
+
+
+@router.get("/catalog", response_model=PreflightCatalog)
+def get_catalog(
+    settings: Annotated[Settings, Depends(get_app_settings)],
+) -> PreflightCatalog:
+    """Read-only thresholds + column aliases + rules for Settings (T53)."""
+    return build_preflight_catalog(settings)
 
 
 @router.get("/sources", response_model=list[SourceMeta])

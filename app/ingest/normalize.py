@@ -6,7 +6,11 @@ import pandas as pd
 
 from app.core.errors import IngestError
 from app.core.rule_config import RuleThresholds
-from app.domain.column_aliases import build_column_rename_map, suggest_headers_for_missing
+from app.domain.column_aliases import (
+    build_column_rename_map,
+    format_missing_columns_error,
+    suggest_headers_for_missing,
+)
 from app.domain.columns import (
     INVENTORY_COLUMNS,
     PRODUCT_MASTER_COLUMNS,
@@ -138,13 +142,9 @@ def prepare_source_frame(
         working = working.rename(columns=rename_map)
     if missing:
         suggestions = suggest_headers_for_missing(missing, headers)
-        detail = f"Missing columns in {source_file}: {', '.join(missing)}"
-        if suggestions:
-            hint_parts = [
-                f"{col}←{','.join(cands)}" for col, cands in suggestions.items()
-            ]
-            detail = f"{detail} (similar headers: {'; '.join(hint_parts)})"
-        raise IngestError(detail)
+        raise IngestError(
+            format_missing_columns_error(source_file, missing, suggestions)
+        )
     frame = working.loc[:, list(expected)].copy()
     frame["source_row"] = frame.index + 2
     mappings = [

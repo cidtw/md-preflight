@@ -34,6 +34,7 @@ import { createAuthUi } from "./auth_ui.mjs";
 import { createIssueView, groupIssuesByFile } from "./issue_view.mjs";
 import { createReportView } from "./report_view.mjs";
 import { createRouter, ROUTES } from "./router.mjs";
+import { formatPreflightError } from "./error_format.mjs";
 
 const FIELDS = [
   {
@@ -92,6 +93,7 @@ const state = {
     buckets: [],
     runs: [],
   },
+  catalog: null,
 };
 
 /* ---------- extracted modules (PR1–3) ---------- */
@@ -149,47 +151,70 @@ const router = createRouter(showView, {
       void loadHistory(state.history.granularity);
     }
     if (route === ROUTES.settings) {
-      renderSettings();
+      void loadCatalog().then(() => renderSettings());
     }
   },
 });
 
-/** Canonical column aliases catalog for Settings (mirrors server T48 groups). */
-const COLUMN_ALIAS_CATALOG = [
+/** Fallback when /catalog is unreachable (offline / early paint). */
+const COLUMN_ALIAS_FALLBACK = [
   {
-    source: "프로모션 계획",
+    source: "promotion_plan",
+    label: "프로모션 계획",
     columns: [
-      { canonical: "promotion_id", aliases: "행사코드, 프로모션ID, event_id" },
-      { canonical: "product_code", aliases: "상품코드, 품번, SKU" },
-      { canonical: "start_date", aliases: "시작일, 행사시작일" },
-      { canonical: "end_date", aliases: "종료일, 행사종료일" },
-      { canonical: "promo_price", aliases: "행사가, 할인가, 프로모션가" },
-      { canonical: "benefit_type", aliases: "혜택유형, 증정유형" },
-      { canonical: "benefit_condition", aliases: "혜택조건, 증정조건" },
+      { canonical: "promotion_id", aliases: ["행사코드", "프로모션ID"] },
+      { canonical: "product_code", aliases: ["상품코드", "품번", "SKU"] },
+      { canonical: "promo_price", aliases: ["행사가", "할인가"] },
     ],
   },
   {
-    source: "상품 마스터",
+    source: "product_master",
+    label: "상품 마스터",
     columns: [
-      { canonical: "product_code", aliases: "상품코드, 품번, SKU" },
-      { canonical: "product_name", aliases: "상품명, 품명, 제품명" },
-      { canonical: "normal_price", aliases: "정상가, 정가, 판매가" },
-      { canonical: "cost", aliases: "원가, 매입가, 공급가" },
+      { canonical: "product_code", aliases: ["상품코드", "SKU"] },
+      { canonical: "normal_price", aliases: ["정상가", "정가"] },
+      { canonical: "cost", aliases: ["원가", "매입가"] },
     ],
   },
   {
-    source: "재고",
+    source: "inventory",
+    label: "재고",
     columns: [
-      { canonical: "product_code", aliases: "상품코드, 품번, SKU" },
-      { canonical: "stock_qty", aliases: "재고, 재고수량, 현재고" },
-      { canonical: "inbound_date", aliases: "입고일, 입고예정일" },
-      { canonical: "expected_demand", aliases: "예상수요, 예상판매량" },
+      { canonical: "stock_qty", aliases: ["재고", "재고수량"] },
+      { canonical: "inbound_date", aliases: ["입고일", "입고예정일"] },
+      { canonical: "expected_demand", aliases: ["예상수요"] },
     ],
   },
 ];
 
+async function loadCatalog() {
+  try {
+    const res = await fetch("/api/preflight/catalog");
+    if (!res.ok) throw new Error(`catalog ${res.status}`);
+    state.catalog = await res.json();
+  } catch (_) {
+    if (!state.catalog) {
+      state.catalog = {
+        thresholds: { max_discount_rate: 0.7, min_margin_rate: 0.05 },
+        sources: COLUMN_ALIAS_FALLBACK,
+        rules: [],
+        max_upload_bytes: MAX_BYTES,
+        allowed_extensions: ALLOWED,
+      };
+    }
+  }
+  return state.catalog;
+}
+
+function pct(rate) {
+  if (typeof rate !== "number" || Number.isNaN(rate)) return "—";
+  const value = rate * 100;
+  return `${value.toFixed(value % 1 === 0 ? 0 : 1)}%`;
+}
+
 function renderSettings() {
   const cfg = window.__MDP_CONFIG__ || {};
+  const catalog = state.catalog;
   const authModeEl = $("#settings-auth-mode");
   const sessionEl = $("#settings-auth-session");
   const nameEl = $("#settings-auth-name");
@@ -206,29 +231,74 @@ function renderSettings() {
       (isSignedIn(state.auth) && (state.auth.displayName || state.auth.userId)) || "—";
   }
   if (maxBytesEl) {
-    maxBytesEl.textContent = fmtSize(MAX_BYTES);
+    const bytes = catalog?.max_upload_bytes ?? MAX_BYTES;
+    maxBytesEl.textContent = fmtSize(bytes);
   }
   if (extEl) {
-    extEl.textContent = (ALLOWED || []).join(", ") || "—";
+    const exts = catalog?.allowed_extensions ?? ALLOWED;
+    extEl.textContent = (exts || []).join(", ") || "—";
   }
+
+  const discEl = $("#settings-max-discount");
+  const marginEl = $("#settings-min-margin");
+  if (discEl) {
+    discEl.textContent = pct(catalog?.thresholds?.max_discount_rate);
+  }
+  if (marginEl) {
+    marginEl.textContent = pct(catalog?.thresholds?.min_margin_rate);
+  }
+
+  const rulesHost = $("#settings-rules");
+  if (rulesHost) {
+    rulesHost.replaceChildren();
+    const rules = catalog?.rules || [];
+    if (rules.length === 0) {
+      rulesHost.append(el("p", "caption mute", "룰 목록을 불러오지 못했습니다. 잠시 후 다시 열어 주세요."));
+    } else {
+      const table = el("table", "settings-alias-table settings-rules-table");
+      const thead = el("thead");
+      const hr = el("tr");
+      hr.append(el("th", null, "코드"));
+      hr.append(el("th", null, "심각도"));
+      hr.append(el("th", null, "설명"));
+      thead.append(hr);
+      table.append(thead);
+      const tbody = el("tbody");
+      rules.forEach((rule) => {
+        const tr = el("tr");
+        tr.append(el("td", "mono", rule.code));
+        const sev = el("td", `sev-cell sev-${rule.severity || "info"}`, rule.severity || "—");
+        tr.append(sev);
+        tr.append(el("td", null, rule.description || "—"));
+        tbody.append(tr);
+      });
+      table.append(tbody);
+      rulesHost.append(table);
+    }
+  }
+
   const host = $("#settings-aliases");
   if (!host) return;
   host.replaceChildren();
-  COLUMN_ALIAS_CATALOG.forEach((group) => {
+  const sources = catalog?.sources?.length ? catalog.sources : COLUMN_ALIAS_FALLBACK;
+  sources.forEach((group) => {
     const block = el("div", "settings-alias-group");
-    block.append(el("h3", "settings-alias-source", group.source));
+    block.append(el("h3", "settings-alias-source", group.label || group.source));
     const table = el("table", "settings-alias-table");
     const thead = el("thead");
     const hr = el("tr");
     hr.append(el("th", null, "정규 컬럼"));
-    hr.append(el("th", null, "허용 별칭 (일부)"));
+    hr.append(el("th", null, "허용 별칭"));
     thead.append(hr);
     table.append(thead);
     const tbody = el("tbody");
-    group.columns.forEach((row) => {
+    (group.columns || []).forEach((row) => {
       const tr = el("tr");
       tr.append(el("td", "mono", row.canonical));
-      tr.append(el("td", null, row.aliases));
+      const aliasText = Array.isArray(row.aliases)
+        ? row.aliases.join(", ")
+        : (row.aliases || "—");
+      tr.append(el("td", null, aliasText || "—"));
       tbody.append(tr);
     });
     table.append(tbody);
@@ -340,7 +410,10 @@ async function runPreflight(filesOverride = null) {
         const j = await res.json();
         if (j.detail) detail = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail);
       } catch (_) {}
-      throw new Error(detail);
+      const formatted = formatPreflightError(res.status, detail);
+      const err = new Error(formatted.body);
+      err.isColumnError = formatted.isColumnError;
+      throw err;
     }
     const report = await res.json();
     if (state.pendingReview.size > 0) {
@@ -356,7 +429,10 @@ async function runPreflight(filesOverride = null) {
     router.navigate(ROUTES.run);
   } catch (err) {
     router.navigate(ROUTES.home);
-    toast(err.message || "검수 중 오류가 발생했습니다.");
+    toast(err.message || "검수 중 오류가 발생했습니다.", {
+      multiline: Boolean(err.isColumnError || (err.message && err.message.includes("\n"))),
+      durationMs: err.isColumnError ? 10000 : undefined,
+    });
   }
 }
 
@@ -390,8 +466,8 @@ if (hasClerkMode()) {
   });
 }
 void loadSources();
+void loadCatalog().then(() => renderSettings());
 renderDashboard();
-renderSettings();
 $("#run-btn").addEventListener("click", () => {
   void runPreflight();
 });

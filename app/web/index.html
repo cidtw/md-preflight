@@ -216,6 +216,32 @@
           </dl>
         </article>
 
+        <article class="settings-card">
+          <h2 class="display-sm section-title">룰 임계값</h2>
+          <dl class="settings-dl" id="settings-thresholds">
+            <div><dt>최대 할인율</dt><dd id="settings-max-discount">—</dd></div>
+            <div><dt>최소 마진율</dt><dd id="settings-min-margin">—</dd></div>
+          </dl>
+          <p class="caption mute">읽기 전용. 서버 <code>RuleThresholds</code> 기본값이며 배포 환경 설정으로 바뀔 수 있습니다.</p>
+        </article>
+
+        <article class="settings-card">
+          <h2 class="display-sm section-title">교육 가이드</h2>
+          <ol class="settings-guide">
+            <li>프로모션 · 마스터 · 재고 3파일을 올립니다.</li>
+            <li>컬럼명이 달라도 별칭 표의 정규 키로 수렴됩니다.</li>
+            <li>검수 결과의 이슈·체크리스트를 보고 원본을 수정합니다.</li>
+            <li>(선택) 로그인하면 이력 대시보드를 볼 수 있습니다.</li>
+          </ol>
+          <p class="caption mute">목표 적응 시간: 1시간 이내 · POS/ERP 경험자 기준</p>
+        </article>
+
+        <article class="settings-card settings-card-wide">
+          <h2 class="display-sm section-title">활성 룰 (10)</h2>
+          <p class="caption mute">판정 코드 목록. 서버 <code>GET /api/preflight/catalog</code> 기준입니다.</p>
+          <div id="settings-rules" class="settings-rules"></div>
+        </article>
+
         <article class="settings-card settings-card-wide">
           <h2 class="display-sm section-title">컬럼 별칭 (canonical ← aliases)</h2>
           <p class="caption mute">ERP·본사 양식의 한글/동의어 헤더는 아래 정규 컬럼명으로 수렴합니다. 판정 룰은 정규 키만 봅니다.</p>
@@ -257,6 +283,6 @@
   <div id="toast" class="toast hidden" role="alert"></div>
 
   <!-- __MDP_CONFIG_PLACEHOLDER__ -->
-  <script type="module" src="/static/app.js?v=5"></script>
+  <script type="module" src="/static/app.js?v=6"></script>
 </body>
 </html>

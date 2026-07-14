@@ -121,4 +121,8 @@ def test_prepare_source_frame_missing_still_errors_with_hint() -> None:
         _ = normalize_inventory(raw)
     message = str(exc.value)
     assert "Missing columns" in message
-    assert "inbound_date" in message or "expected_demand" in message
+    assert "inbound_date" in message
+    assert "expected_demand" in message
+    # T52: alias examples when file has no near-match headers
+    assert "similar headers" in message
+    assert "예:" in message or "←" in message
