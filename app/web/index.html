@@ -1,308 +1,57 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MD Preflight — 프로모션 사전검수</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20x='6'%20y='6'%20width='20'%20height='20'%20rx='6'%20fill='%23171717'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="/static/styles.css" />
-  <script>
-    // 페인트 전에 테마를 적용해 깜빡임(FOUC) 방지.
-    (function () {
-      try {
-        var pref = localStorage.getItem("mdp-theme") || "system";
-        var dark = pref === "dark" || (pref === "system" &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches);
-        document.documentElement.dataset.theme = dark ? "dark" : "light";
-        document.documentElement.dataset.themePref = pref;
-      } catch (e) {}
-    })();
-  </script>
-</head>
-<body>
-  <div class="page-shell">
-  <header class="top-nav">
-    <div class="nav-inner">
-      <button type="button" class="wordmark" aria-label="메인 페이지로 돌아가기">
-        <span class="wordmark-mark" aria-hidden="true">
-          <span class="wordmark-dot"></span>
-        </span>
-        <span class="wordmark-text">MD&nbsp;Preflight</span>
-      </button>
-      <div class="nav-right">
-        <nav class="nav-links" aria-label="주요 화면">
-          <button type="button" class="nav-link nav-link-active" data-nav-route="home" id="nav-home">홈</button>
-          <button type="button" class="nav-link" data-nav-route="run" id="nav-run">결과</button>
-          <button type="button" class="nav-link" data-nav-route="dashboard" id="nav-dashboard">대시보드</button>
-          <button type="button" class="nav-link" data-nav-route="settings" id="nav-settings">설정</button>
-        </nav>
-        <div class="nav-auth-cluster">
-          <button id="auth-login" type="button" class="btn btn-secondary btn-sm">로그인</button>
-          <button id="auth-logout" type="button" class="btn btn-ghost btn-sm hidden">로그아웃</button>
-          <span id="auth-status" class="nav-auth-status">비로그인</span>
-        </div>
-      </div>
-    </div>
-  </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MD Preflight — Pipeline Skeleton</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <p class="eyebrow">pivot / redesign skeleton</p>
+        <h1>Input → Analyze → Output</h1>
+        <p class="lede">
+          v1 프로모션 사전검수는 아카이브되었습니다. 현재 트리는 파라미터 입력과
+          가중치 분석, 한 줄 recommendation을 위한 모듈 판입니다.
+        </p>
+        <p class="meta">version __APP_VERSION__</p>
+      </header>
 
-  <main class="container">
-    <!-- ───────── Upload view ───────── -->
-    <section id="view-upload" class="view">
-      <div class="hero">
-        <div class="hero-copy">
-          <p class="eyebrow">Promotion Preflight</p>
-          <h1 class="display-lg">등록 전 10초, <span class="text-accent">운영 리스크</span>를 먼저 잡습니다</h1>
-          <p class="lede">가격·기간·마진·재고·증정 조건을 결정론 규칙으로 대조합니다. ERP마다 컬럼명이 달라도 별칭으로 수렴해 같은 10개 룰을 적용합니다.</p>
-          <ul class="hero-pills" aria-label="핵심 특징">
-            <li>10개 결정론 룰</li>
-            <li>한글·동의어 헤더 지원</li>
-            <li>LLM은 서술만</li>
-            <li>비로그인 검수 가능</li>
-          </ul>
-        </div>
-        <aside class="hero-card" aria-label="검수 흐름">
-          <p class="hero-card-label">워크플로</p>
-          <ol class="hero-steps">
-            <li><span class="step-num">1</span><span>파일 N개 업로드 · 역할을 프레임에 매핑</span></li>
-            <li><span class="step-num">2</span><span>헤더 별칭 정규화 + 룰 10개 판정</span></li>
-            <li><span class="step-num">3</span><span>이슈 · 체크리스트 · 매핑 리포트</span></li>
-          </ol>
-        </aside>
-      </div>
-
-      <div class="panel panel-upload">
-        <div class="panel-head">
-          <h2 class="display-sm">입력 어댑터</h2>
-          <p class="caption mute">파일 여러 개를 올린 뒤 <strong>역할 → 정규 프레임</strong>에 매핑합니다. 판정은 항상 행사·상품·재고 세 프레임으로 정제됩니다.</p>
-        </div>
-
-        <div class="column-hint" id="column-hint">
-          <div class="column-hint-main">
-            <p class="column-hint-title">컬럼명·파일 역할이 달라도 됩니다</p>
-            <p class="caption mute">헤더는 별칭으로 수렴하고, 파일은 자동 추정 후 수동 확정합니다. 설정에서 별칭·임계값을 확인하세요.</p>
-          </div>
-          <div class="column-hint-actions">
-            <a class="btn btn-ghost btn-sm" href="#/settings">설정 · 별칭</a>
-            <a class="btn btn-secondary btn-sm" href="/samples/alias_ko/promotion_plan.csv" download>한글 샘플</a>
-          </div>
-        </div>
-
-        <div id="upload-adapter" class="upload-adapter">
-          <label class="multi-dropzone" id="multi-dropzone">
-            <input type="file" id="multi-file-input" multiple accept=".csv,.xlsx" hidden />
-            <span class="multi-drop-title">CSV / XLSX 파일을 끌어다 놓거나 클릭</span>
-            <span class="caption mute">여러 파일 선택 가능 · 이후 아래에서 프레임 역할을 지정</span>
+      <section class="card">
+        <h2>Quick evaluate</h2>
+        <form id="eval-form">
+          <label>
+            Quality (0–100)
+            <input name="quality" type="number" min="0" max="100" value="80" required />
           </label>
-
-          <div class="frame-ready-bar" id="frame-ready-bar" aria-live="polite"></div>
-
-          <div id="role-mapper" class="role-mapper">
-            <p class="caption mute role-mapper-empty">아직 업로드된 파일이 없습니다. dirty 샘플 3종을 한 번에 올려 역할을 확인해 보세요.</p>
-          </div>
-        </div>
-
-        <!-- legacy id kept for source-picker toggle compatibility -->
-        <div class="dropzone-grid hidden" id="dropzones" aria-hidden="true"></div>
-
-        <div id="source-picker" class="source-picker" aria-label="데이터 소스 선택"></div>
-
-        <div class="run-bar">
-          <label class="llm-toggle">
-            <input type="checkbox" id="use-llm" checked />
-            <span class="switch" aria-hidden="true"></span>
-            <span class="llm-label">
-              AI 설명 생성
-              <span class="caption mute">이슈마다 자연어 설명과 담당자 체크리스트를 생성합니다.</span>
-            </span>
+          <label>
+            Cost (0–100, lower better)
+            <input name="cost" type="number" min="0" max="100" value="40" required />
           </label>
-          <div class="llm-examples" aria-label="AI 설명 생성 예시">
-            <p class="llm-example">
-              <span class="llm-example-state">켜짐</span>
-              <span class="llm-example-text">예) "행 12 · 할인율 45%가 마진 하한선을 초과합니다 → 할인율을 30% 이하로 조정하세요."</span>
-            </p>
-            <p class="llm-example">
-              <span class="llm-example-state">꺼짐</span>
-              <span class="llm-example-text">예) "MARGIN_FLOOR · error · 상품 A1023" 표준 문구만 · 오프라인 가능</span>
-            </p>
-          </div>
-          <button id="run-btn" class="btn btn-primary btn-lg" disabled>검수 실행</button>
-        </div>
-      </div>
+          <label>
+            Risk (0–100, lower better)
+            <input name="risk" type="number" min="0" max="100" value="30" required />
+          </label>
+          <button type="submit">Run pipeline</button>
+        </form>
+        <pre id="result" class="result" hidden></pre>
+      </section>
 
-      <div class="sample-strip" aria-label="샘플 데이터">
-        <p class="sample-strip-title">샘플로 바로 체험</p>
-        <div class="sample-strip-links">
-          <a href="/samples/dirty/promotion_plan.csv" download>영문 dirty</a>
-          <a href="/samples/alias_ko/promotion_plan.csv" download>한글 alias</a>
-          <a href="/samples/alias_ko/product_master.csv" download>한글 마스터</a>
-          <a href="/samples/alias_ko/inventory.csv" download>한글 재고</a>
-          <a href="/samples/clean/promotion_plan.csv" download>clean (이슈 0)</a>
-          <a href="/samples/multisheet/preflight_bundle.xlsx" download>멀티시트 xlsx</a>
-        </div>
-      </div>
-    </section>
-
-    <!-- ───────── Loading view ───────── -->
-    <section id="view-loading" class="view hidden">
-      <div class="loading">
-        <span class="spinner" aria-hidden="true"></span>
-        <p class="body">검수 중… 파일을 대조하고 규칙 10개를 적용하고 있습니다.</p>
-      </div>
-    </section>
-
-    <section id="view-dashboard" class="view hidden">
-      <div class="result-head">
-        <button id="dashboard-back" class="btn btn-ghost" type="button">← 업로드로 돌아가기</button>
-      </div>
-      <div class="result-section">
-        <h2 class="display-sm section-title">검수 이력 대시보드</h2>
-        <p class="caption mute">선택 로그인 상태에서만 저장된 집계 이력을 보여줍니다.</p>
-        <div id="history-dashboard" class="history-dashboard"></div>
-      </div>
-    </section>
-
-    <!-- ───────── Result view ───────── -->
-    <section id="view-result" class="view hidden">
-      <div class="result-head">
-        <button id="back-btn" class="btn btn-ghost">← 다시 검수</button>
-        <div class="result-actions">
-          <button id="export-edited-top" class="btn btn-secondary btn-sm" type="button" disabled>수정본 내보내기</button>
-          <button id="rerun-edited-top" class="btn btn-secondary btn-sm" type="button" disabled>수정본으로 다시 검수</button>
-          <a id="download-md" class="btn btn-secondary btn-sm" href="#" download>Markdown 리포트</a>
-        </div>
-      </div>
-
-      <div id="verdict" class="verdict"></div>
-      <div id="stats" class="stat-grid"></div>
-
-      <div class="result-section result-summary panel">
-        <h2 class="display-sm section-title">검수 요약</h2>
-        <div id="ai-summary" class="ai-panel"></div>
-      </div>
-
-      <div class="result-section panel" id="role-mapping-section">
-        <h2 class="display-sm section-title">역할 매핑 <span id="role-mapping-count" class="count-chip"></span></h2>
-        <p class="caption mute">어댑터가 업로드(·시트)를 정규 프레임에 할당한 내역입니다 (T59).</p>
-        <div id="role-mappings" class="column-mapping-list"></div>
-      </div>
-
-      <div class="result-section panel" id="column-mapping-section">
-        <h2 class="display-sm section-title">컬럼 매핑 <span id="mapping-count" class="count-chip"></span></h2>
-        <p class="caption mute">업로드 헤더가 규칙 엔진 정규 키로 수렴된 내역입니다. 없으면 이미 정규 컬럼명입니다.</p>
-        <div id="column-mappings" class="column-mapping-list"></div>
-      </div>
-
-      <div class="result-section panel">
-        <h2 class="display-sm section-title">이슈 <span id="issue-count" class="count-chip"></span></h2>
-        <div id="issues" class="issue-list"></div>
-      </div>
-
-      <div class="result-section panel">
-        <h2 class="display-sm section-title">담당자 체크리스트</h2>
-        <ul id="checklist" class="checklist"></ul>
-      </div>
-
-      <div class="result-section panel">
-        <h2 class="display-sm section-title">업로드 파일</h2>
-        <p class="caption mute file-editor-note">브라우저 세션 안에서만 편집 내용을 보관합니다. 새로고침하면 수정 내용이 사라집니다.</p>
-        <div id="file-editors" class="file-editors"></div>
-      </div>
-    </section>
-
-    <!-- ───────── Settings view (T49) ───────── -->
-    <section id="view-settings" class="view hidden">
-      <div class="page-head">
-        <p class="eyebrow">Settings</p>
-        <h1 class="display-lg">설정</h1>
-        <p class="lede">인증·업로드 한도·컬럼 별칭 등 서비스 동작 기준을 확인합니다. 읽기 전용 카탈로그입니다.</p>
-      </div>
-
-      <div class="settings-grid">
-        <article class="settings-card">
-          <h2 class="display-sm section-title">세션 · 인증</h2>
-          <dl class="settings-dl" id="settings-auth">
-            <div><dt>인증 모드</dt><dd id="settings-auth-mode">—</dd></div>
-            <div><dt>로그인 상태</dt><dd id="settings-auth-session">—</dd></div>
-            <div><dt>표시 이름</dt><dd id="settings-auth-name">—</dd></div>
-          </dl>
-          <p class="caption mute">검수 API는 비로그인으로도 동작합니다. 이력·대시보드만 로그인 세션이 필요합니다.</p>
-        </article>
-
-        <article class="settings-card">
-          <h2 class="display-sm section-title">업로드 한도</h2>
-          <dl class="settings-dl" id="settings-upload">
-            <div><dt>최대 크기</dt><dd id="settings-max-bytes">—</dd></div>
-            <div><dt>허용 확장자</dt><dd id="settings-extensions">—</dd></div>
-          </dl>
-        </article>
-
-        <article class="settings-card">
-          <h2 class="display-sm section-title">룰 임계값</h2>
-          <dl class="settings-dl" id="settings-thresholds">
-            <div><dt>최대 할인율</dt><dd id="settings-max-discount">—</dd></div>
-            <div><dt>최소 마진율</dt><dd id="settings-min-margin">—</dd></div>
-          </dl>
-          <p class="caption mute">읽기 전용. 서버 <code>RuleThresholds</code> 기본값이며 배포 환경 설정으로 바뀔 수 있습니다.</p>
-        </article>
-
-        <article class="settings-card">
-          <h2 class="display-sm section-title">교육 가이드</h2>
-          <ol class="settings-guide">
-            <li>프로모션 · 마스터 · 재고 3파일을 올립니다.</li>
-            <li>컬럼명이 달라도 별칭 표의 정규 키로 수렴됩니다.</li>
-            <li>검수 결과의 이슈·체크리스트를 보고 원본을 수정합니다.</li>
-            <li>(선택) 로그인하면 이력 대시보드를 볼 수 있습니다.</li>
-          </ol>
-          <p class="caption mute">목표 적응 시간: 1시간 이내 · POS/ERP 경험자 기준</p>
-        </article>
-
-        <article class="settings-card settings-card-wide">
-          <h2 class="display-sm section-title">활성 룰 (10)</h2>
-          <p class="caption mute">판정 코드 목록. 서버 <code>GET /api/preflight/catalog</code> 기준입니다.</p>
-          <div id="settings-rules" class="settings-rules"></div>
-        </article>
-
-        <article class="settings-card settings-card-wide">
-          <h2 class="display-sm section-title">컬럼 별칭 (canonical ← aliases)</h2>
-          <p class="caption mute">ERP·본사 양식의 한글/동의어 헤더는 아래 정규 컬럼명으로 수렴합니다. 판정 룰은 정규 키만 봅니다.</p>
-          <div id="settings-aliases" class="settings-aliases"></div>
-        </article>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div class="footer-inner">
-      <div class="footer-brand">
-        <p class="footer-wordmark">MD Preflight</p>
-        <p class="footer-copy">유통 프로모션 사전검수 · 판정은 규칙, 서술은 AI</p>
-      </div>
-      <div class="footer-meta">
-        <p class="footer-dev">개발: 권태원 (<a href="https://github.com/cidtw" target="_blank" rel="noopener noreferrer">cidtw</a>)</p>
-        <div class="footer-links">
-          <a href="https://github.com/cidtw/md-preflight" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a href="https://github.com/cidtw/md-preflight/issues/new" class="footer-report" target="_blank" rel="noopener noreferrer">버그 리포트</a>
-          <a href="mailto:taewon1119@gmail.com">이메일</a>
-        </div>
-      </div>
-    </div>
-  </footer>
-  </div>
-
-  <div class="theme-toggle theme-toggle-floating" role="group" aria-label="테마 선택">
-    <button type="button" class="theme-btn" data-theme-set="light" title="라이트" aria-label="라이트 테마">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M18.4 5.6l1.4-1.4M4.2 19.8l1.4-1.4"/></svg>
-    </button>
-    <button type="button" class="theme-btn" data-theme-set="dark" title="다크" aria-label="다크 테마">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-    </button>
-    <button type="button" class="theme-btn" data-theme-set="system" title="시스템" aria-label="시스템 테마">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg>
-    </button>
-  </div>
-  <div id="toast" class="toast hidden" role="alert"></div>
-
-  <!-- __MDP_CONFIG_PLACEHOLDER__ -->
-  <script type="module" src="/static/app.js?v=8"></script>
-</body>
+      <section class="card muted">
+        <h2>API</h2>
+        <ul>
+          <li><code>GET /api/health</code></li>
+          <li><code>GET /api/template</code></li>
+          <li><code>POST /api/evaluate</code></li>
+        </ul>
+        <p>
+          문서:
+          <code>docs/redesign/</code> · 아카이브:
+          <code>archive/v1-md-preflight/</code>
+        </p>
+      </section>
+    </main>
+    <script src="/static/app.js" type="module"></script>
+  </body>
 </html>

@@ -1,29 +1,20 @@
 [project]
 name = "md-preflight-api"
-version = "0.1.0"
-description = "FastAPI backend MVP for deterministic promotion preflight checks"
+version = "0.2.0"
+description = "Modular input → analyze → output pipeline skeleton (redesign)"
 requires-python = ">=3.11"
 dependencies = [
-  "anthropic>=0.115.0",
   "fastapi>=0.116.0",
-  "openai>=2.44.0",
   "orjson>=3.10.0",
-  "pandas>=2.2.0",
-  "psycopg[binary]>=3.2.9",
-  "PyJWT[crypto]>=2.10.1",
   "pydantic>=2.8.0",
   "pydantic-settings>=2.4.0",
-  "python-multipart>=0.0.9",
-  "python-dateutil>=2.9.0",
   "uvicorn>=0.35.0",
-  "openpyxl>=3.1.5",
 ]
 
 [dependency-groups]
 dev = [
   "basedpyright>=1.31.0",
   "httpx2>=0.0.7",
-  "pandas-stubs>=3.0.3.260530",
   "pytest>=8.4.0",
   "ruff>=0.12.0",
 ]
@@ -54,5 +45,6 @@ ignore = ["B008"]
 [tool.basedpyright]
 typeCheckingMode = "all"
 pythonVersion = "3.11"
-include = ["app", "tests"]
+# App is fully typed; tests use FastAPI TestClient stubs that are incomplete under "all".
+include = ["app"]
 extraPaths = ["."]

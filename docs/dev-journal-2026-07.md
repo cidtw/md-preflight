@@ -1,9 +1,9 @@
 # MD Preflight 개발 일지 — 2026년 7월 전체 흐름
 
-> **용도**: 최종 발표 시 “무엇을 언제·왜 만들었는가”를 **7/1 착수 → 7/13 중간발표 → 7/14 이후 피드백 대응**까지 한 줄기로 설명하기 위한 정본.  
-> **범위**: 2026-07-01 ~ 07-23 (7/24 soft freeze 직전 창 포함)  
-> **근거**: git 커밋 · `handoff/` 노트 · 티켓 T1~T53 · 당일 검증 수치  
-> **관련**: `docs/architecture-easy.md` · `handoff/2026-07-14-plan-through-0724.md` · `BACKEND_ARCHITECTURE.md`
+> **용도**: 최종 발표 시 “무엇을 언제·왜 만들었는가”를 **7/1 착수 → 7/13 중간발표 → 7/14 피드백 → 방향성 재설계**까지 한 줄기로 설명하기 위한 정본.  
+> **범위**: 2026-07-01 ~ (진행 중; 국면 VI 재설계 포함)  
+> **근거**: git 커밋 · `handoff/` 노트 · 티켓 T1~T59 · 재설계 지시 `2026-07-14-Project-Redesign.md` · 당일 검증 수치  
+> **관련**: `docs/redesign/` · `archive/v1-md-preflight/` · `docs/architecture-easy.md` (v1) · `BACKEND_ARCHITECTURE.md` (v1 archived)
 
 ---
 
@@ -22,7 +22,9 @@
     ↓
 [7/11–13] 발표·모듈화    리허설 창 · app.js PR1–3 분리 (7/13 커밋)
     ↓
-[7/14+]  피드백 대응     별칭 컬럼 · 4화면 · 매핑 감사 · 설정 카탈로그 (T48–T53)
+[7/14 a.m.] 피드백 대응  별칭 · 4화면 · 매핑 감사 · 설정 · 어댑터 (T48–T59)
+    ↓
+[7/14 p.m.] 방향 피벗    v1 아카이브 · 3단 파이프라인 스켈레톤 · 재설계 판 (국면 VI)
 ```
 
 | 국면 | 기간 | 한 줄 목표 | 대표 산출 |
@@ -31,10 +33,17 @@
 | **II. MD 워크스페이스** | 7/5–6 | 브라우저에서 쓰고 고치게 | SPA · 편집 · 체크리스트 · 테마 |
 | **III. 라이브 제품** | 7/7–9 | 프로덕션에서 안 죽게 | Clerk/Neon/LLM · degrade · harden |
 | **IV. 발표 품질** | 7/9–13 | 스토리·데모가 안 깨지게 | 덱 · seed · 스모크 · 모듈 분리 |
-| **V. 중간발표 이후** | 7/14–23 | 약점(고정 컬럼·한 화면) 해소 | T48–T53 · UI 리프레시 |
+| **V. 중간발표 이후** | 7/14 오전 | 약점(고정 컬럼·한 화면) 해소 | T48–T59 · UI 리프레시 |
+| **VI. 방향성 재설계** | 7/14 오후~ | v1 동결 · 모듈 3단 판 · 근거 중심 서비스 준비 | archive · pipeline · redesign board |
 
-**불변 원칙 (전 기간 공통, D3)**  
-판정 = 결정론 룰 · 서술 = LLM(실패 시 fallback) · 검수 비로그인 200 · 이력은 격리·append-only.
+**불변 원칙**
+
+| 구간 | 원칙 |
+|------|------|
+| **국면 I–V (v1, D3)** | 판정 = 결정론 룰 · 서술 = LLM(실패 시 fallback) · 검수 비로그인 200 · 이력은 격리·append-only |
+| **국면 VI+ (재설계)** | 판정 = 결정론 **가중치 점수** · 입력 = 파라미터 템플릿 · 출력 = **한 줄 recommendation** · 스테이지 모듈 추가만 허용 · 실 가중치는 조사 후 주입 (R0–R2 선행) |
+
+**v1 복원 키**: 태그 `archive/v1-md-preflight` @ `b444be0` · 문서 `archive/v1-md-preflight/`
 
 ---
 
@@ -97,7 +106,18 @@
 | T56 | 입력 어댑터 ADR (X/Z) | 7/14 | **DONE** |
 | T57 | N파일 업로드 + 역할 매핑 UI | 7/14 | **DONE** |
 | T58 | 단일 xlsx 멀티시트 → 프레임 분리 | 7/14 | **DONE** |
-| T59 | 역할 매핑 Report/MD 기록 | 7/14 | **DONE** |
+| T59 | 역할 매핑 Report/MD 기록 | 7/14 | **DONE** (v1 종료) |
+
+### 1.5 재설계 준비 (Phase VI) — v1 티켓 번호 체계와 분리
+
+| ID | 제목 | 시점 | 상태 |
+|----|------|------|------|
+| P1 | v1 아카이브 태그·문서 (`archive/v1-md-preflight`) | 7/14 | **DONE** |
+| P2 | 백엔드 keep/discard 리뷰 | 7/14 | **DONE** |
+| P3 | 3단 파이프라인 스켈레톤 + API (`/api/template`, `/api/evaluate`) | 7/14 | **DONE** |
+| P4 | 재설계 판 `docs/redesign/` | 7/14 | **DONE** |
+| P5 | README·AGENTS·BRIEF·일지·의존성 슬림화 | 7/14 | **DONE** |
+| R0+ | 서비스 도메인·가중치 조사·실 템플릿 (board) | 이후 | **TODO** |
 
 ---
 
@@ -111,7 +131,9 @@
 | 7/9–10 덱/폴리시 | **132** | 발표 KPI로 고정 |
 | 7/14 T48–T51 | **141–142** | 별칭·라우트·UI |
 | 7/14 T52–T53 | **143** | catalog + error UX |
-| 7/23 목표 | green freeze | T55 |
+| 7/14 T56–T59 | **150** | v1 입력 어댑터 피크 (아카이브 기준점) |
+| **7/14 재설계 스켈레톤** | **12** | 파이프라인 unit/API only (의도적 슬림) |
+| 이후 | green on skeleton → R0+ | 도메인 확정 후 스위트 재확장 |
 
 ---
 
@@ -385,41 +407,133 @@ ruff · basedpyright · pytest 143 · verify_router/error_format/dom_util
 
 ---
 
-### 2026-07-15 (화) ~ 07-22 — 템플릿 (예정/잔여)
+### 2026-07-14 (월) 오후 — 방향성 재설계 준비 (국면 VI) **DONE**
 
-| 일자 | 테마 (계획) | 상태 |
-|------|-------------|------|
-| 7/15–16 | 폴리시·데모 시나리오 보강 (T50/T51 잔여 여지) | T50–51 이미 완료 → 여유 시 UX 다듬기 |
-| 7/17–19 | 실무 설득 카피·샘플 시나리오 | 선택 |
-| 7/20–22 | T54 stub 프로필 (선택) · 프로덕션 스모크 | 예정 |
-| 7/23 | **T55** 풀 검증 · README 수치 · freeze 준비 | 예정 |
+| 필드 | 내용 |
+|------|------|
+| **테마** | 프로젝트 방향성 자체 변경 — v1 아카이브 + 모듈 3단 파이프라인 판 제작 |
+| **지시문** | `2026-07-14-Project-Redesign.md` |
+| **브랜치** | `pivot/project-direction` (remote tracking) |
+| **아카이브 태그** | `archive/v1-md-preflight` → commit `b444be0` |
+| **검증** | `ruff` pass · `basedpyright app` 0 errors · **pytest 12 passed** |
 
-> 일자별 상세 기입 칸은 작업 후 이 표 아래 소절을 추가한다.
+#### 피드백/문제 인식 (지시 §1)
+
+1. **기능 과다** — 10룰·어댑터·Clerk/Neon·대형 SPA가 한 제품에 공존  
+2. **서비스 근거 빈약** — 조사 기반 평가 가중치·추천 논리가 제품 중심에 없음  
+3. **가벼운 서비스 + 무거운 웹** — 본체 대비 웹표준·프로덕션 표면이 체감 부하를 키움  
+
+#### 방향 재설정 (지시 §2)
+
+1. 좁은 스코프 · 논리·근거 명확  
+2. 파라미터 입력 → 사전 조사 가중치 분석 → **한 줄 recommendation**  
+3. 명확 프레임워크 · 간결 구조 · 환경 무관 동일 경험  
+4. 블록·모듈형으로 이후 기능 추가  
+
+> **서비스 세부 구성(도메인·실 가중치·본 UI)은 준비 과정 완결 후** — board R0+ 에서 진행.
+
+#### 수행 (지시 §3 준비 과정 — 전부)
+
+| # | 작업 | 산출 |
+|---|------|------|
+| 1 | main/v1 자료 백업·아카이브 | 태그 `archive/v1-md-preflight` · `archive/v1-md-preflight/{README,MANIFEST,DISCARD-REVIEW}.md` |
+| 2 | 파이프라인 3단 재편 + 버릴 것 폐기 + 모듈 백엔드 사전 작업 | 아래 *구조·폐기* 상세 |
+| 3 | 재설계 판 제작 | `docs/redesign/{README,direction,pipeline,board}.md` |
+
+##### 활성 파이프라인 구조 (input → analyze → output)
+
+```
+app/pipeline/
+  input/template.py     # GET /api/template · 파라미터 검증
+  analyze/weights.py    # 플레이스홀더 기준·가중치 (조사 전 DEFER)
+  analyze/engine.py     # 결정론 점수 · band strong/moderate/weak
+  output/recommendation.py  # 한 줄 recommendation
+  runner.py             # 오케스트레이션 단일 진입
+app/api/routes.py       # GET /api/health · /api/template · POST /api/evaluate
+app/web/                # 최소 HTML/CSS/JS 셸 (대형 SPA 제거)
+```
+
+##### 활성 트리에서 제거 (DISCARD — 복원은 태그)
+
+| 영역 | 제거된 대표 경로 |
+|------|------------------|
+| 판정 엔진 | `app/rules/*` (10룰) |
+| 입력 정제 | `app/ingest/*`, `app/domain/*` |
+| 서비스 층 | `app/services/*` (LLM, history, clerk, validation_engine, …) |
+| 소스 스텁 | `app/sources/*` |
+| v1 스키마 | `app/schemas/{report,issue,history,catalog,…}` |
+| 대형 SPA | `app/web/*.mjs` 다수 · `app/web/samples/**` |
+| 데모/검증 스크립트 | `demo.sh` · `scripts/verify_*.mjs` · `scripts/seed_db.py` |
+| v1 테스트 스위트 | `tests/test_rules.py` 등 전체 → 파이프라인 12테스트로 교체 |
+
+##### 의존성 슬림화
+
+- **제거**: pandas, openpyxl, anthropic, openai, psycopg, PyJWT, python-multipart, numpy 등  
+- **런타임 유지**: fastapi, pydantic, pydantic-settings, orjson, uvicorn  
+- **dev**: ruff, basedpyright, pytest, httpx2  
+- `pyproject.toml` version **0.2.0** · `uv.lock` 재생성  
+
+##### 문서·계약 정합
+
+| 파일 | 변경 |
+|------|------|
+| `README.md` | 재설계 스켈레톤 중심으로 전면 재작성 |
+| `PROJECT_BRIEF.md` | 새 한 줄·파이프라인·비목표 |
+| `AGENTS.md` | 활성 경로·검증 커맨드·v1 복원 주의 |
+| `BACKEND_ARCHITECTURE.md` / `DESIGN.md` | **ARCHIVED v1** 배너 |
+| `vercel.json` | `app/web/**` only (samples 경로 제거) |
+| `.env.example` | 슬림 (Clerk/DB/LLM 키 필수 아님) |
+| `docs/redesign/*` | 방향·파이프라인 계약·보드 |
+| 본 일지 | §0 국면 VI · §1.5 · §2 지표 · 본 소절 |
+
+##### 검증 기록 (당일 세션)
+
+```
+uv run ruff check app tests     # All checks passed
+uv run basedpyright app         # 0 errors
+uv run pytest                   # 12 passed
+```
+
+#### 한 줄 회고
+> v1은 **태그로 완전히 동결**하고, 활성 트리는 “파라미터 → 가중치 → 한 줄 추천”만 남는 **빈 판**으로 리셋했다. 다음 일은 코드가 아니라 **근거(R0–R2)** 다.
+
+#### 의도적으로 하지 않은 것 (지시 준수)
+
+- 실 서비스 도메인·조사 가중치 확정 (board R0+ **NOT STARTED**)  
+- 본격 UI 폴리시·프레임워크 선정  
+- v1 기능을 새 파이프라인에 억지 이식  
 
 ---
 
-### 2026-07-23 (수) — 회귀 · freeze 준비 (예정)
+### 2026-07-15 이후 — 재설계 세부 (예정)
 
-- [ ] ruff · basedpyright · pytest · verify_*.mjs · demo.sh  
-- [ ] 본 일지 지표·티켓 보드 최종 수치  
-- [ ] 발표용 “7월 전체 3분 아크” 확정  
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| R0 서비스 도메인·문제 정의 | TODO | `docs/redesign/board.md` |
+| R1 평가 기준·가중치 조사 표 | TODO | 출처 필수 |
+| R2 입력 파라미터 최종 템플릿 | TODO | |
+| R3 스켈레톤 가중치 → 실데이터 | TODO | R0–R2 선행 |
+| R4–R5 recommendation 카피 · 최소 UI | TODO | 무거운 SPA 금지 |
+| (구) T54/T55 v1 freeze 계획 | **SUPERSEDED** | v1은 아카이브로 대체 |
+
+> 구 7/15–23 “T55 freeze” 일정은 **국면 VI 피벗으로 폐기**. 발표 스토리도 §5 갱신본을 따른다.
 
 ---
 
 ## 5. 발표용 스토리 스크립트
 
-### 5.1 30초
-> 7월 초 결정론 검수 엔진을 세우고, 중순에 MD 워크스페이스와 프로덕션을 올렸습니다.  
-> 중간발표 피드백 후엔 **컬럼이 달라도**, **화면이 나뉘어도** 같은 10룰이 돌아가게 다듬었습니다.
+### 5.1 30초 (국면 VI 반영)
+> 7월에 유통 프로모션 사전검수 v1을 엔진부터 라이브까지 올렸고, 중간발표 뒤 입력 유연성까지 다듬었습니다.  
+> 다만 **기능 과다·근거 부족·웹 과부하** 피드백을 받아 v1은 아카이브하고, **파라미터 → 가중치 분석 → 한 줄 추천** 모듈 판으로 방향을 바꿨습니다.
 
 ### 5.2 2분 (국면별)
-1. **엔진** — 판정은 룰, LLM은 설명. 계약 테스트로 증명.  
-2. **워크스페이스** — 업로드·이슈·CSV 수정·체크리스트.  
-3. **라이브** — Clerk/Neon/OpenAI, 장애 시 degrade, 검수는 살림.  
-4. **피드백** — 별칭·4화면·설정 카탈로그로 실무 마찰 제거.
+1. **엔진(v1)** — 판정은 룰, LLM은 설명. 계약 테스트로 증명.  
+2. **워크스페이스·라이브(v1)** — SPA, Clerk/Neon, degrade.  
+3. **피드백(v1)** — 별칭·4화면·어댑터(T48–T59).  
+4. **피벗** — 태그 아카이브, 3단 파이프라인 스켈레톤, 조사 기반 가중치 로드맵.
 
 ### 5.3 5분
-위 + T8 결정론 · T40/T41 격리 · T48 별칭 데모 · `#/settings` 교육 스토리.
+위 + v1 D3/T8 결정론 교훈을 새 가중치 엔진에 계승 · discard 표 · `POST /api/evaluate` 라이브 데모 · board R0–R2가 다음 마일스톤.
 
 ---
 
@@ -427,25 +541,32 @@ ruff · basedpyright · pytest 143 · verify_router/error_format/dom_util
 
 | 주제 | 경로 |
 |------|------|
-| 쉬운 아키텍처 | `docs/architecture-easy.md` |
-| 백엔드 설계 | `BACKEND_ARCHITECTURE.md` |
-| 룰 매트릭스 | `docs/rule-matrix.md` |
-| 7/14–24 플랜 | `handoff/2026-07-14-plan-through-0724.md` |
+| **재설계 지시** | `2026-07-14-Project-Redesign.md` |
+| **재설계 판** | `docs/redesign/` |
+| **v1 아카이브** | `archive/v1-md-preflight/` · tag `archive/v1-md-preflight` |
+| 쉬운 아키텍처 (v1) | `docs/architecture-easy.md` |
+| 백엔드 설계 (v1 archived) | `BACKEND_ARCHITECTURE.md` |
+| 룰 매트릭스 (v1) | `docs/rule-matrix.md` |
+| 입력 어댑터 ADR (v1) | `docs/adr/0001-input-adapter-canonical-frames.md` |
+| 7/14–24 플랜 (v1, superseded) | `handoff/2026-07-14-plan-through-0724.md` |
 | 7/9–13 재플랜 | `handoff/2026-07-09-replan-through-0713.md` |
 | 중간발표 피드백 | `handoff/tickets/2027-07-14-AFTER-MIDTERM-REVIEW-PLAN.md` |
-| 티켓 원문 | `handoff/tickets/T*.md` |
+| 티켓 원문 (v1) | `handoff/tickets/T*.md` |
 | 일자 handoff | `handoff/2026-07-*.md` |
 
 ---
 
 ## 7. 작성 규칙
 
-1. **기능 커밋/배포 후** 해당 일자 행과 티켓 보드를 갱신한다.  
+1. **기능 커밋/배포 후** 해당 일자 행과 티켓/보드를 갱신한다.  
 2. 수치는 **그 세션에서 돌린 pytest** 를 우선한다 (과거 스냅샷은 “참고”).  
 3. `handoff/` 는 gitignore — **발표용 정본은 본 `docs/` 파일**.  
-4. 신규 국면이 생기면 §0 아크 다이어그램에 한 줄만 추가한다.
+4. 신규 국면이 생기면 §0 아크 다이어그램에 한 줄만 추가한다.  
+5. **국면 VI 이후** 활성 계약 문서는 `docs/redesign/` 이며, v1 문서는 아카이브 배너를 유지한다.  
+6. 실 평가 가중치는 조사(R0–R2) 없이 코드에 박지 않는다.
 
 ---
 
 *정본 경로: `docs/dev-journal-2026-07.md`*  
-*최초 작성(7/14 구간): 2026-07-14 · 전체 흐름 통합: 2026-07-14 (7/1–13 소급 정리)*
+*최초 작성(7/14 구간): 2026-07-14 · 전체 흐름 통합: 2026-07-14 (7/1–13 소급 정리)*  
+*국면 VI 재설계 준비 반영: 2026-07-14*

@@ -1,22 +1,20 @@
-from dataclasses import dataclass
+"""Application errors for the modular pipeline."""
 
-from typing_extensions import override
+from __future__ import annotations
+
+from typing import final
 
 
-@dataclass(frozen=True, slots=True)
-class IngestError(Exception):
+class AppError(Exception):
+    """Base application error."""
+
+
+@final
+class InputValidationError(AppError):
+    """Raised when client parameters fail the input template."""
+
     message: str
 
-    @override
-    def __str__(self) -> str:
-        return self.message
-
-
-@dataclass(frozen=True, slots=True)
-class UploadValidationError(Exception):
-    message: str
-    status_code: int
-
-    @override
-    def __str__(self) -> str:
-        return self.message
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message

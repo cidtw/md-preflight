@@ -1,3 +1,5 @@
+> ⚠️ **ARCHIVED (v1, 2026-07-14)** — 활성: `docs/redesign/`. 태그 `archive/v1-md-preflight`.
+
 # ADR 0001: Input adapter → canonical frames (X/Z)
 
 **Status**: Accepted  

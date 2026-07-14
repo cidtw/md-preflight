@@ -1,6 +1,9 @@
 # MD Preflight — 백엔드 아키텍처 설계안 (3주 MVP)
 
-> 역할: Tech Lead 설계안 · 대상: `md-preflight/` · 상태: 설계 확정용 초안
+> ⚠️ **ARCHIVED (2026-07-14)** — v1 프로모션 사전검수 설계. 활성 트리는 `docs/redesign/` · `app/pipeline/`.  
+> 원본 코드 복원: 태그 `archive/v1-md-preflight` · 안내 `archive/v1-md-preflight/README.md`.
+
+> 역할: Tech Lead 설계안 · 대상: `md-preflight/` · 상태: **v1 아카이브**
 > 전제: FastAPI + Pandas + Pydantic · 검수는 deterministic rule engine · LLM은 요약/체크리스트 전용(공급자 교체 가능)
 > 범위 제외: ERP, POS, 로그인, 멀티테넌트, 수요예측
 

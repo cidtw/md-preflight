@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -14,7 +13,14 @@ WEB_DIR = Path(__file__).parent / "web"
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="MD Preflight API", version="0.1.0")
+    app = FastAPI(
+        title=settings.app_name,
+        version=settings.app_version,
+        description=(
+            "Modular pipeline skeleton: input template → weighted analyze → "
+            "one-line recommendation. v1 promotion preflight is archived."
+        ),
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -24,7 +30,6 @@ def create_app() -> FastAPI:
     )
     app.include_router(router)
 
-    # MVP web UI — static SPA served by FastAPI (same origin, no build step).
     if WEB_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
@@ -33,31 +38,19 @@ def create_app() -> FastAPI:
 
         app.add_api_route("/", index, include_in_schema=False, response_class=HTMLResponse)
 
-    # Prefer app/web/samples so Vercel (@vercel/python includeFiles: app/web/**)
-    # ships demo CSVs. Fall back to repo data/samples for local monorepo layout.
-    web_samples = WEB_DIR / "samples"
-    data_samples = Path(__file__).resolve().parent.parent / "data" / "samples"
-    samples_dir = web_samples if web_samples.is_dir() else data_samples
-    if samples_dir.is_dir():
-        app.mount("/samples", StaticFiles(directory=samples_dir), name="samples")
-
     return app
 
 
 def build_index_html(settings: Settings) -> str:
-    config_payload = json.dumps(
-        {
-            "clerkPublishableKey": settings.clerk_publishable_key,
-            "maxUploadBytes": settings.max_upload_bytes,
-            "allowedExtensions": list(settings.allowed_extensions),
-            "authMode": settings.auth_mode,
-        },
-        ensure_ascii=True,
-    )
-    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
-    return html.replace(
-        "<!-- __MDP_CONFIG_PLACEHOLDER__ -->",
-        f"<script>window.__MDP_CONFIG__ = {config_payload};</script>",
+    html_path = WEB_DIR / "index.html"
+    if not html_path.is_file():
+        return (
+            f"<html><body><h1>{settings.app_name}</h1>"
+            f"<p>version {settings.app_version}</p></body></html>"
+        )
+    return html_path.read_text(encoding="utf-8").replace(
+        "__APP_VERSION__",
+        settings.app_version,
     )
 
 

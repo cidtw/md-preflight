@@ -1,7 +1,9 @@
 ---
 version: alpha
+status: archived-v1
 name: MD-Preflight-design-system
 description: >
+  [ARCHIVED 2026-07-14] v1 SPA 디자인 시스템. 활성 UI는 app/web 최소 셸 · 재설계 판 docs/redesign/.
   MD Preflight의 MVP 웹 UI를 위한 디자인 시스템. 유통 프로모션 사전검수라는
   B2B 운영·감사 도메인에 맞춰 Vercel의 near-white ink-on-white 팔레트와
   Linear의 조밀한 hairline·surface 위계를 합성하고, 이슈 심각도(error/warning)는

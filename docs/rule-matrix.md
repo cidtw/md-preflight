@@ -1,3 +1,5 @@
+> ⚠️ **ARCHIVED (v1, 2026-07-14)** — 활성: `docs/redesign/`. 태그 `archive/v1-md-preflight`.
+
 # MVP Rule Matrix
 
 ## Active Rules

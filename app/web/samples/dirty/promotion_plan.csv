@@ -1,8 +1,0 @@
-promotion_id,product_code,start_date,end_date,promo_price,benefit_type,benefit_condition
-P-1,SKU-1,2026-07-10,2026-07-12,7000,discount,
-P-2,SKU-2,2026-07-15,2026-07-10,12000,discount,buy 1
-P-3,SKU-3,2026-07-10,2026-07-15,2000,discount,buy 1
-P-4,SKU-9,2026-07-10,2026-07-15,5000,discount,buy 1
-P-5,SKU-4,2026-07-10,2026-07-15,8000,discount,buy 1
-P-6,SKU-5,2026-07-10,2026-07-15,8000,discount,buy 1
-P-7,SKU-6,2026-07-10,2026-07-15,8000,discount,buy 1
