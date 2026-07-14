@@ -150,6 +150,7 @@ curl -s -X POST http://127.0.0.1:8000/api/preflight \
 | `GET` | `/api/preflight/runs/{run_id}/report.md` | Markdown 리포트 다운로드 |
 | `GET` | `/api/preflight/rules` | 룰 메타데이터 목록 |
 | `GET` | `/api/preflight/catalog` | 설정용 읽기 전용 카탈로그 — 임계값 · 소스별 컬럼 별칭 · 룰 목록 · 업로드 한도 |
+| `POST` | `/api/preflight/detect-roles` | 업로드 테이블 헤더로 정규 프레임 역할 추정(T57). `files` 멀티파트 다건 |
 | `GET` | `/api/preflight/health` | 헬스체크 — `auth_mode`(`clerk`\|`stub`\|`off`) · `run_backend`/`history_backend`(`postgres`\|`in_memory`)를 비밀값 없이 노출 |
 
 **룰 세트 버전(`rule_set_version`)**: `PreflightReport`와 이력 레코드마다 룰 코드 목록 + 임계값(`RuleThresholds`)의 결정론적 해시(sha256 앞 12자)가 찍힌다. 어떤 룰 구성이 이 리포트를 만들었는지 감사·비교하는 용도 — 같은 룰·임계값이면 항상 같은 버전, 하나라도 바뀌면 값이 달라진다.

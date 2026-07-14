@@ -63,7 +63,7 @@
         <aside class="hero-card" aria-label="검수 흐름">
           <p class="hero-card-label">워크플로</p>
           <ol class="hero-steps">
-            <li><span class="step-num">1</span><span>프로모션 · 마스터 · 재고 업로드</span></li>
+            <li><span class="step-num">1</span><span>파일 N개 업로드 · 역할을 프레임에 매핑</span></li>
             <li><span class="step-num">2</span><span>헤더 별칭 정규화 + 룰 10개 판정</span></li>
             <li><span class="step-num">3</span><span>이슈 · 체크리스트 · 매핑 리포트</span></li>
           </ol>
@@ -72,24 +72,37 @@
 
       <div class="panel panel-upload">
         <div class="panel-head">
-          <h2 class="display-sm">파일 업로드</h2>
-          <p class="caption mute">CSV / XLSX · 파일당 최대 한도는 설정에서 확인</p>
+          <h2 class="display-sm">입력 어댑터</h2>
+          <p class="caption mute">파일 여러 개를 올린 뒤 <strong>역할 → 정규 프레임</strong>에 매핑합니다. 판정은 항상 행사·상품·재고 세 프레임으로 정제됩니다.</p>
         </div>
 
         <div class="column-hint" id="column-hint">
           <div class="column-hint-main">
-            <p class="column-hint-title">컬럼명이 달라도 됩니다</p>
-            <p class="caption mute">예: <code>상품코드</code> · <code>SKU</code> · <code>품번</code> → <code>product_code</code>. 설정에서 전체 별칭 표를 볼 수 있습니다.</p>
+            <p class="column-hint-title">컬럼명·파일 역할이 달라도 됩니다</p>
+            <p class="caption mute">헤더는 별칭으로 수렴하고, 파일은 자동 추정 후 수동 확정합니다. 설정에서 별칭·임계값을 확인하세요.</p>
           </div>
           <div class="column-hint-actions">
-            <a class="btn btn-ghost btn-sm" href="#/settings">별칭 표 보기</a>
+            <a class="btn btn-ghost btn-sm" href="#/settings">설정 · 별칭</a>
             <a class="btn btn-secondary btn-sm" href="/samples/alias_ko/promotion_plan.csv" download>한글 샘플</a>
           </div>
         </div>
 
-        <div class="dropzone-grid" id="dropzones">
-          <!-- dropzones injected by app.js -->
+        <div id="upload-adapter" class="upload-adapter">
+          <label class="multi-dropzone" id="multi-dropzone">
+            <input type="file" id="multi-file-input" multiple accept=".csv,.xlsx" hidden />
+            <span class="multi-drop-title">CSV / XLSX 파일을 끌어다 놓거나 클릭</span>
+            <span class="caption mute">여러 파일 선택 가능 · 이후 아래에서 프레임 역할을 지정</span>
+          </label>
+
+          <div class="frame-ready-bar" id="frame-ready-bar" aria-live="polite"></div>
+
+          <div id="role-mapper" class="role-mapper">
+            <p class="caption mute role-mapper-empty">아직 업로드된 파일이 없습니다. dirty 샘플 3종을 한 번에 올려 역할을 확인해 보세요.</p>
+          </div>
         </div>
+
+        <!-- legacy id kept for source-picker toggle compatibility -->
+        <div class="dropzone-grid hidden" id="dropzones" aria-hidden="true"></div>
 
         <div id="source-picker" class="source-picker" aria-label="데이터 소스 선택"></div>
 
@@ -283,6 +296,6 @@
   <div id="toast" class="toast hidden" role="alert"></div>
 
   <!-- __MDP_CONFIG_PLACEHOLDER__ -->
-  <script type="module" src="/static/app.js?v=6"></script>
+  <script type="module" src="/static/app.js?v=7"></script>
 </body>
 </html>

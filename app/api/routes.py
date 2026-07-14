@@ -18,11 +18,13 @@ from app.rules import RULES
 from app.schemas.catalog import PreflightCatalog
 from app.schemas.history import HistoryBucket, RunHistoryRecord
 from app.schemas.report import PreflightReport
+from app.schemas.role_detect import DetectRolesResponse
 from app.schemas.rule_meta import RuleMeta
 from app.schemas.source_meta import SourceMeta
 from app.services.catalog_service import build_preflight_catalog
 from app.services.history_store import HistoryGranularity, HistoryStore
 from app.services.report_service import render_markdown_report
+from app.services.role_detect_service import detect_roles_from_uploads
 from app.services.run_store import RunStore
 from app.services.validation_engine import UploadedFiles, build_uploaded_context, validate_context
 from app.sources import SOURCE_CATALOG
@@ -221,6 +223,26 @@ def get_catalog(
 ) -> PreflightCatalog:
     """Read-only thresholds + column aliases + rules for Settings (T53)."""
     return build_preflight_catalog(settings)
+
+
+@router.post("/detect-roles", response_model=DetectRolesResponse)
+async def detect_roles(
+    settings: Annotated[Settings, Depends(get_app_settings)],
+    files: Annotated[list[UploadFile], File()],
+) -> DetectRolesResponse:
+    """T57: score uploaded tables against canonical frames; greedy unique assignment."""
+    try:
+        return await detect_roles_from_uploads(files, settings)
+    except UploadValidationError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=str(exc),
+        ) from None
+    except IngestError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from None
 
 
 @router.get("/sources", response_model=list[SourceMeta])

@@ -94,6 +94,15 @@ const state = {
     runs: [],
   },
   catalog: null,
+  /** @type {Array<{id: string, file: File, filename: string, role: string|null, suggestedRole: string|null, confidence: number, headers: string[], scores: object[]}>} */
+  artifacts: [],
+  detectBusy: false,
+};
+
+const FRAME_META = {
+  promotion_plan: { label: "행사 라인", short: "promotion" },
+  product_master: { label: "상품 기준가", short: "product" },
+  inventory: { label: "공급·재고", short: "inventory" },
 };
 
 /* ---------- extracted modules (PR1–3) ---------- */
@@ -307,85 +316,316 @@ function renderSettings() {
   });
 }
 
-/* ---------- dropzones ---------- */
+/* ---------- upload adapter + role mapping (T57) ---------- */
 
-function buildDropzones() {
-  const grid = $("#dropzones");
-  grid.innerHTML = "";
-  FIELDS.forEach((f) => {
-    const zone = el("label", "dropzone");
-    zone.dataset.key = f.key;
-    zone.innerHTML = `
-      <div class="dz-top">
-        <span class="dz-index" aria-hidden="true">${String(FIELDS.indexOf(f) + 1).padStart(2, "0")}</span>
-        <p class="eyebrow">${f.key}</p>
-      </div>
-      <span class="dz-role">${f.role}</span>
-      <span class="dz-blurb caption mute">${f.blurb || ""}</span>
-      <span class="dz-body caption mute">끌어다 놓거나 클릭</span>
-      <span class="dz-hint">${f.hint}</span>
-      <input type="file" accept="${ALLOWED.join(",")}" />`;
-    const input = zone.querySelector("input");
+function buildUploadAdapter() {
+  const zone = $("#multi-dropzone");
+  const input = $("#multi-file-input");
+  if (!zone || !input) return;
 
-    input.addEventListener("change", () => {
-      if (input.files[0]) {
-        void setFile(f.key, input.files[0], zone);
+  const takeFiles = (list) => {
+    void addArtifacts(Array.from(list || []));
+  };
+
+  input.addEventListener("change", () => {
+    takeFiles(input.files);
+    input.value = "";
+  });
+  zone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    zone.classList.add("dragover");
+  });
+  zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+  zone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    zone.classList.remove("dragover");
+    takeFiles(e.dataTransfer?.files);
+  });
+  renderRoleMapper();
+  renderFrameReadyBar();
+}
+
+function newArtifactId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `a-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+async function addArtifacts(fileList) {
+  const accepted = [];
+  for (const file of fileList) {
+    if (!ALLOWED.includes(ext(file.name))) {
+      toast(`지원하지 않는 형식: ${file.name}`);
+      continue;
+    }
+    if (file.size > MAX_BYTES) {
+      toast(`크기 초과: ${file.name} (최대 ${fmtSize(MAX_BYTES)})`);
+      continue;
+    }
+    const dup = state.artifacts.some(
+      (a) => a.filename === file.name && a.file.size === file.size,
+    );
+    if (dup) continue;
+    accepted.push({
+      id: newArtifactId(),
+      file,
+      filename: file.name,
+      role: null,
+      suggestedRole: null,
+      confidence: 0,
+      headers: [],
+      scores: [],
+    });
+  }
+  if (accepted.length === 0) {
+    refreshRunBtn();
+    return;
+  }
+  state.artifacts.push(...accepted);
+  await runRoleDetection();
+}
+
+async function runRoleDetection() {
+  if (state.artifacts.length === 0) {
+    syncFilesFromRoles();
+    renderRoleMapper();
+    renderFrameReadyBar();
+    refreshRunBtn();
+    return;
+  }
+  state.detectBusy = true;
+  renderFrameReadyBar();
+  try {
+    const fd = new FormData();
+    state.artifacts.forEach((artifact) => {
+      fd.append("files", artifact.file, artifact.filename);
+    });
+    const res = await fetch("/api/preflight/detect-roles", {
+      method: "POST",
+      body: fd,
+    });
+    if (!res.ok) {
+      let detail = `역할 추정 실패 (${res.status})`;
+      try {
+        const j = await res.json();
+        if (j.detail) detail = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail);
+      } catch (_) {}
+      throw new Error(detail);
+    }
+    const payload = await res.json();
+    const byName = new Map();
+    (payload.artifacts || []).forEach((item) => {
+      byName.set(item.filename, item);
+    });
+    // Match by order when filenames collide
+    const ordered = payload.artifacts || [];
+    state.artifacts.forEach((artifact, index) => {
+      const hit = ordered[index] || byName.get(artifact.filename);
+      if (!hit) return;
+      artifact.headers = hit.headers || [];
+      artifact.suggestedRole = hit.suggested_role || null;
+      artifact.confidence = hit.confidence || 0;
+      artifact.scores = hit.scores || [];
+      // Keep manual role if user already set; else use greedy assignment
+      if (!artifact.role) {
+        artifact.role = hit.assigned_role || hit.suggested_role || null;
       }
     });
-    zone.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      zone.classList.add("dragover");
-    });
-    zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
-    zone.addEventListener("drop", (e) => {
-      e.preventDefault();
-      zone.classList.remove("dragover");
-      const file = e.dataTransfer.files[0];
-      if (file) {
-        void setFile(f.key, file, zone);
-      }
-    });
+    resolveRoleConflicts();
+  } catch (err) {
+    toast(err.message || "역할 추정에 실패했습니다.");
+  } finally {
+    state.detectBusy = false;
+    syncFilesFromRoles();
+    renderRoleMapper();
+    renderFrameReadyBar();
+    refreshRunBtn();
+  }
+}
 
-    grid.appendChild(zone);
+function resolveRoleConflicts() {
+  const seen = new Map();
+  state.artifacts.forEach((artifact) => {
+    if (!artifact.role) return;
+    if (seen.has(artifact.role)) {
+      // keep higher confidence
+      const other = seen.get(artifact.role);
+      if ((artifact.confidence || 0) > (other.confidence || 0)) {
+        other.role = null;
+        seen.set(artifact.role, artifact);
+      } else {
+        artifact.role = null;
+      }
+    } else {
+      seen.set(artifact.role, artifact);
+    }
   });
 }
 
-async function setFile(key, file, zone) {
-  const body = zone.querySelector(".dz-body");
-  zone.classList.remove("filled", "error");
-
-  if (!ALLOWED.includes(ext(file.name))) {
-    state.files[key] = null;
-    zone.classList.add("error");
-    body.className = "dz-body dz-err";
-    body.textContent = `지원하지 않는 형식: ${ext(file.name) || "확장자 없음"} · ${ALLOWED.join(" 또는 ")}만`;
-    refreshRunBtn();
-    return;
+async function syncFilesFromRoles() {
+  const next = { promotion_plan: null, product_master: null, inventory: null };
+  const nextParsed = {
+    promotion_plan: null,
+    product_master: null,
+    inventory: null,
+  };
+  for (const artifact of state.artifacts) {
+    if (!artifact.role) continue;
+    if (!Object.prototype.hasOwnProperty.call(next, artifact.role)) continue;
+    if (next[artifact.role]) continue;
+    next[artifact.role] = artifact.file;
+    nextParsed[artifact.role] = await buildParsedState(artifact.file);
   }
-  if (file.size > MAX_BYTES) {
-    state.files[key] = null;
-    zone.classList.add("error");
-    body.className = "dz-body dz-err";
-    body.textContent = `크기 초과: ${fmtSize(file.size)} · 최대 ${fmtSize(MAX_BYTES)}`;
-    refreshRunBtn();
-    return;
-  }
-
-  state.files[key] = file;
-  state.parsed[key] = await buildParsedState(file);
-  zone.classList.add("filled");
-  body.className = "dz-body dz-file";
-  body.textContent = `${file.name}`;
-  const hint = zone.querySelector(".dz-hint");
-  hint.className = "dz-check";
-  hint.textContent = `✓ ${fmtSize(file.size)}`;
-  refreshRunBtn();
+  state.files = next;
+  state.parsed = nextParsed;
   renderFileEditors();
+}
+
+function setArtifactRole(artifactId, role) {
+  const artifact = state.artifacts.find((a) => a.id === artifactId);
+  if (!artifact) return;
+  const nextRole = role || null;
+  if (nextRole) {
+    state.artifacts.forEach((a) => {
+      if (a.id !== artifactId && a.role === nextRole) a.role = null;
+    });
+  }
+  artifact.role = nextRole;
+  void syncFilesFromRoles().then(() => {
+    renderRoleMapper();
+    renderFrameReadyBar();
+    refreshRunBtn();
+  });
+}
+
+function removeArtifact(artifactId) {
+  state.artifacts = state.artifacts.filter((a) => a.id !== artifactId);
+  void syncFilesFromRoles().then(() => {
+    renderRoleMapper();
+    renderFrameReadyBar();
+    refreshRunBtn();
+  });
+}
+
+function renderFrameReadyBar() {
+  const host = $("#frame-ready-bar");
+  if (!host) return;
+  host.replaceChildren();
+  if (state.detectBusy) {
+    host.append(el("span", "frame-chip frame-chip-busy", "역할 추정 중…"));
+    return;
+  }
+  FIELDS.forEach((field) => {
+    const assigned = state.artifacts.find((a) => a.role === field.key);
+    const meta = FRAME_META[field.key] || { label: field.role };
+    const chip = el(
+      "span",
+      `frame-chip ${assigned ? "frame-chip-ok" : "frame-chip-missing"}`,
+      assigned
+        ? `✓ ${meta.label}: ${assigned.filename}`
+        : `○ ${meta.label} 미지정`,
+    );
+    host.append(chip);
+  });
+}
+
+function renderRoleMapper() {
+  const host = $("#role-mapper");
+  if (!host) return;
+  host.replaceChildren();
+  if (state.artifacts.length === 0) {
+    host.append(
+      el(
+        "p",
+        "caption mute role-mapper-empty",
+        "아직 업로드된 파일이 없습니다. dirty 또는 alias_ko 샘플 3종을 한 번에 올려 자동 매핑을 확인하세요.",
+      ),
+    );
+    return;
+  }
+
+  const table = el("table", "role-map-table");
+  const thead = el("thead");
+  const hr = el("tr");
+  ["파일", "추정", "역할 (프레임)", "신뢰도", ""].forEach((label) => {
+    hr.append(el("th", null, label));
+  });
+  thead.append(hr);
+  table.append(thead);
+  const tbody = el("tbody");
+
+  state.artifacts.forEach((artifact) => {
+    const tr = el("tr");
+    const nameCell = el("td", null, artifact.filename);
+    nameCell.append(
+      el(
+        "div",
+        "caption mute",
+        artifact.headers?.length
+          ? `헤더 ${artifact.headers.length}개`
+          : fmtSize(artifact.file.size),
+      ),
+    );
+    tr.append(nameCell);
+
+    const suggestLabel = artifact.suggestedRole
+      ? (FRAME_META[artifact.suggestedRole]?.label || artifact.suggestedRole)
+      : "—";
+    tr.append(el("td", "caption", suggestLabel));
+
+    const select = el("select", "role-select");
+    const emptyOpt = el("option", null, "역할 선택…");
+    emptyOpt.value = "";
+    select.append(emptyOpt);
+    FIELDS.forEach((field) => {
+      const opt = el("option", null, `${FRAME_META[field.key]?.label || field.role}`);
+      opt.value = field.key;
+      if (artifact.role === field.key) opt.selected = true;
+      select.append(opt);
+    });
+    select.addEventListener("change", () => {
+      setArtifactRole(artifact.id, select.value);
+    });
+    const selectTd = el("td");
+    selectTd.append(select);
+    tr.append(selectTd);
+
+    const conf =
+      typeof artifact.confidence === "number"
+        ? `${Math.round(artifact.confidence * 100)}%`
+        : "—";
+    tr.append(el("td", "mono", conf));
+
+    const removeBtn = el("button", "btn btn-ghost btn-sm", "제거");
+    removeBtn.type = "button";
+    removeBtn.addEventListener("click", () => removeArtifact(artifact.id));
+    const actions = el("td");
+    actions.append(removeBtn);
+    tr.append(actions);
+
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  host.append(table);
+
+  const redetect = el("button", "btn btn-secondary btn-sm", "역할 다시 추정");
+  redetect.type = "button";
+  redetect.addEventListener("click", () => {
+    state.artifacts.forEach((a) => {
+      a.role = null;
+    });
+    void runRoleDetection();
+  });
+  const actionsRow = el("div", "role-mapper-actions");
+  actionsRow.append(redetect);
+  host.append(actionsRow);
 }
 
 function refreshRunBtn() {
   const ready = FIELDS.every((f) => state.files[f.key]);
-  $("#run-btn").disabled = !ready;
+  const btn = $("#run-btn");
+  if (btn) btn.disabled = !ready || state.detectBusy;
 }
 
 /* ---------- run preflight ---------- */
@@ -440,6 +680,7 @@ async function runPreflight(filesOverride = null) {
 function resetToUpload() {
   state.files = { promotion_plan: null, product_master: null, inventory: null };
   state.parsed = { promotion_plan: null, product_master: null, inventory: null };
+  state.artifacts = [];
   state.result = null;
   state.fileIssues = {};
   state.highlightTargets = [];
@@ -450,14 +691,15 @@ function resetToUpload() {
   state.reviewItemsByKey = {};
   state.reviewResults = {};
   state.checklistEditors = {};
-  buildDropzones();
+  renderRoleMapper();
+  renderFrameReadyBar();
   refreshRunBtn();
   refreshEditedActions();
   router.navigate(ROUTES.home);
 }
 
 /* ---------- init ---------- */
-buildDropzones();
+buildUploadAdapter();
 initTheme();
 initAuth();
 if (hasClerkMode()) {
@@ -1131,9 +1373,13 @@ function renderSourcePicker() {
   host.append(chips);
   host.append(panel);
 
+  const adapter = $("#upload-adapter");
+  if (adapter) {
+    adapter.classList.toggle("hidden", state.selectedSourceId !== "upload");
+  }
   const dropzones = $("#dropzones");
   if (dropzones) {
-    dropzones.classList.toggle("hidden", state.selectedSourceId !== "upload");
+    dropzones.classList.add("hidden");
   }
 }
 

@@ -1475,3 +1475,102 @@ body {
   padding: 1px 4px;
   border-radius: 3px;
 }
+
+/* T57 upload adapter + role mapping */
+.upload-adapter { display: grid; gap: var(--s-md); margin-bottom: var(--s-lg); }
+.multi-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: var(--s-xl);
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--r-lg);
+  background: var(--canvas);
+  cursor: pointer;
+  transition: border-color .12s, background .12s, box-shadow .12s;
+}
+.multi-dropzone:hover,
+.multi-dropzone.dragover {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary-soft) 40%, var(--canvas));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.multi-drop-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.frame-ready-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-xs);
+}
+.frame-chip {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: var(--surface-1);
+  color: var(--mute);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.frame-chip-ok {
+  color: var(--ok-deep);
+  background: var(--ok-soft);
+  border-color: transparent;
+}
+.frame-chip-missing {
+  color: var(--warning-deep);
+  background: var(--warning-soft);
+  border-color: transparent;
+}
+.frame-chip-busy {
+  color: var(--info-deep);
+  background: var(--info-soft);
+  border-color: transparent;
+}
+.role-mapper {
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  padding: var(--s-md);
+  overflow-x: auto;
+}
+.role-mapper-empty { margin: 0; }
+.role-map-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.role-map-table th,
+.role-map-table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+}
+.role-map-table th {
+  color: var(--mute);
+  font-weight: 500;
+  background: var(--surface-2);
+}
+.role-select {
+  min-width: 10rem;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  padding: 6px 8px;
+}
+.role-mapper-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--s-sm);
+}
