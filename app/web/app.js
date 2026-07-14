@@ -29,7 +29,13 @@ const STEPS = [
   {
     id: "detail",
     label: "세부 정보",
-    keys: ["location_dong", "trade_area", "accessibility"],
+    keys: [
+      "location_dong",
+      "use_precise_location",
+      "store_address",
+      "trade_area",
+      "accessibility",
+    ],
     el: () => document.getElementById("step-detail"),
   },
   {
@@ -49,6 +55,8 @@ const DEFAULTS = {
   store_size: "cv_s",
   avg_ticket: "t_le_8k",
   location_dong: "서울시 마포구 서교동",
+  use_precise_location: false,
+  store_address: "",
   trade_area: "office",
   accessibility: "indoor",
   daily_demand: 12,
@@ -57,6 +65,16 @@ const DEFAULTS = {
 };
 
 function fieldControl(spec) {
+  if (spec.type === "boolean") {
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.name = spec.key;
+    input.id = `field-${spec.key}`;
+    input.className = "checkbox-input";
+    input.checked = Boolean(DEFAULTS[spec.key]);
+    input.value = "true";
+    return input;
+  }
   if (spec.options && spec.options.length) {
     const select = document.createElement("select");
     select.name = spec.key;
@@ -83,7 +101,9 @@ function fieldControl(spec) {
   } else {
     input.type = "text";
   }
-  if (DEFAULTS[spec.key] != null) input.value = String(DEFAULTS[spec.key]);
+  if (DEFAULTS[spec.key] != null && DEFAULTS[spec.key] !== "") {
+    input.value = String(DEFAULTS[spec.key]);
+  }
   if (spec.description) input.placeholder = spec.description;
   return input;
 }
@@ -91,6 +111,29 @@ function fieldControl(spec) {
 function mountField(spec, container) {
   const label = document.createElement("label");
   label.htmlFor = `field-${spec.key}`;
+  label.dataset.fieldKey = spec.key;
+
+  if (spec.type === "boolean") {
+    label.className = "checkbox-label";
+    const control = fieldControl(spec);
+    label.appendChild(control);
+    const title = document.createElement("span");
+    title.className = "field-title";
+    title.textContent = spec.label;
+    label.appendChild(title);
+    if (spec.description) {
+      const hint = document.createElement("small");
+      hint.className = "field-hint";
+      hint.textContent = spec.description;
+      label.appendChild(hint);
+    }
+    container.appendChild(label);
+    if (spec.key === "use_precise_location") {
+      control.addEventListener("change", syncPreciseLocationUI);
+    }
+    return;
+  }
+
   const title = document.createElement("span");
   title.className = "field-title";
   title.textContent = spec.label + (spec.required ? "" : " (선택)");
@@ -103,6 +146,18 @@ function mountField(spec, container) {
   }
   label.appendChild(fieldControl(spec));
   container.appendChild(label);
+}
+
+function syncPreciseLocationUI() {
+  const checkbox = form?.elements.namedItem("use_precise_location");
+  const addressLabel = form?.querySelector('label[data-field-key="store_address"]');
+  const addressInput = form?.elements.namedItem("store_address");
+  const on = Boolean(checkbox && "checked" in checkbox && checkbox.checked);
+  if (addressLabel) addressLabel.hidden = !on;
+  if (addressInput && "required" in addressInput) {
+    addressInput.required = on;
+    if (!on && "value" in addressInput) addressInput.value = "";
+  }
 }
 
 async function buildForm() {
@@ -121,7 +176,6 @@ async function buildForm() {
     }
   }
 
-  // Progress labels (skip welcome in the pill bar — show 3 input sessions)
   stepProgressList.innerHTML = "";
   STEPS.filter((s) => s.id !== "welcome").forEach((s, i) => {
     const li = document.createElement("li");
@@ -130,6 +184,7 @@ async function buildForm() {
     stepProgressList.appendChild(li);
   });
 
+  syncPreciseLocationUI();
   showStep(0);
 }
 
@@ -149,7 +204,6 @@ function showStep(index) {
     if (el) el.hidden = step.id !== STEPS[index].id;
   }
 
-  // Progress active state
   const activeId = STEPS[index].id;
   for (const li of stepProgressList.querySelectorAll("li")) {
     const id = li.dataset.stepId;
@@ -160,16 +214,15 @@ function showStep(index) {
 
   const isLast = index === STEPS.length - 1;
   btnBack.hidden = isWelcome;
-  btnBack.disabled = index <= 1; // from first input step, back goes to welcome via handler
-  if (index === 1) btnBack.disabled = false;
-
+  btnBack.disabled = false;
   btnNext.hidden = isLast || isWelcome;
   submitBtn.hidden = !isLast;
 
-  // Focus first control in step
   if (!isWelcome) {
     const panel = STEPS[index].el?.();
-    const focusable = panel?.querySelector("input, select");
+    const focusable = panel?.querySelector(
+      "input:not([type=hidden]):not([hidden]), select:not([hidden])",
+    );
     focusable?.focus?.();
   }
 }
@@ -177,12 +230,29 @@ function showStep(index) {
 function validateCurrentStep() {
   const step = STEPS[stepIndex];
   if (!step.keys.length) return true;
+
+  const precise = form?.elements.namedItem("use_precise_location");
+  const preciseOn = Boolean(precise && "checked" in precise && precise.checked);
+
   for (const key of step.keys) {
+    if (key === "store_address" && !preciseOn) continue;
     const spec = specsByKey[key];
     if (!spec) continue;
     const el = form.elements.namedItem(key);
     if (!el) continue;
-    // Use native constraint validation when available
+
+    if (spec.type === "boolean") continue;
+
+    if (key === "store_address" && preciseOn) {
+      const value = "value" in el ? String(el.value).trim() : "";
+      if (!value) {
+        formError.hidden = false;
+        formError.textContent = "정확한 위치 사용 시 매장 주소를 입력해 주세요.";
+        el.focus?.();
+        return false;
+      }
+    }
+
     if (typeof el.checkValidity === "function" && !el.checkValidity()) {
       el.reportValidity?.();
       return false;
@@ -202,9 +272,15 @@ function validateCurrentStep() {
 }
 
 function readParameters(formEl) {
-  const data = new FormData(formEl);
   const parameters = {};
+  const precise = formEl.elements.namedItem("use_precise_location");
+  parameters.use_precise_location = Boolean(
+    precise && "checked" in precise && precise.checked,
+  );
+
+  const data = new FormData(formEl);
   for (const [key, raw] of data.entries()) {
+    if (key === "use_precise_location") continue;
     if (raw === "" || raw == null) continue;
     const input = formEl.elements.namedItem(key);
     if (input && input.type === "number") {
@@ -214,7 +290,12 @@ function readParameters(formEl) {
         continue;
       }
     }
+    if (input && input.type === "checkbox") continue;
     parameters[key] = String(raw);
+  }
+
+  if (!parameters.use_precise_location) {
+    delete parameters.store_address;
   }
   return parameters;
 }
@@ -243,6 +324,11 @@ function renderResult(payload) {
       : "";
 
   const s = payload.summary;
+  const addressRow =
+    s.use_precise_location && s.store_address
+      ? `<dt>상세 주소</dt><dd>${escapeHtml(s.store_address)}</dd>`
+      : "";
+
   const rows = payload.comparison.rows
     .map((r) => {
       const cls = r.delta > 0 ? "delta-up" : r.delta < 0 ? "delta-down" : "";
@@ -276,6 +362,7 @@ function renderResult(payload) {
         <dt>유형 / 규모</dt><dd>${escapeHtml(s.store_type_label)} / ${escapeHtml(s.store_size_label)}</dd>
         <dt>객단가</dt><dd>${escapeHtml(s.avg_ticket_label)}</dd>
         <dt>입지 / 접근성</dt><dd>${escapeHtml(s.location_dong)} / ${escapeHtml(s.accessibility_label)}</dd>
+        ${addressRow}
         <dt>상권</dt><dd>${escapeHtml(s.trade_area_label)}</dd>
       </dl>
     </section>

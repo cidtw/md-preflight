@@ -19,6 +19,16 @@ from app.pipeline.types import (
     ValidatedInput,
 )
 
+_CATEGORY_KO = {
+    "transit_rail": "철도·지하철",
+    "transit_bus": "버스",
+    "landmark": "랜드마크",
+    "education": "교육",
+    "office": "오피스",
+    "retail_anchor": "상업 앵커",
+    "other": "기타",
+}
+
 
 def _delta_label(delta: float, *, higher_is_delay: bool = False) -> str:
     if abs(delta) < 1e-9:
@@ -33,6 +43,8 @@ def _delta_label(delta: float, *, higher_is_delay: bool = False) -> str:
 
 def _summary(validated: ValidatedInput) -> StoreSummary:
     p = validated.parameters
+    use_precise = bool(p.get("use_precise_location", False))
+    address = p.get("store_address")
     return StoreSummary(
         product_name=str(p["product_name"]),
         store_type_label=STORE_TYPE[str(p["store_type"])],
@@ -41,6 +53,8 @@ def _summary(validated: ValidatedInput) -> StoreSummary:
         location_dong=str(p["location_dong"]),
         trade_area_label=TRADE_AREA[str(p["trade_area"])],
         accessibility_label=ACCESSIBILITY[str(p["accessibility"])],
+        use_precise_location=use_precise,
+        store_address=str(address) if address is not None else None,
     )
 
 
@@ -79,6 +93,62 @@ def _comparison(calc: CalcBreakdown) -> ComparisonDashboard:
     else:
         guide = f"표준과 동일한 ROP {rop:.0f}개를 유지하는 것이 현재 조건에 부합합니다."
     return ComparisonDashboard(rows=rows, rop_guidance=guide)
+
+
+def _geo_evidence(calc: CalcBreakdown) -> EvidenceBlock:
+    geo = calc.geo
+    if not geo.enabled:
+        return EvidenceBlock(
+            id="geo_poi",
+            title="정확한 위치 · 주변 유동 유발 요소",
+            calc_summary="정확한 위치 미사용 (행정동·상권 점수만 적용)",
+            points=list(geo.notes)
+            or ["행정동 단위 입지만으로 수요 변동성을 산출했습니다."],
+        )
+    if geo.used_fallback:
+        return EvidenceBlock(
+            id="geo_poi",
+            title="정확한 위치 · 주변 유동 유발 요소",
+            calc_summary=(
+                f"정확한 위치 요청됨 · fallback · foot_traffic_index={geo.foot_traffic_index:.3f}"
+            ),
+            points=[
+                *geo.notes,
+                "지도 API 보강에 실패하거나 키가 없어 행정동 경로로 안전재고를 계산했습니다.",
+            ],
+        )
+
+    top = geo.pois[:5]
+    poi_lines = [
+        (
+            f"{p.name} ({_CATEGORY_KO.get(p.category, p.category)}, "
+            f"{p.distance_m:.0f}m)"
+        )
+        for p in top
+    ]
+    points = list(geo.notes)
+    if poi_lines:
+        points.append("상위 유동 유발 요소: " + " · ".join(poi_lines))
+    else:
+        points.append(f"반경 {geo.radius_m}m 내 분류 가능한 POI가 거의 없었습니다.")
+    z_delta = calc.knowledge.safety_z_factor - calc.knowledge.safety_z_base
+    points.append(
+        f"foot_traffic_index={geo.foot_traffic_index:.3f} → "
+        + f"안전계수 Z {calc.knowledge.safety_z_base:.2f}에서 "
+        + f"{calc.knowledge.safety_z_factor:.2f}로 보정 "
+        + f"(+{z_delta:.2f}).",
+    )
+    if geo.address_queried:
+        points.append(f"조회 주소: {geo.address_queried}")
+    return EvidenceBlock(
+        id="geo_poi",
+        title="정확한 위치 · 주변 유동 유발 요소 (Google Maps)",
+        calc_summary=(
+            f"반경 {geo.radius_m}m · POI {len(geo.pois)}곳 · "
+            f"유동지수 {geo.foot_traffic_index:.3f}"
+        ),
+        points=points,
+    )
 
 
 def _evidence(validated: ValidatedInput, calc: CalcBreakdown) -> list[EvidenceBlock]:
@@ -160,7 +230,7 @@ def _evidence(validated: ValidatedInput, calc: CalcBreakdown) -> list[EvidenceBl
         calc_summary=capa_summary,
         points=capa_points,
     )
-    return [lt_block, rop_block, capa_block]
+    return [lt_block, rop_block, _geo_evidence(calc), capa_block]
 
 
 def _one_liner(summary: StoreSummary, calc: CalcBreakdown) -> str:
@@ -172,6 +242,8 @@ def _one_liner(summary: StoreSummary, calc: CalcBreakdown) -> str:
         f"ROP {calc.recommended_rop:.0f}개"
         f"({sign_rop}{abs(calc.rop_delta):.0f})"
     )
+    if calc.geo.enabled and not calc.geo.used_fallback and calc.geo.foot_traffic_index > 0:
+        base += f" · 지도 유동지수 {calc.geo.foot_traffic_index:.2f}"
     if calc.multi_order_suggestion:
         return f"{base}. 협소 CAPA로 다회 소량 발주를 권장합니다."
     return f"{base}. 매장·상권 특화 재조정을 적용하세요."
@@ -179,11 +251,14 @@ def _one_liner(summary: StoreSummary, calc: CalcBreakdown) -> str:
 
 def render(validated: ValidatedInput, calc: CalcBreakdown) -> RecommendationResult:
     summary = _summary(validated)
+    guidance = list(validated.guidance)
+    if calc.geo.enabled and calc.geo.used_fallback:
+        guidance.extend(calc.geo.notes)
     return RecommendationResult(
         recommendation=_one_liner(summary, calc),
         template_id=validated.template_id,
         template_version=validated.template_version,
-        guidance=list(validated.guidance),
+        guidance=guidance,
         summary=summary,
         comparison=_comparison(calc),
         evidence=_evidence(validated, calc),

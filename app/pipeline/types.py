@@ -8,6 +8,15 @@ from pydantic import BaseModel, Field
 
 ParamType = Literal["number", "string", "boolean"]
 ParameterValue = str | int | float | bool
+PoiCategory = Literal[
+    "transit_rail",
+    "transit_bus",
+    "landmark",
+    "education",
+    "office",
+    "retail_anchor",
+    "other",
+]
 
 
 class ParameterOption(BaseModel):
@@ -53,11 +62,34 @@ class ScoreBreakdown(BaseModel):
     accessibility_lt_delta_days: float
 
 
+class NearbyPoi(BaseModel):
+    category: PoiCategory
+    name: str
+    distance_m: float
+
+
+class GeoEnrichment(BaseModel):
+    """Map-API enrichment for precise store address (Google Places)."""
+
+    enabled: bool = False
+    lat: float | None = None
+    lng: float | None = None
+    pois: list[NearbyPoi] = Field(default_factory=list)
+    foot_traffic_index: float = Field(default=0.0, ge=0.0, le=1.0)
+    provider: str = "none"
+    used_fallback: bool = True
+    notes: list[str] = Field(default_factory=list)
+    address_queried: str | None = None
+    radius_m: int = 500
+
+
 class KnowledgeSignals(BaseModel):
     """Deterministic KB match results (Agent-AI-shaped, no live LLM required)."""
 
     logistics_delay_days: float
     safety_z_factor: float
+    safety_z_base: float = 0.0
+    foot_traffic_index: float = 0.0
     foot_traffic_peak_note: str
     logistics_issue_note: str
     demand_risk_note: str
@@ -80,6 +112,7 @@ class CalcBreakdown(BaseModel):
     multi_order_suggestion: str | None = None
     scores: ScoreBreakdown
     knowledge: KnowledgeSignals
+    geo: GeoEnrichment = Field(default_factory=GeoEnrichment)
 
 
 class StoreSummary(BaseModel):
@@ -90,6 +123,8 @@ class StoreSummary(BaseModel):
     location_dong: str
     trade_area_label: str
     accessibility_label: str
+    use_precise_location: bool = False
+    store_address: str | None = None
 
 
 class ComparisonRow(BaseModel):

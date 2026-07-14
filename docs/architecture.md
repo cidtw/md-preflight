@@ -2,7 +2,7 @@
 
 > **상태**: Active (국면 VII)  
 > **브랜치**: `pivot/project-direction`  
-> **버전**: 0.3.0-rop  
+> **버전**: 0.3.1-rop  
 > **프로덕션**: https://md-preflight.vercel.app  
 > **지시 원문**: `2026-07-14-New-Service-Flow.md`  
 > **v1 (프로모션 검수)**: 태그 `archive/v1-md-preflight` · `archive/v1-md-preflight/`
@@ -191,6 +191,7 @@ app/
 │   ├── input/template.py
 │   ├── analyze/
 │   │   ├── scoring.py
+│   │   ├── geo_enrichment.py   # Google Maps POI (optional)
 │   │   ├── knowledge_base.py
 │   │   └── engine.py
 │   └── output/recommendation.py

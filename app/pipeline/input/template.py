@@ -23,7 +23,7 @@ from app.pipeline.types import (
 )
 
 TEMPLATE_ID = "rop-adjust-v1"
-TEMPLATE_VERSION = "1.0.0"
+TEMPLATE_VERSION = "1.1.0"
 
 
 def _opts(mapping: dict[str, str]) -> list[ParameterOption]:
@@ -37,7 +37,7 @@ def get_template() -> InputTemplate:
         description=(
             "매장·상권·접근성 파라미터와 품목·일평균 소진량을 입력하면 "
             "Lead Time / Re-Order Point 재조정값과 근거 리포트를 반환합니다. "
-            "유형과 규모·객단가가 어긋나면 규모·객단가 선택을 연산 기준으로 강제합니다."
+            "정확한 위치 사용 시 Google Maps로 주변 유동 유발 시설을 점수에 반영합니다."
         ),
         version=TEMPLATE_VERSION,
         parameters=[
@@ -75,6 +75,23 @@ def get_template() -> InputTemplate:
                 label="입지 주소 (행정동)",
                 type="string",
                 description="상세 번지 불필요. 예: 서울시 강남구 역삼1동",
+            ),
+            ParameterSpec(
+                key="use_precise_location",
+                label="정확한 위치 사용",
+                type="boolean",
+                required=False,
+                description=(
+                    "체크 시 도로명 주소를 받아 Google Maps로 주변 지하철·버스·"
+                    "랜드마크 등 유동 유발 요소를 점수에 반영합니다."
+                ),
+            ),
+            ParameterSpec(
+                key="store_address",
+                label="정확한 매장 주소",
+                type="string",
+                required=False,
+                description="정확한 위치 사용 시에만 필수. 예: 서울시 마포구 양화로 45",
             ),
             ParameterSpec(
                 key="trade_area",
@@ -135,6 +152,18 @@ def _as_string(key: str, value: ParameterValue) -> str:
     return text
 
 
+def _as_bool(key: str, value: ParameterValue) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "1", "yes", "on"}:
+            return True
+        if lowered in {"false", "0", "no", "off", ""}:
+            return False
+    raise InputValidationError(f"Parameter '{key}' must be a boolean")
+
+
 def _choice(key: str, value: ParameterValue, allowed: dict[str, str]) -> str:
     text = _as_string(key, value)
     if text not in allowed:
@@ -191,6 +220,8 @@ def validate_parameters(
                     f"Parameter '{key}' must be <= {param.maximum}",
                 )
             normalized[key] = number
+        elif param.type == "boolean":
+            normalized[key] = _as_bool(key, value)
         elif param.allowed_values is not None:
             allowed_map = {
                 "store_type": STORE_TYPE,
@@ -207,7 +238,21 @@ def validate_parameters(
             else:
                 normalized[key] = _choice(key, value, allowed_map)
         else:
+            # Optional strings may be omitted; if present must be non-empty unless blank skip
+            if key == "store_address" and isinstance(value, str) and not value.strip():
+                continue
             normalized[key] = _as_string(key, value)
+
+    use_precise = bool(normalized.get("use_precise_location", False))
+    if not use_precise:
+        normalized["use_precise_location"] = False
+        _ = normalized.pop("store_address", None)
+    else:
+        normalized["use_precise_location"] = True
+        if "store_address" not in normalized:
+            raise InputValidationError(
+                "정확한 위치 사용 시 'store_address'(정확한 매장 주소)가 필요합니다.",
+            )
 
     store_type = str(normalized["store_type"])
     store_size = str(normalized["store_size"])

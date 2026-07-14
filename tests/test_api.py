@@ -22,10 +22,14 @@ def test_template_has_rop_fields(client: TestClient) -> None:
         "store_size",
         "avg_ticket",
         "location_dong",
+        "use_precise_location",
+        "store_address",
         "trade_area",
         "accessibility",
         "daily_demand",
     }.issubset(keys)
+    precise = next(p for p in body["parameters"] if p["key"] == "use_precise_location")
+    assert precise["type"] == "boolean"
 
 
 def test_evaluate_ok(client: TestClient) -> None:
@@ -50,8 +54,9 @@ def test_evaluate_ok(client: TestClient) -> None:
     body = response.json()
     assert "recommendation" in body
     assert body["comparison"]["rows"]
-    assert len(body["evidence"]) == 3
+    assert len(body["evidence"]) == 4
     assert body["summary"]["product_name"] == "냉장 간편식"
+    assert any(b["id"] == "geo_poi" for b in body["evidence"])
 
 
 def test_evaluate_validation_error(client: TestClient) -> None:
@@ -60,6 +65,55 @@ def test_evaluate_validation_error(client: TestClient) -> None:
         json={"parameters": {"product_name": "x"}},
     )
     assert response.status_code == 400
+
+
+def test_evaluate_precise_without_address(client: TestClient) -> None:
+    response = client.post(
+        "/api/evaluate",
+        json={
+            "parameters": {
+                "product_name": "냉장 간편식",
+                "store_type": "convenience",
+                "store_size": "cv_s",
+                "avg_ticket": "t_le_8k",
+                "location_dong": "서울시 마포구 서교동",
+                "use_precise_location": True,
+                "trade_area": "office",
+                "accessibility": "indoor",
+                "daily_demand": 12,
+            }
+        },
+    )
+    assert response.status_code == 400
+    assert "store_address" in response.json()["detail"]
+
+
+def test_evaluate_precise_without_key_falls_back(client: TestClient) -> None:
+    """No API key → still 200 with geo fallback guidance."""
+    response = client.post(
+        "/api/evaluate",
+        json={
+            "parameters": {
+                "product_name": "냉장 간편식",
+                "store_type": "convenience",
+                "store_size": "cv_s",
+                "avg_ticket": "t_le_8k",
+                "location_dong": "서울시 마포구 서교동",
+                "use_precise_location": True,
+                "store_address": "서울시 마포구 양화로 45",
+                "trade_area": "office",
+                "accessibility": "indoor",
+                "daily_demand": 12,
+                "standard_lead_time_days": 2,
+                "standard_rop": 15,
+            }
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["calc"]["geo"]["enabled"] is True
+    assert body["calc"]["geo"]["used_fallback"] is True
+    assert any(b["id"] == "geo_poi" for b in body["evidence"])
 
 
 def test_index_page(client: TestClient) -> None:

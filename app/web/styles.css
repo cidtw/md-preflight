@@ -192,6 +192,37 @@ label {
   line-height: 1.4;
 }
 
+.checkbox-label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.55rem;
+  row-gap: 0.25rem;
+  align-items: start;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0c1015;
+}
+
+.checkbox-label .checkbox-input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+  accent-color: var(--accent);
+}
+
+.checkbox-label .field-title {
+  grid-column: 2;
+}
+
+.checkbox-label .field-hint {
+  grid-column: 2;
+}
+
+label[data-field-key="store_address"][hidden] {
+  display: none !important;
+}
+
 input,
 select {
   border: 1px solid var(--border);

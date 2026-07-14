@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+from app.core.config import Settings, get_settings
+from app.pipeline.analyze.geo_enrichment import (
+    JsonFetch,
+    disabled_enrichment,
+    enrich_from_address,
+)
 from app.pipeline.analyze.knowledge_base import match_knowledge, store_safety_stock
 from app.pipeline.analyze.scoring import max_rop_for_capa, score_store
 from app.pipeline.domain_catalog import DEFAULT_BASE_SAFETY_FRAC, DEFAULT_STANDARD_LT
-from app.pipeline.types import CalcBreakdown, ValidatedInput
+from app.pipeline.types import CalcBreakdown, GeoEnrichment, ValidatedInput
 
 
 def _as_float(value: object, default: float) -> float:
@@ -18,7 +24,41 @@ def _as_str(value: object) -> str:
     return str(value)
 
 
-def analyze(validated: ValidatedInput) -> CalcBreakdown:
+def _as_bool(value: object, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return default
+
+
+def _resolve_geo(
+    validated: ValidatedInput,
+    *,
+    settings: Settings,
+    fetch: JsonFetch | None,
+) -> GeoEnrichment:
+    p = validated.parameters
+    use_precise = _as_bool(p.get("use_precise_location"), False)
+    if not use_precise:
+        return disabled_enrichment()
+    address = _as_str(p.get("store_address", "")).strip()
+    return enrich_from_address(
+        address,
+        api_key=settings.google_maps_api_key,
+        radius_m=settings.geo_radius_m,
+        fetch=fetch,
+    )
+
+
+def analyze(
+    validated: ValidatedInput,
+    *,
+    settings: Settings | None = None,
+    geo_fetch: JsonFetch | None = None,
+    geo_override: GeoEnrichment | None = None,
+) -> CalcBreakdown:
+    cfg = settings if settings is not None else get_settings()
     p = validated.parameters
     store_type = _as_str(p["store_type"])
     store_size = _as_str(p["store_size"])
@@ -35,15 +75,20 @@ def analyze(validated: ValidatedInput) -> CalcBreakdown:
         trade_area=trade_area,
         accessibility=accessibility,
     )
+    geo = (
+        geo_override
+        if geo_override is not None
+        else _resolve_geo(validated, settings=cfg, fetch=geo_fetch)
+    )
     knowledge = match_knowledge(
         location_dong=location_dong,
         product_name=product_name,
         trade_area=trade_area,
         accessibility=accessibility,
         scores=scores,
+        foot_traffic_index=geo.foot_traffic_index,
     )
 
-    # Standard LT: user override or channel default.
     if "standard_lead_time_days" in p:
         standard_lt = max(0.5, _as_float(p["standard_lead_time_days"], 2.0))
     else:
@@ -115,4 +160,5 @@ def analyze(validated: ValidatedInput) -> CalcBreakdown:
         multi_order_suggestion=multi_order,
         scores=scores,
         knowledge=knowledge,
+        geo=geo,
     )

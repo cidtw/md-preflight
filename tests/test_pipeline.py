@@ -93,6 +93,7 @@ def test_evidence_is_input_specific_not_fixed_doc_example() -> None:
     # Must not hard-copy the design-doc fixed sample narrative anchors.
     assert "역삼1동" not in blob
     assert "240%" not in blob
+    assert any(b.id == "geo_poi" for b in result.evidence)
 
 
 def test_analyze_formula_rop_identity() -> None:
