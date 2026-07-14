@@ -582,7 +582,9 @@ R0–R6 **DONE** · R7+ (배포·실 KB·실 Agent) backlog
 
 | 주제 | 경로 |
 |------|------|
+| **리빌드 아키텍처 요약 (정본)** | `docs/architecture.md` |
 | **재설계 지시** | `2026-07-14-Project-Redesign.md` |
+| **ROP 서비스 플로우** | `2026-07-14-New-Service-Flow.md` |
 | **재설계 판** | `docs/redesign/` |
 | **v1 아카이브** | `archive/v1-md-preflight/` · tag `archive/v1-md-preflight` |
 | 쉬운 아키텍처 (v1) | `docs/architecture-easy.md` |
@@ -603,8 +605,8 @@ R0–R6 **DONE** · R7+ (배포·실 KB·실 Agent) backlog
 2. 수치는 **그 세션에서 돌린 pytest** 를 우선한다 (과거 스냅샷은 “참고”).  
 3. `handoff/` 는 gitignore — **발표용 정본은 본 `docs/` 파일**.  
 4. 신규 국면이 생기면 §0 아크 다이어그램에 한 줄만 추가한다.  
-5. **국면 VI 이후** 활성 계약 문서는 `docs/redesign/` 이며, v1 문서는 아카이브 배너를 유지한다.  
-6. 실 평가 가중치는 조사(R0–R2) 없이 코드에 박지 않는다.
+5. **국면 VI 이후** 활성 아키텍처 정본은 `docs/architecture.md`, 계약·보드는 `docs/redesign/` 이다. v1 문서는 아카이브 배너를 유지한다.  
+6. 스코어링/KB 변경 시 테스트·일지·`docs/architecture.md`를 함께 갱신한다.
 
 ---
 
