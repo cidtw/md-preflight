@@ -12,4 +12,4 @@ class EvaluateRequest(BaseModel):
 
 
 class EvaluateResponse(RecommendationResult):
-    """Alias for OpenAPI clarity; same shape as pipeline output."""
+    """Full ROP recommendation report."""

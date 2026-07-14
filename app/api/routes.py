@@ -1,4 +1,4 @@
-"""Thin HTTP adapter over the three-stage pipeline."""
+"""Thin HTTP adapter over the ROP pipeline."""
 
 from __future__ import annotations
 
@@ -23,23 +23,29 @@ def health(settings: Annotated[Settings, Depends(get_app_settings)]) -> dict[str
         "app": settings.app_name,
         "version": settings.app_version,
         "pipeline": "input-analyze-output",
+        "service": "rop-adjust",
     }
 
 
 @router.get("/template", response_model=InputTemplate)
 def read_template() -> InputTemplate:
-    """Public input template — clients only send listed parameters."""
+    """Public input template for store-specific ROP adjustment."""
     return get_input_template()
 
 
 @router.post("/evaluate", response_model=EvaluateResponse)
 def evaluate(body: EvaluateRequest) -> EvaluateResponse:
-    """Run input → analyze → output and return a one-line recommendation."""
+    """Run input → internal calc → ROP report."""
     try:
         result = run(body.parameters)
     except InputValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=exc.message,
+        ) from None
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid parameter set: missing {exc}",
         ) from None
     return EvaluateResponse.model_validate(result.model_dump())

@@ -3,54 +3,34 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MD Preflight — Pipeline Skeleton</title>
+    <title>매장 특화 ROP 재조정</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <main class="shell">
       <header>
-        <p class="eyebrow">pivot / redesign skeleton</p>
-        <h1>Input → Analyze → Output</h1>
+        <p class="eyebrow">MD Preflight · ROP redesign</p>
+        <h1>매장 특화 Lead Time / ROP 재조정</h1>
         <p class="lede">
-          v1 프로모션 사전검수는 아카이브되었습니다. 현재 트리는 파라미터 입력과
-          가중치 분석, 한 줄 recommendation을 위한 모듈 판입니다.
+          매장·상권·접근성 파라미터를 입력하면 내부 점수 연산과 지식 베이스 매칭으로
+          재조정값과 근거 리포트를 제시합니다. (입력 → 연산 → 출력)
         </p>
         <p class="meta">version __APP_VERSION__</p>
       </header>
 
-      <section class="card">
-        <h2>Quick evaluate</h2>
-        <form id="eval-form">
-          <label>
-            Quality (0–100)
-            <input name="quality" type="number" min="0" max="100" value="80" required />
-          </label>
-          <label>
-            Cost (0–100, lower better)
-            <input name="cost" type="number" min="0" max="100" value="40" required />
-          </label>
-          <label>
-            Risk (0–100, lower better)
-            <input name="risk" type="number" min="0" max="100" value="30" required />
-          </label>
-          <button type="submit">Run pipeline</button>
-        </form>
-        <pre id="result" class="result" hidden></pre>
+      <section id="input-panel" class="card">
+        <h2>1. 입력</h2>
+        <form id="eval-form"></form>
+        <p id="form-error" class="error" hidden></p>
+        <button type="submit" form="eval-form" id="submit-btn">분석 실행</button>
       </section>
 
-      <section class="card muted">
-        <h2>API</h2>
-        <ul>
-          <li><code>GET /api/health</code></li>
-          <li><code>GET /api/template</code></li>
-          <li><code>POST /api/evaluate</code></li>
-        </ul>
-        <p>
-          문서:
-          <code>docs/redesign/</code> · 아카이브:
-          <code>archive/v1-md-preflight/</code>
-        </p>
+      <section id="loading-panel" class="card loading" hidden>
+        <p class="spinner" aria-hidden="true"></p>
+        <p>매장 특화 점수를 연산하고 지식 베이스를 매칭하는 중…</p>
       </section>
+
+      <section id="result-panel" hidden></section>
     </main>
     <script src="/static/app.js" type="module"></script>
   </body>

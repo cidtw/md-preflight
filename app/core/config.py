@@ -1,4 +1,4 @@
-"""Slim application settings for the redesign skeleton."""
+"""Application settings for the ROP redesign service."""
 
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "MD Preflight Pipeline"
-    app_version: str = "0.2.0-redesign"
+    app_name: str = "MD Preflight ROP"
+    app_version: str = "0.3.0-rop"
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:3000",

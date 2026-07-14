@@ -25,6 +25,8 @@
 [7/14 a.m.] 피드백 대응  별칭 · 4화면 · 매핑 감사 · 설정 · 어댑터 (T48–T59)
     ↓
 [7/14 p.m.] 방향 피벗    v1 아카이브 · 3단 파이프라인 스켈레톤 · 재설계 판 (국면 VI)
+    ↓
+[7/14 eve] ROP 제품화   매장 파라미터 → LT/ROP 추천 · 근거 리포트 (국면 VII)
 ```
 
 | 국면 | 기간 | 한 줄 목표 | 대표 산출 |
@@ -34,7 +36,8 @@
 | **III. 라이브 제품** | 7/7–9 | 프로덕션에서 안 죽게 | Clerk/Neon/LLM · degrade · harden |
 | **IV. 발표 품질** | 7/9–13 | 스토리·데모가 안 깨지게 | 덱 · seed · 스모크 · 모듈 분리 |
 | **V. 중간발표 이후** | 7/14 오전 | 약점(고정 컬럼·한 화면) 해소 | T48–T59 · UI 리프레시 |
-| **VI. 방향성 재설계** | 7/14 오후~ | v1 동결 · 모듈 3단 판 · 근거 중심 서비스 준비 | archive · pipeline · redesign board |
+| **VI. 방향성 재설계** | 7/14 오후 | v1 동결 · 모듈 3단 판 | archive · pipeline skeleton |
+| **VII. ROP 서비스** | 7/14 저녁~ | 매장 특화 LT/ROP 재조정 제품화 | scoring · KB · report UI |
 
 **불변 원칙**
 
@@ -117,7 +120,8 @@
 | P3 | 3단 파이프라인 스켈레톤 + API (`/api/template`, `/api/evaluate`) | 7/14 | **DONE** |
 | P4 | 재설계 판 `docs/redesign/` | 7/14 | **DONE** |
 | P5 | README·AGENTS·BRIEF·일지·의존성 슬림화 | 7/14 | **DONE** |
-| R0+ | 서비스 도메인·가중치 조사·실 템플릿 (board) | 이후 | **TODO** |
+| R0–R6 | ROP 도메인·테이블·엔진·UI·근거 패널 | 7/14 | **DONE** |
+| R7+ | 배포·실 KB·실 Agent | 이후 | **TODO** |
 
 ---
 
@@ -133,7 +137,8 @@
 | 7/14 T52–T53 | **143** | catalog + error UX |
 | 7/14 T56–T59 | **150** | v1 입력 어댑터 피크 (아카이브 기준점) |
 | **7/14 재설계 스켈레톤** | **12** | 파이프라인 unit/API only (의도적 슬림) |
-| 이후 | green on skeleton → R0+ | 도메인 확정 후 스위트 재확장 |
+| **7/14 ROP 서비스** | **14** | LT/ROP 엔진 · 불일치 guidance · 리포트 UI |
+| 이후 | green + R7+ | 배포·실 KB 확장 |
 
 ---
 
@@ -505,18 +510,50 @@ uv run pytest                   # 12 passed
 
 ---
 
-### 2026-07-15 이후 — 재설계 세부 (예정)
+
+
+### 2026-07-14 (월) 저녁 — ROP 서비스 플로우 빌드 **DONE**
+
+| 필드 | 내용 |
+|------|------|
+| **테마** | `2026-07-14-New-Service-Flow.md` 기준 매장 특화 LT/ROP 재조정 구현 |
+| **브랜치** | `pivot/project-direction` |
+| **검증** | ruff pass · basedpyright 0 · **pytest 14 passed** |
+
+#### 서비스 정의
+- 입력: 매장 유형·규모·객단가·행정동·상권·접근성 + 품목·일평균 소진 + (선택) 표준 LT/ROP
+- 내부: 스코어링 테이블 + 결정론 KB 매칭 + 공식 (LT/ROP/CAPA 상한)
+- 출력: 한 줄 추천 · 비교 대시보드 · 근거 3블록 (문서 예시 문장 고정 출력 금지)
+- UX: 폼 → 짧은 로딩 → 리포트 (2단계는 내부 전용)
+
+#### 주요 코드
+| 경로 | 역할 |
+|------|------|
+| `app/pipeline/domain_catalog.py` | 옵션·라벨·채널 기본 LT |
+| `app/pipeline/input/template.py` | 템플릿·검증·불일치 guidance |
+| `app/pipeline/analyze/scoring.py` | CAPA/수요/접근성 가중치 |
+| `app/pipeline/analyze/knowledge_base.py` | 행정동+품목 KB 시그널 |
+| `app/pipeline/analyze/engine.py` | 추천 LT/ROP · CAPA 캡 |
+| `app/pipeline/output/recommendation.py` | 비교표·근거 리포트 |
+| `app/web/*` | 입력 폼·로딩·결과 UI |
+
+#### 보드
+R0–R6 **DONE** · R7+ (배포·실 KB·실 Agent) backlog
+
+#### 한 줄
+> 스켈레톤 quality/cost/risk 를 걷어내고, 플로우 문서의 ROP 재조정 제품을 결정론 파이프라인으로 채웠다.
+
+### 2026-07-15 이후 — ROP 고도화 (예정)
 
 | 항목 | 상태 | 비고 |
 |------|------|------|
-| R0 서비스 도메인·문제 정의 | TODO | `docs/redesign/board.md` |
-| R1 평가 기준·가중치 조사 표 | TODO | 출처 필수 |
-| R2 입력 파라미터 최종 템플릿 | TODO | |
-| R3 스켈레톤 가중치 → 실데이터 | TODO | R0–R2 선행 |
-| R4–R5 recommendation 카피 · 최소 UI | TODO | 무거운 SPA 금지 |
-| (구) T54/T55 v1 freeze 계획 | **SUPERSEDED** | v1은 아카이브로 대체 |
+| R7 배포·환경 패리티 | TODO | Vercel |
+| R9 실측 KB / 공공 데이터 | TODO | 현재 결정론 KB |
+| R10 실 Agent AI 교체 | TODO | `knowledge_base.py` 포트 |
+| R11–R12 품목 마스터·발주 스케줄 | TODO | |
+| (구) T54/T55 v1 freeze | **SUPERSEDED** | v1 아카이브 |
 
-> 구 7/15–23 “T55 freeze” 일정은 **국면 VI 피벗으로 폐기**. 발표 스토리도 §5 갱신본을 따른다.
+> 국면 VII에서 ROP MVP 동작. 다음 확장은 실데이터 KB·배포.
 
 ---
 
@@ -524,16 +561,16 @@ uv run pytest                   # 12 passed
 
 ### 5.1 30초 (국면 VI 반영)
 > 7월에 유통 프로모션 사전검수 v1을 엔진부터 라이브까지 올렸고, 중간발표 뒤 입력 유연성까지 다듬었습니다.  
-> 다만 **기능 과다·근거 부족·웹 과부하** 피드백을 받아 v1은 아카이브하고, **파라미터 → 가중치 분석 → 한 줄 추천** 모듈 판으로 방향을 바꿨습니다.
+> 피드백 후 v1은 아카이브하고, **매장 특화 Lead Time / ROP 재조정**(파라미터 → 내부 점수·KB → 근거 리포트)으로 방향을 바꿨습니다.
 
 ### 5.2 2분 (국면별)
 1. **엔진(v1)** — 판정은 룰, LLM은 설명. 계약 테스트로 증명.  
 2. **워크스페이스·라이브(v1)** — SPA, Clerk/Neon, degrade.  
 3. **피드백(v1)** — 별칭·4화면·어댑터(T48–T59).  
-4. **피벗** — 태그 아카이브, 3단 파이프라인 스켈레톤, 조사 기반 가중치 로드맵.
+4. **피벗·ROP** — 태그 아카이브 후 매장 파라미터 기반 LT/ROP 추천과 근거 3블록.
 
 ### 5.3 5분
-위 + v1 D3/T8 결정론 교훈을 새 가중치 엔진에 계승 · discard 표 · `POST /api/evaluate` 라이브 데모 · board R0–R2가 다음 마일스톤.
+위 + CAPA 상한·불일치 guidance · `POST /api/evaluate` 데모 · 결정론 KB vs 향후 실 Agent 로드맵.
 
 ---
 
@@ -570,3 +607,4 @@ uv run pytest                   # 12 passed
 *정본 경로: `docs/dev-journal-2026-07.md`*  
 *최초 작성(7/14 구간): 2026-07-14 · 전체 흐름 통합: 2026-07-14 (7/1–13 소급 정리)*  
 *국면 VI 재설계 준비 반영: 2026-07-14*
+*국면 VII ROP 서비스 빌드 반영: 2026-07-14*

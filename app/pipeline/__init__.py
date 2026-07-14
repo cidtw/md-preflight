@@ -1,4 +1,4 @@
-"""Modular three-stage pipeline: input → analyze → output."""
+"""Modular pipeline: input → analyze → output (store-specific ROP)."""
 
 from app.pipeline.runner import get_input_template, run
 from app.pipeline.types import InputTemplate, RecommendationResult

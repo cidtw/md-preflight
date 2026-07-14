@@ -2,11 +2,12 @@
 
 ## Project Summary
 
-Modular **input → analyze → output** pipeline skeleton (redesign).
-Clients submit template parameters; a deterministic weighted engine scores them;
-the output stage returns a **one-line recommendation**.
+Store-specific **Lead Time / Re-Order Point** adjustment service.
+Users submit store, trade-area, and product demand parameters; a deterministic
+pipeline scores logistics CAPA and demand volatility, matches a knowledge base,
+and returns recommended LT/ROP with evidence.
 
-v1 promotion preflight (Excel/CSV rule engine, SPA, Clerk/Neon) is archived:
+v1 promotion preflight is archived:
 `archive/v1-md-preflight/` · git tag `archive/v1-md-preflight`.
 
 ## Stack
@@ -15,21 +16,20 @@ FastAPI, Pydantic, Python 3.11+, ruff, basedpyright, pytest.
 
 ## Important Directories
 
-- `app/pipeline`: input / analyze / output stages + runner
+- `app/pipeline`: input / analyze / output (ROP engine)
 - `app/api`: thin HTTP adapter
-- `app/web`: minimal placeholder UI
-- `docs/redesign`: redesign board and contracts
-- `archive/v1-md-preflight`: v1 inventory and restore notes
+- `app/web`: form → loading → report UI
+- `docs/redesign`: service contracts and board
+- `archive/v1-md-preflight`: v1 restore notes
 - `tests`: pipeline and API coverage
-- `handoff`: local work history (often gitignored)
 
 ## Before Editing
 
-- Check `git status` and current branch (`pivot/project-direction` for redesign).
-- Read `docs/redesign/README.md` and `PROJECT_BRIEF.md`.
-- Do not restore v1 packages into the active path without an explicit request.
-- Do not invent production evaluation weights without research (board R0–R2).
-- Do not change API contracts without updating `docs/redesign/pipeline.md`.
+- Check `git status` (redesign work on `pivot/project-direction`).
+- Read `2026-07-14-New-Service-Flow.md` and `docs/redesign/pipeline.md`.
+- Do not hard-code design-doc example narratives into output.
+- Prefer size/ticket over store_type when they conflict (emit guidance).
+- Extend via pipeline stages; do not restore v1 packages without request.
 
 ## Validation
 
@@ -39,5 +39,5 @@ FastAPI, Pydantic, Python 3.11+, ruff, basedpyright, pytest.
 
 ## Handoff Rule
 
-After meaningful changes, write a handoff note in:
+After meaningful changes, write:
 `handoff/YYYY-MM-DD-summary.md`

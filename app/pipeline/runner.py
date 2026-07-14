@@ -1,4 +1,4 @@
-"""Pipeline orchestrator: input -> analyze -> output."""
+"""Pipeline orchestrator: input → analyze → output (ROP adjust)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def get_input_template() -> InputTemplate:
 
 
 def run(parameters: Mapping[str, ParameterValue]) -> RecommendationResult:
-    """Execute the three-stage pipeline deterministically."""
+    """Execute the three-stage ROP pipeline deterministically."""
     validated = validate_parameters(parameters)
-    analysis = analyze(validated)
-    return render(validated, analysis)
+    calc = analyze(validated)
+    return render(validated, calc)

@@ -1,7 +1,7 @@
 [project]
 name = "md-preflight-api"
-version = "0.2.0"
-description = "Modular input → analyze → output pipeline skeleton (redesign)"
+version = "0.3.0"
+description = "Store-specific Lead Time / ROP adjustment (input → analyze → output)"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.116.0",

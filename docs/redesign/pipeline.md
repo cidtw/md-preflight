@@ -1,46 +1,64 @@
-# 파이프라인 계약 — Input → Analyze → Output
+# 파이프라인 계약 — ROP Adjust
 
 ```
-[클라이언트]
-    │  parameters (JSON)
+[클라이언트 폼]
+    │ parameters JSON
     ▼
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  1. INPUT   │ ──► │ 2. ANALYZE  │ ──► │ 3. OUTPUT   │
-│  템플릿 검증 │     │ 가중치 점수  │     │ 한 줄 추천  │
-└─────────────┘     └─────────────┘     └─────────────┘
-    │                     │                     │
-    ▼                     ▼                     ▼
- ValidatedInput      AnalysisResult     RecommendationResult
+┌──────────────┐     ┌──────────────────────────┐     ┌──────────────────┐
+│ 1. INPUT     │ ──► │ 2. ANALYZE (internal)    │ ──► │ 3. OUTPUT        │
+│ 템플릿 검증  │     │ 점수 + KB + LT/ROP 공식  │     │ 비교·근거 리포트 │
+└──────────────┘     └──────────────────────────┘     └──────────────────┘
 ```
+
+사용자 UX는 1 → (짧은 로딩) → 3. 2는 내부 전용.
 
 ## 1. Input (`app/pipeline/input`)
 
-- **역할**: 공개 템플릿에 맞춰 파라미터 수신·검증  
-- **템플릿**: `GET /api/template` — 키·타입·범위·필수 여부  
-- **요청**: `POST /api/evaluate` body `{ "parameters": { ... } }`  
-- **실패**: 400 + 필드별 메시지 (판정 엔진으로 넘기지 않음)
+| 키 | 설명 |
+|----|------|
+| `product_name` | 최적화 품목 |
+| `store_type` | 편의점 / 슈퍼 / SSM / 대형마트 |
+| `store_size` | 연면적 구간 |
+| `avg_ticket` | 객단가 구간 |
+| `location_dong` | 행정동 |
+| `trade_area` | 상권 유형 |
+| `accessibility` | 대로변 / 이면 / 건물 내 |
+| `daily_demand` | 일평균 소진량 |
+| `standard_lead_time_days` | (선택) 사내 표준 LT |
+| `standard_rop` | (선택) 사내/업계 표준 ROP |
+
+불일치 안내:
+
+- 유형 vs 규모 상이 → **규모** 기준 연산 + guidance  
+- 유형 vs 객단가 상이 → **객단가** 기준 연산 + guidance  
 
 ## 2. Analyze (`app/pipeline/analyze`)
 
-- **역할**: 사전 구성된 기준(criterion) × 가중치로 점수 산출  
-- **불변**: 동일 입력 → 동일 점수 (결정론)  
-- **스켈레톤**: 플레이스홀더 기준 세트 (`weights.py`) — **실 조사 가중치는 DEFER**  
-- **출력**: 총점, 기준별 raw/weighted, 밴드(strong/moderate/weak)
+1. **스코어링 테이블** (`scoring.py`) — CAPA, 수요집중, 회전가중, 공급난이도, 수요변동, 접근성 ΔLT  
+2. **KB 매칭** (`knowledge_base.py`) — 행정동+품목+상권 시드 기반 물류지연·Z계수·서술  
+3. **공식** (`engine.py`)
+
+```
+추천 LT = 표준 LT + 접근성 가산 + KB 물류 지연
+매장 안전재고 = Z * sqrt(추천LT * 수요변동성) * 회전가중치
+추천 ROP = 일평균소진 * 추천LT + 매장 안전재고
+CAPA 1~2 이고 상한 초과 시 ROP = MaxCap, 다회 소량 발주 제안
+```
 
 ## 3. Output (`app/pipeline/output`)
 
-- **역할**: 분석 결과를 **한 줄 recommendation**으로 고정 포맷 렌더  
-- **필드**: `recommendation` (str), `score`, `band`, `details`  
-- **확장**: 이후 리포트/체크리스트는 이 스테이지에 모듈 추가
+- 한 줄 recommendation  
+- 매장 요약  
+- 표준 vs 추천 비교 표  
+- 근거 3블록 (LT / 수요·안전재고 / CAPA)  
+- guidance 배열  
 
-## 오케스트레이션
+## API
 
-`app/pipeline/runner.py` → `run(parameters) -> RecommendationResult`  
-HTTP는 `app/api/routes.py`에서 runner만 호출 (얇은 어댑터).
+| Method | Path |
+|--------|------|
+| `GET` | `/api/health` |
+| `GET` | `/api/template` |
+| `POST` | `/api/evaluate` |
 
-## 모듈 추가 가이드
-
-1. 새 **입력 필드** → 템플릿 + input validator  
-2. 새 **평가 기준** → `analyze/weights.py` (또는 향후 criteria 패키지)  
-3. 새 **출력 형식** → `output/` 렌더러 추가, runner 옵션으로 연결  
-4. 스테이지 간 계약(`app/pipeline/types.py`)을 깨지 말 것  
+지시 원문: `2026-07-14-New-Service-Flow.md`

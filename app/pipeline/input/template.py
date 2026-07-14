@@ -1,66 +1,123 @@
-"""Stage 1 - parameter template definition and validation."""
+"""Stage 1 — ROP service input template and validation."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 
 from app.core.errors import InputValidationError
+from app.pipeline.domain_catalog import (
+    ACCESSIBILITY,
+    AVG_TICKET,
+    STORE_SIZE,
+    STORE_TYPE,
+    STORE_TYPE_SIZE_EXPECT,
+    STORE_TYPE_TICKET_EXPECT,
+    TRADE_AREA,
+)
 from app.pipeline.types import (
     InputTemplate,
+    ParameterOption,
     ParameterSpec,
     ParameterValue,
     ValidatedInput,
 )
 
-# Placeholder template for the redesign skeleton.
-# Real domain parameters are filled after research (see docs/redesign/board.md R0-R2).
-DEFAULT_TEMPLATE = InputTemplate(
-    id="generic-evaluate-v0",
-    title="Generic evaluation (skeleton)",
-    description=(
-        "Placeholder parameter set for the modular pipeline. "
-        "Replace with researched domain criteria before production use."
-    ),
-    version="0.1.0",
-    parameters=[
-        ParameterSpec(
-            key="quality",
-            label="Quality score",
-            type="number",
-            description="Subjective or measured quality in 0-100.",
-            minimum=0.0,
-            maximum=100.0,
-        ),
-        ParameterSpec(
-            key="cost",
-            label="Cost index",
-            type="number",
-            description="Relative cost index in 0-100 (lower is better after inversion).",
-            minimum=0.0,
-            maximum=100.0,
-        ),
-        ParameterSpec(
-            key="risk",
-            label="Risk index",
-            type="number",
-            description="Risk exposure in 0-100 (lower is better after inversion).",
-            minimum=0.0,
-            maximum=100.0,
-        ),
-        ParameterSpec(
-            key="priority",
-            label="Priority label",
-            type="string",
-            required=False,
-            description="Optional tag for audit (does not affect score in skeleton).",
-            allowed_values=["low", "medium", "high"],
-        ),
-    ],
-)
+TEMPLATE_ID = "rop-adjust-v1"
+TEMPLATE_VERSION = "1.0.0"
+
+
+def _opts(mapping: dict[str, str]) -> list[ParameterOption]:
+    return [ParameterOption(value=k, label=v) for k, v in mapping.items()]
 
 
 def get_template() -> InputTemplate:
-    return DEFAULT_TEMPLATE
+    return InputTemplate(
+        id=TEMPLATE_ID,
+        title="매장 특화 ROP 재조정",
+        description=(
+            "매장·상권·접근성 파라미터와 품목·일평균 소진량을 입력하면 "
+            "Lead Time / Re-Order Point 재조정값과 근거 리포트를 반환합니다. "
+            "유형과 규모·객단가가 어긋나면 규모·객단가 선택을 연산 기준으로 강제합니다."
+        ),
+        version=TEMPLATE_VERSION,
+        parameters=[
+            ParameterSpec(
+                key="product_name",
+                label="재고 최적화 대상 품목",
+                type="string",
+                description="예: 냉장 간편식, 상온 즉석밥",
+            ),
+            ParameterSpec(
+                key="store_type",
+                label="매장 유형",
+                type="string",
+                options=_opts(STORE_TYPE),
+                allowed_values=list(STORE_TYPE),
+            ),
+            ParameterSpec(
+                key="store_size",
+                label="매장 규모 (연면적)",
+                type="string",
+                description="유형과 불일치 시 규모 선택이 연산 기준이 됩니다.",
+                options=_opts(STORE_SIZE),
+                allowed_values=list(STORE_SIZE),
+            ),
+            ParameterSpec(
+                key="avg_ticket",
+                label="객단가",
+                type="string",
+                description="유형과 불일치 시 객단가 선택이 연산 기준이 됩니다.",
+                options=_opts(AVG_TICKET),
+                allowed_values=list(AVG_TICKET),
+            ),
+            ParameterSpec(
+                key="location_dong",
+                label="입지 주소 (행정동)",
+                type="string",
+                description="상세 번지 불필요. 예: 서울시 강남구 역삼1동",
+            ),
+            ParameterSpec(
+                key="trade_area",
+                label="핵심 타겟 상권 유형",
+                type="string",
+                options=_opts(TRADE_AREA),
+                allowed_values=list(TRADE_AREA),
+            ),
+            ParameterSpec(
+                key="accessibility",
+                label="매장 정면 접근성",
+                type="string",
+                options=_opts(ACCESSIBILITY),
+                allowed_values=list(ACCESSIBILITY),
+            ),
+            ParameterSpec(
+                key="daily_demand",
+                label="일평균 소진량 (개)",
+                type="number",
+                description="품목 일평균 판매/소진 수량",
+                minimum=0.1,
+                maximum=100000.0,
+            ),
+            ParameterSpec(
+                key="standard_lead_time_days",
+                label="사내 표준 Lead Time (일)",
+                type="number",
+                required=False,
+                description="미입력 시 매장 유형 채널 기본값을 사용합니다.",
+                minimum=0.5,
+                maximum=30.0,
+            ),
+            ParameterSpec(
+                key="standard_rop",
+                label="사내/업계 표준 ROP (개)",
+                type="number",
+                required=False,
+                description="미입력 시 표준 LT·기본 안전재고로 산정합니다.",
+                minimum=0.0,
+                maximum=1000000.0,
+            ),
+        ],
+    )
 
 
 def _as_number(key: str, value: ParameterValue) -> float:
@@ -72,13 +129,37 @@ def _as_number(key: str, value: ParameterValue) -> float:
 def _as_string(key: str, value: ParameterValue) -> str:
     if not isinstance(value, str):
         raise InputValidationError(f"Parameter '{key}' must be a string")
-    return value
+    text = value.strip()
+    if not text:
+        raise InputValidationError(f"Parameter '{key}' must not be empty")
+    return text
 
 
-def _as_boolean(key: str, value: ParameterValue) -> bool:
-    if not isinstance(value, bool):
-        raise InputValidationError(f"Parameter '{key}' must be a boolean")
-    return value
+def _choice(key: str, value: ParameterValue, allowed: dict[str, str]) -> str:
+    text = _as_string(key, value)
+    if text not in allowed:
+        options = ", ".join(allowed)
+        raise InputValidationError(f"Parameter '{key}' must be one of: {options}")
+    return text
+
+
+def _build_guidance(store_type: str, store_size: str, avg_ticket: str) -> list[str]:
+    notes: list[str] = []
+    size_expect = STORE_TYPE_SIZE_EXPECT.get(store_type, frozenset())
+    if store_size not in size_expect:
+        size_label = STORE_SIZE[store_size]
+        notes.append(
+            "매장 유형과 연면적(규모) 정보가 상이합니다. "
+            + f"연산에는 선택하신 매장 규모 '{size_label}'를 기준으로 적용합니다.",
+        )
+    ticket_expect = STORE_TYPE_TICKET_EXPECT.get(store_type, frozenset())
+    if avg_ticket not in ticket_expect:
+        ticket_label = AVG_TICKET[avg_ticket]
+        notes.append(
+            "매장 유형과 객단가 정보가 상이합니다. "
+            + f"연산에는 선택하신 객단가 '{ticket_label}'를 기준으로 적용합니다.",
+        )
+    return notes
 
 
 def validate_parameters(
@@ -86,7 +167,6 @@ def validate_parameters(
     *,
     template: InputTemplate | None = None,
 ) -> ValidatedInput:
-    """Validate and normalize client parameters against the public template."""
     spec = template or get_template()
     known = {p.key: p for p in spec.parameters}
     unknown = sorted(set(raw) - set(known))
@@ -111,19 +191,32 @@ def validate_parameters(
                     f"Parameter '{key}' must be <= {param.maximum}",
                 )
             normalized[key] = number
-        elif param.type == "string":
-            text = _as_string(key, value)
-            if param.allowed_values is not None and text not in param.allowed_values:
-                allowed = ", ".join(param.allowed_values)
-                raise InputValidationError(
-                    f"Parameter '{key}' must be one of: {allowed}",
-                )
-            normalized[key] = text
+        elif param.allowed_values is not None:
+            allowed_map = {
+                "store_type": STORE_TYPE,
+                "store_size": STORE_SIZE,
+                "avg_ticket": AVG_TICKET,
+                "trade_area": TRADE_AREA,
+                "accessibility": ACCESSIBILITY,
+            }.get(key)
+            if allowed_map is None:
+                text = _as_string(key, value)
+                if text not in param.allowed_values:
+                    raise InputValidationError(f"Parameter '{key}' has invalid value")
+                normalized[key] = text
+            else:
+                normalized[key] = _choice(key, value, allowed_map)
         else:
-            normalized[key] = _as_boolean(key, value)
+            normalized[key] = _as_string(key, value)
+
+    store_type = str(normalized["store_type"])
+    store_size = str(normalized["store_size"])
+    avg_ticket = str(normalized["avg_ticket"])
+    guidance = _build_guidance(store_type, store_size, avg_ticket)
 
     return ValidatedInput(
         template_id=spec.id,
         template_version=spec.version,
         parameters=normalized,
+        guidance=guidance,
     )

@@ -1,64 +1,118 @@
-"""Stage 2 — deterministic weighted analysis."""
+"""Stage 2 — internal calculation engine for adjusted LT / ROP."""
 
 from __future__ import annotations
 
-from app.pipeline.analyze.weights import CriterionDef, active_criteria
-from app.pipeline.types import AnalysisResult, Band, CriterionScore, ValidatedInput
+from app.pipeline.analyze.knowledge_base import match_knowledge, store_safety_stock
+from app.pipeline.analyze.scoring import max_rop_for_capa, score_store
+from app.pipeline.domain_catalog import DEFAULT_BASE_SAFETY_FRAC, DEFAULT_STANDARD_LT
+from app.pipeline.types import CalcBreakdown, ValidatedInput
 
 
-def _band_for(score: float) -> Band:
-    if score >= 0.70:
-        return "strong"
-    if score >= 0.40:
-        return "moderate"
-    return "weak"
+def _as_float(value: object, default: float) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return default
+    return float(value)
 
 
-def _unit_score(value: float, *, higher_is_better: bool) -> float:
-    """Map 0-100 input to 0-1 unit score."""
-    clamped = min(100.0, max(0.0, value))
-    unit = clamped / 100.0
-    return unit if higher_is_better else 1.0 - unit
+def _as_str(value: object) -> str:
+    return str(value)
 
 
-def analyze(
-    validated: ValidatedInput,
-    *,
-    criteria: tuple[CriterionDef, ...] | None = None,
-) -> AnalysisResult:
-    defs = criteria if criteria is not None else active_criteria()
-    if not defs:
-        return AnalysisResult(total_score=0.0, band="weak", criteria=[])
+def analyze(validated: ValidatedInput) -> CalcBreakdown:
+    p = validated.parameters
+    store_type = _as_str(p["store_type"])
+    store_size = _as_str(p["store_size"])
+    avg_ticket = _as_str(p["avg_ticket"])
+    trade_area = _as_str(p["trade_area"])
+    accessibility = _as_str(p["accessibility"])
+    location_dong = _as_str(p["location_dong"])
+    product_name = _as_str(p["product_name"])
+    daily_demand = _as_float(p["daily_demand"], 1.0)
 
-    weight_sum = sum(item.weight for item in defs)
-    if weight_sum <= 0:
-        msg = "Criterion weights must sum to a positive value"
-        raise ValueError(msg)
+    scores = score_store(
+        store_size=store_size,
+        avg_ticket=avg_ticket,
+        trade_area=trade_area,
+        accessibility=accessibility,
+    )
+    knowledge = match_knowledge(
+        location_dong=location_dong,
+        product_name=product_name,
+        trade_area=trade_area,
+        accessibility=accessibility,
+        scores=scores,
+    )
 
-    scores: list[CriterionScore] = []
-    total = 0.0
-    for item in defs:
-        raw_param = validated.parameters.get(item.param_key, 0.0)
-        if isinstance(raw_param, bool) or not isinstance(raw_param, (int, float)):
-            raw_value = 0.0
-        else:
-            raw_value = float(raw_param)
-        raw = _unit_score(raw_value, higher_is_better=item.higher_is_better)
-        norm_weight = item.weight / weight_sum
-        weighted = raw * norm_weight
-        total += weighted
-        direction = "higher better" if item.higher_is_better else "lower better"
-        scores.append(
-            CriterionScore(
-                criterion_id=item.id,
-                label=item.label,
-                weight=norm_weight,
-                raw_score=raw,
-                weighted_score=weighted,
-                rationale=f"{item.param_key}={raw_value:g} ({direction})",
+    # Standard LT: user override or channel default.
+    if "standard_lead_time_days" in p:
+        standard_lt = max(0.5, _as_float(p["standard_lead_time_days"], 2.0))
+    else:
+        standard_lt = DEFAULT_STANDARD_LT.get(store_type, 2.0)
+
+    recommended_lt = max(
+        0.5,
+        round(
+            standard_lt
+            + scores.accessibility_lt_delta_days
+            + knowledge.logistics_delay_days,
+            2,
+        ),
+    )
+    lt_delta = round(recommended_lt - standard_lt, 2)
+
+    base_frac = DEFAULT_BASE_SAFETY_FRAC.get(store_type, 0.35)
+    base_safety = round(daily_demand * standard_lt * base_frac, 2)
+
+    if "standard_rop" in p:
+        standard_rop = max(0.0, _as_float(p["standard_rop"], 0.0))
+    else:
+        standard_rop = round(daily_demand * standard_lt + base_safety, 2)
+
+    store_safety = store_safety_stock(
+        safety_z=knowledge.safety_z_factor,
+        recommended_lt=recommended_lt,
+        demand_volatility=scores.demand_volatility,
+        turnover_weight=scores.turnover_weight,
+    )
+    raw_rop = round(daily_demand * recommended_lt + store_safety, 2)
+
+    capa_capped = False
+    max_cap: float | None = None
+    multi_order: str | None = None
+    recommended_rop = raw_rop
+
+    if scores.capa_score <= 2:
+        max_cap = round(
+            max_rop_for_capa(
+                daily_demand=daily_demand,
+                recommended_lt=recommended_lt,
+                capa_score=scores.capa_score,
             ),
+            2,
         )
+        if raw_rop > max_cap:
+            capa_capped = True
+            recommended_rop = max_cap
+            multi_order = (
+                f"물류 창고 CAPA 점수 {scores.capa_score}/5(협소)로 계산 ROP "
+                f"{raw_rop:.1f}개가 상한 {max_cap:.1f}개를 초과해 상한으로 고정했습니다. "
+                f"화·목 등 차수 분할 소량 발주(다회 소량)로 전환하는 것을 권장합니다."
+            )
 
-    # Clamp floating residue into [0, 1].
-    total = min(1.0, max(0.0, total))
-    return AnalysisResult(total_score=total, band=_band_for(total), criteria=scores)
+    return CalcBreakdown(
+        standard_lead_time_days=standard_lt,
+        recommended_lead_time_days=recommended_lt,
+        lead_time_delta_days=lt_delta,
+        standard_rop=standard_rop,
+        recommended_rop=recommended_rop,
+        rop_delta=round(recommended_rop - standard_rop, 2),
+        daily_demand=daily_demand,
+        base_safety_stock=base_safety,
+        store_safety_stock=store_safety,
+        recommended_rop_raw=raw_rop,
+        capa_capped=capa_capped,
+        max_rop_cap=max_cap,
+        multi_order_suggestion=multi_order,
+        scores=scores,
+        knowledge=knowledge,
+    )

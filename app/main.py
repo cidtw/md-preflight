@@ -17,8 +17,9 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version=settings.app_version,
         description=(
-            "Modular pipeline skeleton: input template → weighted analyze → "
-            "one-line recommendation. v1 promotion preflight is archived."
+            "Store-specific ROP adjustment: store/trade parameters → internal "
+            "score + knowledge match → LT/ROP recommendation report. "
+            "v1 promotion preflight is archived."
         ),
     )
     app.add_middleware(
