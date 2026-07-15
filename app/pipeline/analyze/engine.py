@@ -178,9 +178,16 @@ def analyze(
         if raw_rop > max_cap:
             capa_capped = True
             recommended_rop = max_cap
+            # Keep ROP = D*LT + SS identity after cap: display effective SS.
+            store_safety = round(
+                max(0.0, recommended_rop - daily_demand * fixed_lt),
+                2,
+            )
             multi_order = (
                 f"물류 창고 CAPA 점수 {scores.capa_score}/5(협소)로 계산 ROP "
                 f"{raw_rop:.1f}개가 상한 {max_cap:.1f}개를 초과해 상한으로 고정했습니다. "
+                f"표시 안전재고는 캡 반영 유효값 {store_safety:.1f}개 "
+                f"(캡 전 통계+버퍼 {statistical_ss + logistics_buffer:.1f}개). "
                 f"발주 요일 {days_label} · 1회 약 {order_qty:g}개 수준을 권장합니다."
             )
 

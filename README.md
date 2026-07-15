@@ -1,6 +1,7 @@
 # MD Preflight — 매장 특화 ROP 재조정
 
-> **현재**: 매장·상권 파라미터 → 내부 점수·KB 매칭 → **Lead Time / ROP 추천 리포트**  
+> **현재**: 매장·상권 파라미터 → 내부 점수·KB 매칭 → **ROP·안전재고·발주 레버 리포트**  
+> **LT**는 품목 계약/표준 입력으로 **유지**(출력에서 변동 추천 없음) · 물류 리스크는 **버퍼 재고**로 전환  
 > **v1** (프로모션 사전검수): [`archive/v1-md-preflight/`](archive/v1-md-preflight/) · 태그 `archive/v1-md-preflight`
 
 FastAPI · Pydantic · 모듈형 3단 파이프라인
@@ -11,11 +12,12 @@ FastAPI · Pydantic · 모듈형 3단 파이프라인
 
 운영 중인 매장 정보와 재고 최적화 대상 품목을 입력하면:
 
-1. **입력** — 유형·규모·객단가·행정동·상권·접근성·일평균 소진량 (및 선택적 표준 LT/ROP)  
-2. **내부 연산** — 물류 CAPA·수요 변동 가중치 + 지식 베이스 매칭 → 추천 LT/ROP  
-3. **출력** — 표준 대비 비교 대시보드 + 근거 3블록 리포트  
+1. **입력** — 유형·규모·객단가·행정동·상권·접근성·일평균 소진량 (및 선택적 표준 LT/ROP·서비스 레벨·발주 패턴)  
+2. **내부 연산** — 물류 CAPA·수요 변동 가중치 + KB 매칭 → **고정 LT** 기준 ROP / SS / 1회 발주량 / 요일  
+3. **출력** — 표준 대비 비교 대시보드 + 근거 블록 리포트  
 
-유형과 규모/객단가가 어긋나면 **규모·객단가 선택값**을 연산 기준으로 쓰고 안내 문구를 띄웁니다.
+유형과 규모/객단가가 어긋나면 **규모·객단가 선택값**을 연산 기준으로 쓰고 안내 문구를 띄웁니다.  
+공식 정본: [`docs/redesign/pipeline.md`](docs/redesign/pipeline.md).
 
 ---
 
@@ -79,7 +81,8 @@ app/web/          # 폼 → 로딩 → 리포트
 
 | 문서 | 경로 |
 |------|------|
-| **아키텍처 요약 (정본)** | [`docs/architecture.md`](docs/architecture.md) |
+| **파이프라인 공식 정본** | [`docs/redesign/pipeline.md`](docs/redesign/pipeline.md) |
+| 아키텍처 요약 | [`docs/architecture.md`](docs/architecture.md) |
 | 서비스 플로우 | `2026-07-14-New-Service-Flow.md` |
 | 재설계 판 | `docs/redesign/` |
 | 개발 일지 | `docs/dev-journal-2026-07.md` |

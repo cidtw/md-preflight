@@ -105,7 +105,7 @@ ValidatedInput
       │      행정동+품목+상권 시드 → 물류지연일 · 안전계수 Z · 서술 노트
       │
       └─► engine.analyze()
-             추천 LT / 표준·추천 ROP / CAPA 상한 / 다회 소량 제안
+             고정 LT · 표준·추천 ROP/SS · CAPA 상한 · 다회 소량 제안
 ```
 
 #### 스코어링 축 (사전 설정 테이블)
@@ -128,24 +128,30 @@ ValidatedInput
 
 #### 핵심 공식
 
+> **정본**: [`docs/redesign/pipeline.md`](redesign/pipeline.md) · 아래는 요약.  
+> (구) “추천 LT = 표준 + 접근성 + KB” 모델은 **폐기** — LT는 입력 고정, 리스크는 버퍼 재고.
+
 ```
-추천 LT = max(0.5, 표준 LT + 접근성 가산 + KB 물류 지연)
-
-매장 특화 안전재고 =
-  Z × √(추천 LT × 수요 변동성 점수) × 회전 가중치
-
-추천 ROP = (일평균 소진량 × 추천 LT) + 매장 특화 안전재고
+LT_input     = 품목 표준/계약 LT (출력 delta=0; 미입력 시 규모 밴드 채널 기본)
+Z_policy     = SERVICE_LEVEL_Z[service_level]
+Z            = Z_policy + 맥락(변동성·품목·시드·FOOT_TRAFFIC×fti)
+risk_days    = max(0, 접근성 + KB 상권·행정동 리스크)
+buffer       = D × risk_days
+SS_stat      = Z × D × √(LT × vol/5) × 회전 가중치   # 휴리스틱, 실측 σ 아님
+SS           = SS_stat + buffer
+ROP          = D × LT + SS
+CAPA 캡 시   표시 SS = max(0, ROP_cap − D×LT)  # 항등 유지
 ```
 
 **CAPA 필터** (CAPA 점수 ≤ 2):
 
-- 물리 상한 `MaxCap` 초과 시 ROP를 상한으로 고정  
+- 물리 상한 `MaxCap` 초과 시 ROP를 상한으로 고정하고 **유효 SS**를 재계산  
 - **다회 소량 발주** 제안 문구 활성화  
 
 **표준(baseline) ROP**
 
 - 사용자 `standard_rop` 우선  
-- 없으면 `(일평균 × 표준 LT) + 채널 기본 안전재고 비율`
+- 없으면 `(일평균 × 표준 LT) + 채널 기본 안전재고 비율` (채널 = 규모 밴드 우선)
 
 ---
 

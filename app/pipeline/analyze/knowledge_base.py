@@ -94,9 +94,9 @@ def match_knowledge(
     access_label = ACCESSIBILITY[accessibility]
     peak = _PEAK_BY_TRADE[trade_area]
 
-    # Higher service level → lower residual stockout risk in narrative.
+    # Relative risk indices from deterministic seed — not calibrated probabilities.
     sl_stockout_adj = {"sl_90": 8, "sl_95": 0, "sl_99": -12}.get(service_level, 0)
-    stockout_pct = int(
+    stockout_risk_index = int(
         min(
             95,
             max(
@@ -111,7 +111,7 @@ def match_knowledge(
             ),
         ),
     )
-    peak_share_pct = int(
+    peak_intensity_index = int(
         min(85, max(45, round(48 + scores.demand_volatility * 5 + unit * 10 + fti * 6))),
     )
 
@@ -124,8 +124,9 @@ def match_knowledge(
     )
     demand_risk = (
         f"'{trade_label}' 특성과 품목 '{product_name}' 조합에서 {peak} 패턴이 두드러집니다. "
-        f"피크 구간 매출 비중 추정 약 {peak_share_pct}% · 선택 정책 '{sl_label}' 기준 "
-        f"표준 ROP 유지 시 피크 품절 위험 약 {stockout_pct}%로 산출되어 "
+        f"피크 상대 강도 지수 {peak_intensity_index}/100 · 선택 정책 '{sl_label}' 기준 "
+        f"표준 ROP 유지 시 피크 품절 상대 위험 점수 {stockout_risk_index}/100"
+        f"(모형 추정 인덱스, 실측 확률이 아님)으로 산출되어 "
         f"안전재고·ROP 조정이 필요합니다."
     )
     if fti > 0:

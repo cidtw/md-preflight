@@ -229,7 +229,10 @@ function showStep(index) {
 
   if (!isWelcome) {
     const panel = STEPS[index].el?.();
+    // Prefer controls in visible labels (store_address uses [hidden] on <label>).
     const focusable = panel?.querySelector(
+      "label:not([hidden]) input:not([type=hidden]), label:not([hidden]) select",
+    ) ?? panel?.querySelector(
       "input:not([type=hidden]):not([hidden]), select:not([hidden])",
     );
     focusable?.focus?.();

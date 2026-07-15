@@ -40,9 +40,20 @@ def test_lead_time_is_fixed_and_risk_becomes_buffer() -> None:
     assert calc.logistics_buffer_units == pytest.approx(
         calc.daily_demand * calc.logistics_risk_days,
     )
-    assert calc.store_safety_stock == pytest.approx(
-        calc.statistical_safety_stock + calc.logistics_buffer_units,
-    )
+    if calc.capa_capped:
+        # Display SS is effective under CAPA (not raw statistical + buffer).
+        assert calc.store_safety_stock == pytest.approx(
+            max(
+                0.0,
+                calc.recommended_rop
+                - calc.daily_demand * calc.standard_lead_time_days,
+            ),
+            abs=0.02,
+        )
+    else:
+        assert calc.store_safety_stock == pytest.approx(
+            calc.statistical_safety_stock + calc.logistics_buffer_units,
+        )
     assert calc.suggested_order_qty > 0
     assert calc.order_cycle_days > 0
     assert calc.order_frequency_label
@@ -82,6 +93,16 @@ def test_capa_cap_triggers_multi_order() -> None:
     assert result.calc.capa_capped is True
     assert result.calc.multi_order_suggestion is not None
     assert result.calc.recommended_rop == pytest.approx(result.calc.max_rop_cap)
+    # After CAPA cap, ROP = daily_demand * LT + store_safety_stock must hold.
+    expected_ss = result.calc.recommended_rop - (
+        result.calc.daily_demand * result.calc.standard_lead_time_days
+    )
+    assert result.calc.store_safety_stock == pytest.approx(max(0.0, expected_ss), abs=0.02)
+    assert result.calc.recommended_rop == pytest.approx(
+        result.calc.daily_demand * result.calc.standard_lead_time_days
+        + result.calc.store_safety_stock,
+        abs=0.02,
+    )
 
 
 def test_main_road_has_lower_logistics_buffer_than_indoor() -> None:
@@ -226,8 +247,14 @@ def test_analyze_formula_rop_identity() -> None:
     validated = validate_parameters(BASE)
     calc = analyze(validated)
     expected = calc.daily_demand * calc.standard_lead_time_days + calc.store_safety_stock
-    if not calc.capa_capped:
-        assert calc.recommended_rop == pytest.approx(round(expected, 2))
-    assert calc.store_safety_stock == pytest.approx(
-        calc.statistical_safety_stock + calc.logistics_buffer_units,
-    )
+    # Identity always holds on displayed ROP/SS (CAPA path recomputes effective SS).
+    assert calc.recommended_rop == pytest.approx(round(expected, 2), abs=0.02)
+    if calc.capa_capped:
+        assert calc.recommended_rop == pytest.approx(calc.max_rop_cap)
+        assert calc.store_safety_stock < (
+            calc.statistical_safety_stock + calc.logistics_buffer_units
+        )
+    else:
+        assert calc.store_safety_stock == pytest.approx(
+            calc.statistical_safety_stock + calc.logistics_buffer_units,
+        )

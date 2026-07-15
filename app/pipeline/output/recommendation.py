@@ -18,7 +18,9 @@ from app.pipeline.types import (
     ComparisonDashboard,
     ComparisonRow,
     EvidenceBlock,
+    KnowledgeSignals,
     RecommendationResult,
+    ScoreBreakdown,
     StoreSummary,
     ValidatedInput,
 )
@@ -238,6 +240,34 @@ def _geo_evidence(calc: CalcBreakdown) -> EvidenceBlock:
     )
 
 
+def _ss_formula_point(
+    calc: CalcBreakdown,
+    scores: ScoreBreakdown,
+    kb: KnowledgeSignals,
+) -> str:
+    """Safety-stock formula narrative; CAPA path uses effective SS for identity."""
+    head = (
+        f"서비스 레벨 정책 Z={kb.service_level_z:.2f} "
+        f"({calc.service_level_label}) → 맥락 반영 최종 Z={kb.safety_z_factor:.2f}. "
+        f"통계 안전재고(캡 전) = Z * 일평균소진 {calc.daily_demand:g} * "
+        f"sqrt(입력LT {calc.standard_lead_time_days} * "
+        f"vol_norm {scores.demand_volatility}/5) * 회전가중 "
+        f"{scores.turnover_weight} = {calc.statistical_safety_stock:.1f}개. "
+    )
+    if calc.capa_capped:
+        pre_cap = calc.statistical_safety_stock + calc.logistics_buffer_units
+        tail = (
+            f"CAPA 캡 반영 표시 안전재고 = {calc.store_safety_stock:.1f}개 "
+            f"(캡 전 통계+버퍼 {pre_cap:.1f}개)."
+        )
+    else:
+        tail = (
+            f"총 안전재고 = 통계 + 물류버퍼 "
+            f"{calc.logistics_buffer_units:.1f} = {calc.store_safety_stock:.1f}개."
+        )
+    return head + tail
+
+
 def _evidence(validated: ValidatedInput, calc: CalcBreakdown) -> list[EvidenceBlock]:
     p = validated.parameters
     access = ACCESSIBILITY[str(p["accessibility"])]
@@ -287,19 +317,10 @@ def _evidence(validated: ValidatedInput, calc: CalcBreakdown) -> list[EvidenceBl
         points=[
             kb.foot_traffic_peak_note,
             kb.demand_risk_note,
-            (
-                f"서비스 레벨 정책 Z={kb.service_level_z:.2f} "
-                f"({calc.service_level_label}) → 맥락 반영 최종 Z={kb.safety_z_factor:.2f}. "
-                f"통계 안전재고 = Z * 일평균소진 {calc.daily_demand:g} * "
-                f"sqrt(입력LT {calc.standard_lead_time_days} * "
-                f"vol_norm {scores.demand_volatility}/5) * 회전가중 "
-                f"{scores.turnover_weight} = {calc.statistical_safety_stock:.1f}개. "
-                f"총 안전재고 = 통계 + 물류버퍼 "
-                f"{calc.logistics_buffer_units:.1f} = {calc.store_safety_stock:.1f}개."
-            ),
+            _ss_formula_point(calc, scores, kb),
             (
                 f"ROP = 일평균소진 {calc.daily_demand:g} * 입력LT "
-                f"{calc.standard_lead_time_days:g} + 총 안전재고 "
+                f"{calc.standard_lead_time_days:g} + 표시 안전재고 "
                 f"{calc.store_safety_stock:.1f}. "
                 f"발주 요일 패턴: {calc.order_days_label} "
                 f"({'자동' if calc.order_pattern_auto else '선택'}) · "
@@ -314,7 +335,9 @@ def _evidence(validated: ValidatedInput, calc: CalcBreakdown) -> list[EvidenceBl
             calc.multi_order_suggestion,
             (
                 f"원시 추천 ROP {calc.recommended_rop_raw:.1f}개 → "
-                f"CAPA 상한 {calc.max_rop_cap}개로 고정."
+                f"CAPA 상한 {calc.max_rop_cap}개로 고정. "
+                f"표시 안전재고 {calc.store_safety_stock:.1f}개는 캡 반영 유효값"
+                f"(ROP = 일소진*LT + SS 항등 유지)."
             ),
         ]
         capa_summary = "수용 한도 초과 → 다회 소량 발주 전환"
