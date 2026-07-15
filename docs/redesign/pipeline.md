@@ -26,7 +26,9 @@
 | `trade_area` | 상권 유형 |
 | `accessibility` | 대로변 / 이면 / 건물 내 |
 | `daily_demand` | 일평균 소진량 |
-| `standard_lead_time_days` | (선택) 사내 표준 LT |
+| `standard_lead_time_days` | (선택) **품목별** 표준/계약 LT — 입력 유지, 출력에서 변동 추천 없음 |
+| `service_level` | (선택) 목표 서비스 레벨 90/95/99% → 정책 Z |
+| `order_day_pattern` | (선택) 발주 요일 패턴(자동·화목·월수금 등) |
 | `standard_rop` | (선택) 사내/업계 표준 ROP |
 
 불일치 안내:
@@ -42,22 +44,30 @@
 4. **공식** (`engine.py`)
 
 ```
-foot_traffic_index = clamp( Σ w(category)*exp(-d/250) / 4 , 0, 1)
-Z = Z_base + 0.35 * foot_traffic_index
-추천 LT = 표준 LT + 접근성 가산 + KB 물류 지연
-매장 안전재고 = Z * sqrt(추천LT * 수요변동성) * 회전가중치
-추천 ROP = 일평균소진 * 추천LT + 매장 안전재고
-CAPA 1~2 이고 상한 초과 시 ROP = MaxCap, 다회 소량 발주 제안
+foot_traffic_index = soft_sat(
+  Σ_{cat, rank≤N_cat} w(cat) * exp(-d/250) * 0.5^rank
+)  where soft_sat(raw) = raw / (raw + 2.4) → (0,1)
+  N_cat: rail/bus/anchor/… 최근접 1~2곳, CS2=convenience 저가중
+# LT is product input (kept as-is). Output never recommends changing LT.
+LT = 입력 품목 표준 LT
+Z = 서비스레벨 정책 Z(90/95/99) + 맥락(변동성·품목·유동지수)
+물류 리스크일 = max(0, 접근성 성분 + KB 상권·행정동 리스크)
+물류 버퍼개 = 일평균소진 * 물류 리스크일
+통계 안전재고 = Z * sqrt(LT * 수요변동성) * 회전가중치
+총 안전재고 = 통계 안전재고 + 물류 버퍼개
+추천 ROP = 일평균소진 * LT + 총 안전재고
+발주 요일·주기·Q = 선택 패턴 또는 CAPA 자동 추천
+CAPA 1~2 이고 상한 초과 시 ROP = MaxCap, 다회 소량 발주 강화
 ```
 
 지도 API 키 없음/실패 시 **행정동 경로 fallback** (evaluate 200 유지 + guidance).
 
 ## 3. Output (`app/pipeline/output`)
 
-- 한 줄 recommendation  
-- 매장 요약  
-- 표준 vs 추천 비교 표  
-- 근거 3블록 (LT / 수요·안전재고 / CAPA)  
+- 한 줄 recommendation (LT 입력 유지 + ROP·SS·요일·Q·SL)  
+- 매장 요약 (서비스 레벨·발주 요일 포함)  
+- 비교 표 (입력 LT · SL/Z · 안전재고 · Q · 발주 요일·주기 · ROP)  
+- 근거 블록 (물류리스크→버퍼 / 수요·운영레버 / geo / CAPA)  
 - guidance 배열  
 
 ## API

@@ -1,4 +1,9 @@
-"""Stage 2 — internal calculation engine for adjusted LT / ROP."""
+"""Stage 2 — internal calculation engine for ROP and operational levers.
+
+Lead time is treated as a fixed contractual/standard input. Accessibility and
+KB logistics signals become buffer stock and order-policy recommendations, not
+a new "recommended LT".
+"""
 
 from __future__ import annotations
 
@@ -8,9 +13,18 @@ from app.pipeline.analyze.geo_enrichment import (
     disabled_enrichment,
     enrich_from_address,
 )
-from app.pipeline.analyze.knowledge_base import match_knowledge, store_safety_stock
+from app.pipeline.analyze.knowledge_base import (
+    match_knowledge,
+    store_safety_stock,
+    suggest_order_policy,
+)
 from app.pipeline.analyze.scoring import max_rop_for_capa, score_store
-from app.pipeline.domain_catalog import DEFAULT_BASE_SAFETY_FRAC, DEFAULT_STANDARD_LT
+from app.pipeline.domain_catalog import (
+    DEFAULT_BASE_SAFETY_FRAC,
+    DEFAULT_STANDARD_LT,
+    ORDER_DAY_PATTERN,
+    SERVICE_LEVEL,
+)
 from app.pipeline.types import CalcBreakdown, GeoEnrichment, ValidatedInput
 
 
@@ -68,6 +82,12 @@ def analyze(
     location_dong = _as_str(p["location_dong"])
     product_name = _as_str(p["product_name"])
     daily_demand = _as_float(p["daily_demand"], 1.0)
+    service_level = _as_str(p.get("service_level", "sl_95"))
+    if service_level not in SERVICE_LEVEL:
+        service_level = "sl_95"
+    order_pattern_in = _as_str(p.get("order_day_pattern", "auto"))
+    if order_pattern_in not in ORDER_DAY_PATTERN:
+        order_pattern_in = "auto"
 
     scores = score_store(
         store_size=store_size,
@@ -87,39 +107,54 @@ def analyze(
         accessibility=accessibility,
         scores=scores,
         foot_traffic_index=geo.foot_traffic_index,
+        service_level=service_level,
     )
 
+    # LT is a product-specific INPUT (kept). Output never recommends changing it.
     if "standard_lead_time_days" in p:
         standard_lt = max(0.5, _as_float(p["standard_lead_time_days"], 2.0))
     else:
         standard_lt = DEFAULT_STANDARD_LT.get(store_type, 2.0)
 
-    recommended_lt = max(
-        0.5,
-        round(
-            standard_lt
-            + scores.accessibility_lt_delta_days
-            + knowledge.logistics_delay_days,
-            2,
-        ),
+    fixed_lt = standard_lt
+    logistics_risk_days = round(
+        max(0.0, scores.accessibility_lt_delta_days + knowledge.logistics_delay_days),
+        2,
     )
-    lt_delta = round(recommended_lt - standard_lt, 2)
+    logistics_buffer = round(daily_demand * logistics_risk_days, 2)
 
     base_frac = DEFAULT_BASE_SAFETY_FRAC.get(store_type, 0.35)
-    base_safety = round(daily_demand * standard_lt * base_frac, 2)
+    base_safety = round(daily_demand * fixed_lt * base_frac, 2)
 
     if "standard_rop" in p:
         standard_rop = max(0.0, _as_float(p["standard_rop"], 0.0))
     else:
-        standard_rop = round(daily_demand * standard_lt + base_safety, 2)
+        standard_rop = round(daily_demand * fixed_lt + base_safety, 2)
 
-    store_safety = store_safety_stock(
+    statistical_ss = store_safety_stock(
         safety_z=knowledge.safety_z_factor,
-        recommended_lt=recommended_lt,
+        lead_time_days=fixed_lt,
         demand_volatility=scores.demand_volatility,
         turnover_weight=scores.turnover_weight,
     )
-    raw_rop = round(daily_demand * recommended_lt + store_safety, 2)
+    # Total safety stock = statistical SS + logistics risk buffer (units).
+    store_safety = round(statistical_ss + logistics_buffer, 2)
+    raw_rop = round(daily_demand * fixed_lt + store_safety, 2)
+
+    (
+        order_cycle,
+        order_qty,
+        order_label,
+        resolved_pattern,
+        days_label,
+        pattern_auto,
+    ) = suggest_order_policy(
+        capa_score=scores.capa_score,
+        demand_concentration=scores.demand_concentration,
+        daily_demand=daily_demand,
+        lead_time_days=fixed_lt,
+        order_day_pattern=order_pattern_in,
+    )
 
     capa_capped = False
     max_cap: float | None = None
@@ -130,7 +165,7 @@ def analyze(
         max_cap = round(
             max_rop_for_capa(
                 daily_demand=daily_demand,
-                recommended_lt=recommended_lt,
+                recommended_lt=fixed_lt,
                 capa_score=scores.capa_score,
             ),
             2,
@@ -141,19 +176,32 @@ def analyze(
             multi_order = (
                 f"물류 창고 CAPA 점수 {scores.capa_score}/5(협소)로 계산 ROP "
                 f"{raw_rop:.1f}개가 상한 {max_cap:.1f}개를 초과해 상한으로 고정했습니다. "
-                f"화·목 등 차수 분할 소량 발주(다회 소량)로 전환하는 것을 권장합니다."
+                f"발주 요일 {days_label} · 1회 약 {order_qty:g}개 수준을 권장합니다."
             )
 
     return CalcBreakdown(
-        standard_lead_time_days=standard_lt,
-        recommended_lead_time_days=recommended_lt,
-        lead_time_delta_days=lt_delta,
+        standard_lead_time_days=fixed_lt,
+        recommended_lead_time_days=fixed_lt,
+        lead_time_delta_days=0.0,
+        lead_time_fixed=True,
+        logistics_risk_days=logistics_risk_days,
+        logistics_buffer_units=logistics_buffer,
+        statistical_safety_stock=statistical_ss,
+        service_level=service_level,
+        service_level_label=SERVICE_LEVEL[service_level],
+        order_day_pattern_input=order_pattern_in,
+        order_day_pattern=resolved_pattern,
+        order_days_label=days_label,
+        order_pattern_auto=pattern_auto,
         standard_rop=standard_rop,
         recommended_rop=recommended_rop,
         rop_delta=round(recommended_rop - standard_rop, 2),
         daily_demand=daily_demand,
         base_safety_stock=base_safety,
         store_safety_stock=store_safety,
+        order_cycle_days=order_cycle,
+        suggested_order_qty=order_qty,
+        order_frequency_label=order_label,
         recommended_rop_raw=raw_rop,
         capa_capped=capa_capped,
         max_rop_cap=max_cap,

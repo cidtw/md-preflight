@@ -5,6 +5,8 @@ from __future__ import annotations
 from app.pipeline.domain_catalog import (
     ACCESSIBILITY,
     AVG_TICKET,
+    ORDER_DAY_PATTERN,
+    SERVICE_LEVEL,
     STORE_SIZE,
     STORE_TYPE,
     TRADE_AREA,
@@ -26,6 +28,7 @@ _CATEGORY_KO = {
     "education": "교육",
     "office": "오피스",
     "retail_anchor": "상업 앵커",
+    "convenience": "편의점",
     "other": "기타",
 }
 
@@ -41,10 +44,18 @@ def _delta_label(delta: float, *, higher_is_delay: bool = False) -> str:
     return f"{arrow} {abs(delta):.1f} 하향"
 
 
-def _summary(validated: ValidatedInput) -> StoreSummary:
+def _summary(validated: ValidatedInput, calc: CalcBreakdown) -> StoreSummary:
     p = validated.parameters
     use_precise = bool(p.get("use_precise_location", False))
     address = p.get("store_address")
+    sl_key = str(p.get("service_level", calc.service_level))
+    pattern_in = str(p.get("order_day_pattern", calc.order_day_pattern_input))
+    pattern_label = ORDER_DAY_PATTERN.get(pattern_in, pattern_in)
+    if calc.order_pattern_auto and pattern_in == "auto":
+        pattern_label = (
+            f"{pattern_label} → {calc.order_days_label} "
+            f"({ORDER_DAY_PATTERN.get(calc.order_day_pattern, calc.order_day_pattern)})"
+        )
     return StoreSummary(
         product_name=str(p["product_name"]),
         store_type_label=STORE_TYPE[str(p["store_type"])],
@@ -53,20 +64,72 @@ def _summary(validated: ValidatedInput) -> StoreSummary:
         location_dong=str(p["location_dong"]),
         trade_area_label=TRADE_AREA[str(p["trade_area"])],
         accessibility_label=ACCESSIBILITY[str(p["accessibility"])],
+        service_level_label=SERVICE_LEVEL.get(sl_key, calc.service_level_label),
+        order_day_pattern_label=pattern_label,
         use_precise_location=use_precise,
         store_address=str(address) if address is not None else None,
     )
 
 
 def _comparison(calc: CalcBreakdown) -> ComparisonDashboard:
+    # LT is fixed (not an adjustable lever). Surface adjustable ops: SS, Q, cycle, ROP.
+    std_ss = calc.base_safety_stock
+    rec_ss = calc.store_safety_stock
+    ss_delta = round(rec_ss - std_ss, 2)
+    # Baseline order qty ≈ daily * standard LT (rough industry habit).
+    std_q = round(calc.daily_demand * calc.standard_lead_time_days, 1)
+    rec_q = calc.suggested_order_qty
+    q_delta = round(rec_q - std_q, 1)
+    std_cycle = calc.standard_lead_time_days
+    rec_cycle = calc.order_cycle_days
+    cycle_delta = round(rec_cycle - std_cycle, 2)
+
     rows = [
         ComparisonRow(
-            metric="리드타임 (Lead Time)",
+            metric="리드타임 (품목 입력 · 변동 추천 없음)",
             standard_value=calc.standard_lead_time_days,
             recommended_value=calc.recommended_lead_time_days,
-            delta=calc.lead_time_delta_days,
+            delta=0.0,
             unit="일",
-            delta_label=_delta_label(calc.lead_time_delta_days, higher_is_delay=True),
+            delta_label="입력 유지 · 출력에서 LT 미조정",
+        ),
+        ComparisonRow(
+            metric="서비스 레벨 Z",
+            standard_value=1.65,  # sl_95 policy baseline
+            recommended_value=calc.knowledge.safety_z_factor,
+            delta=round(calc.knowledge.safety_z_factor - 1.65, 2),
+            unit="",
+            delta_label=(
+                f"{calc.service_level_label} · 정책 Z "
+                f"{calc.knowledge.service_level_z:.2f} → 최종 "
+                f"{calc.knowledge.safety_z_factor:.2f}"
+            ),
+        ),
+        ComparisonRow(
+            metric="안전재고 (Safety Stock)",
+            standard_value=std_ss,
+            recommended_value=rec_ss,
+            delta=ss_delta,
+            unit="개",
+            delta_label=_delta_label(ss_delta),
+        ),
+        ComparisonRow(
+            metric="권장 1회 발주량 (Q)",
+            standard_value=std_q,
+            recommended_value=rec_q,
+            delta=q_delta,
+            unit="개",
+            delta_label=_delta_label(q_delta),
+        ),
+        ComparisonRow(
+            metric="권장 발주 요일·주기",
+            standard_value=std_cycle,
+            recommended_value=rec_cycle,
+            delta=cycle_delta,
+            unit="일",
+            delta_label=(
+                f"{calc.order_days_label} · {calc.order_frequency_label}"
+            ),
         ),
         ComparisonRow(
             metric="재발주점 (ROP)",
@@ -83,15 +146,21 @@ def _comparison(calc: CalcBreakdown) -> ComparisonDashboard:
         guide = (
             f"매장 재고가 {rop:.0f}개 이하로 떨어지는 순간 발주를 넣어야 "
             f"품절 없이 공급이 가능합니다. (표준 {std:.0f}개 대비 "
-            f"{calc.rop_delta:.0f}개 더 빠르게 발주)"
+            f"{calc.rop_delta:.0f}개 더 빠르게 발주) · "
+            f"발주 요일 {calc.order_days_label}, 1회 약 {calc.suggested_order_qty:g}개."
         )
     elif calc.rop_delta < 0:
+        cut = abs(calc.rop_delta)
         guide = (
             f"매장 재고가 {rop:.0f}개 이하일 때 발주하면 됩니다. "
-            f"표준 {std:.0f}개 대비 재고 부담을 {abs(calc.rop_delta):.0f}개 줄인 운영이 가능합니다."
+            f"표준 {std:.0f}개 대비 재고 부담을 {cut:.0f}개 줄일 수 있습니다. · "
+            f"발주 요일 {calc.order_days_label}."
         )
     else:
-        guide = f"표준과 동일한 ROP {rop:.0f}개를 유지하는 것이 현재 조건에 부합합니다."
+        guide = (
+            f"표준과 동일한 ROP {rop:.0f}개를 유지하는 것이 현재 조건에 부합합니다. · "
+            f"발주 요일 {calc.order_days_label}, 1회 약 {calc.suggested_order_qty:g}개."
+        )
     return ComparisonDashboard(rows=rows, rop_guidance=guide)
 
 
@@ -162,42 +231,61 @@ def _evidence(validated: ValidatedInput, calc: CalcBreakdown) -> list[EvidenceBl
 
     lt_block = EvidenceBlock(
         id="lt_access",
-        title="공급망 지연 및 물류 접근성 (Lead Time 조정 근거)",
+        title="물류 리스크 → 버퍼 재고 (리드타임은 고정)",
         calc_summary=(
-            f"사내 표준 리드타임({calc.standard_lead_time_days:.1f}일) → "
-            f"매장 특화 리드타임({calc.recommended_lead_time_days:.1f}일)"
+            f"적용 LT {calc.standard_lead_time_days:.1f}일(고정) · "
+            f"물류 리스크 {calc.logistics_risk_days:.2f}일 → "
+            f"버퍼 {calc.logistics_buffer_units:.1f}개"
         ),
         points=[
             (
-                f"접근성 '{access}' 가산점 {scores.accessibility_lt_delta_days:+.1f}일이 "
-                f"표준 LT에 반영되었습니다."
+                "리드타임은 계약·표준 일정으로 두며 재조정 대상이 아닙니다. "
+                "접근성·상권 물류 리스크는 재고 버퍼로만 반영합니다."
+            ),
+            (
+                f"접근성 '{access}' 리스크 성분 {scores.accessibility_lt_delta_days:+.1f}일 "
+                f"+ KB 상권·행정동 리스크 +{kb.logistics_delay_days:.2f}일 "
+                f"= 합산 리스크 {calc.logistics_risk_days:.2f}일 "
+                f"(음수는 0으로 절사)."
             ),
             kb.logistics_issue_note,
             (
-                f"KB 검색 쿼리: {kb.search_query}. "
-                f"공급 난이도 {scores.supply_difficulty}/5 · "
-                f"AI 물류 지연 예측 +{kb.logistics_delay_days:.2f}일."
+                f"버퍼 환산: 일평균 소진 {calc.daily_demand:g} * 리스크 "
+                f"{calc.logistics_risk_days:.2f}일 = {calc.logistics_buffer_units:.1f}개. "
+                f"KB 검색: {kb.search_query}."
             ),
         ],
     )
 
     rop_block = EvidenceBlock(
         id="demand_safety",
-        title="상권 특성 및 수요 변동성 (안전재고 및 ROP 조정 근거)",
+        title="상권 특성 및 운영 레버 (안전재고 · 발주량 · ROP)",
         calc_summary=(
             f"표준 안전재고({calc.base_safety_stock:.1f}개) → "
-            f"매장 특화 안전재고({calc.store_safety_stock:.1f}개) · "
-            f"회전 가중치 {scores.turnover_weight}"
+            f"매장 특화({calc.store_safety_stock:.1f}개) · "
+            f"1회 발주 {calc.suggested_order_qty:g}개 / "
+            f"주기 {calc.order_cycle_days:g}일"
         ),
         points=[
             kb.foot_traffic_peak_note,
             kb.demand_risk_note,
             (
-                f"공식: 안전재고 = Z({kb.safety_z_factor}) * "
-                f"sqrt(추천LT {calc.recommended_lead_time_days} * "
-                f"수요변동성 {scores.demand_volatility}) * "
-                f"회전가중치 {scores.turnover_weight}. "
-                f"품목 '{product}', 상권 '{trade}', 행정동 '{dong}' 기준."
+                f"서비스 레벨 정책 Z={kb.service_level_z:.2f} "
+                f"({calc.service_level_label}) → 맥락 반영 최종 Z={kb.safety_z_factor:.2f}. "
+                f"통계 안전재고 = Z * sqrt(입력LT {calc.standard_lead_time_days} * "
+                f"수요변동성 {scores.demand_volatility}) * 회전가중 "
+                f"{scores.turnover_weight} = {calc.statistical_safety_stock:.1f}개. "
+                f"총 안전재고 = 통계 + 물류버퍼 "
+                f"{calc.logistics_buffer_units:.1f} = {calc.store_safety_stock:.1f}개."
+            ),
+            (
+                f"ROP = 일평균소진 {calc.daily_demand:g} * 입력LT "
+                f"{calc.standard_lead_time_days:g} + 총 안전재고 "
+                f"{calc.store_safety_stock:.1f}. "
+                f"발주 요일 패턴: {calc.order_days_label} "
+                f"({'자동' if calc.order_pattern_auto else '선택'}) · "
+                f"{calc.order_frequency_label} · 1회 약 {calc.suggested_order_qty:g}개. "
+                f"품목 '{product}', 상권 '{trade}', 행정동 '{dong}'."
             ),
         ],
     )
@@ -234,23 +322,26 @@ def _evidence(validated: ValidatedInput, calc: CalcBreakdown) -> list[EvidenceBl
 
 
 def _one_liner(summary: StoreSummary, calc: CalcBreakdown) -> str:
-    sign_lt = "▲" if calc.lead_time_delta_days >= 0 else "▼"
     sign_rop = "▲" if calc.rop_delta >= 0 else "▼"
+    sign_ss = "▲" if calc.store_safety_stock >= calc.base_safety_stock else "▼"
     base = (
-        f"[{summary.product_name}] 추천 LT {calc.recommended_lead_time_days:.1f}일"
-        f"({sign_lt}{abs(calc.lead_time_delta_days):.1f}) · "
+        f"[{summary.product_name}] LT {calc.standard_lead_time_days:.1f}일(입력 유지) · "
         f"ROP {calc.recommended_rop:.0f}개"
-        f"({sign_rop}{abs(calc.rop_delta):.0f})"
+        f"({sign_rop}{abs(calc.rop_delta):.0f}) · "
+        f"안전재고 {calc.store_safety_stock:.0f}개"
+        f"({sign_ss}{abs(calc.store_safety_stock - calc.base_safety_stock):.0f}) · "
+        f"발주 {calc.order_days_label} · 1회 {calc.suggested_order_qty:g}개 · "
+        f"SL {calc.knowledge.service_level_z:.2f}→Z {calc.knowledge.safety_z_factor:.2f}"
     )
     if calc.geo.enabled and not calc.geo.used_fallback and calc.geo.foot_traffic_index > 0:
         base += f" · 지도 유동지수 {calc.geo.foot_traffic_index:.2f}"
     if calc.multi_order_suggestion:
-        return f"{base}. 협소 CAPA로 다회 소량 발주를 권장합니다."
-    return f"{base}. 매장·상권 특화 재조정을 적용하세요."
+        return f"{base}. 협소 CAPA로 상한 고정·다회 소량 발주를 권장합니다."
+    return f"{base}. 조정 레버는 ROP·안전재고·발주 요일/량·서비스 레벨입니다."
 
 
 def render(validated: ValidatedInput, calc: CalcBreakdown) -> RecommendationResult:
-    summary = _summary(validated)
+    summary = _summary(validated, calc)
     guidance = list(validated.guidance)
     if calc.geo.enabled and calc.geo.used_fallback:
         guidance.extend(calc.geo.notes)

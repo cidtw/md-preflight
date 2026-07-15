@@ -8,6 +8,8 @@ from app.core.errors import InputValidationError
 from app.pipeline.domain_catalog import (
     ACCESSIBILITY,
     AVG_TICKET,
+    ORDER_DAY_PATTERN,
+    SERVICE_LEVEL,
     STORE_SIZE,
     STORE_TYPE,
     STORE_TYPE_SIZE_EXPECT,
@@ -23,7 +25,7 @@ from app.pipeline.types import (
 )
 
 TEMPLATE_ID = "rop-adjust-v1"
-TEMPLATE_VERSION = "1.1.0"
+TEMPLATE_VERSION = "1.3.0"
 
 
 def _opts(mapping: dict[str, str]) -> list[ParameterOption]:
@@ -35,9 +37,9 @@ def get_template() -> InputTemplate:
         id=TEMPLATE_ID,
         title="매장 특화 ROP 재조정",
         description=(
-            "매장·상권·접근성 파라미터와 품목·일평균 소진량을 입력하면 "
-            "Lead Time / Re-Order Point 재조정값과 근거 리포트를 반환합니다. "
-            "정확한 위치 사용 시 Kakao 로컬 API로 주변 유동 유발 시설을 점수에 반영합니다."
+            "매장·상권·접근성·서비스 레벨·발주 요일 패턴과 품목·일평균 소진량을 입력하면 "
+            "품목별 리드타임(입력 유지) 하에서 ROP·안전재고·1회 발주량·발주 요일을 "
+            "재조정하고 근거 리포트를 반환합니다. LT 자체는 출력에서 변동 추천하지 않습니다."
         ),
         version=TEMPLATE_VERSION,
         parameters=[
@@ -117,12 +119,33 @@ def get_template() -> InputTemplate:
             ),
             ParameterSpec(
                 key="standard_lead_time_days",
-                label="사내 표준 Lead Time (일)",
+                label="품목 표준 Lead Time (일)",
                 type="number",
                 required=False,
-                description="미입력 시 매장 유형 채널 기본값을 사용합니다.",
+                description=(
+                    "품목마다 다를 수 있는 표준/계약 LT 입력. "
+                    "미입력 시 매장 유형 채널 기본값. 출력에서는 LT 변동을 추천하지 않습니다."
+                ),
                 minimum=0.5,
                 maximum=30.0,
+            ),
+            ParameterSpec(
+                key="service_level",
+                label="목표 서비스 레벨",
+                type="string",
+                required=False,
+                description="안전계수 Z 정책. 높을수록 품절↓·안전재고↑.",
+                options=_opts(SERVICE_LEVEL),
+                allowed_values=list(SERVICE_LEVEL),
+            ),
+            ParameterSpec(
+                key="order_day_pattern",
+                label="발주 요일 패턴",
+                type="string",
+                required=False,
+                description="실제 발주 요일 운영 레버. 자동 또는 월·수·금 / 화·목 등.",
+                options=_opts(ORDER_DAY_PATTERN),
+                allowed_values=list(ORDER_DAY_PATTERN),
             ),
             ParameterSpec(
                 key="standard_rop",
@@ -229,6 +252,8 @@ def validate_parameters(
                 "avg_ticket": AVG_TICKET,
                 "trade_area": TRADE_AREA,
                 "accessibility": ACCESSIBILITY,
+                "service_level": SERVICE_LEVEL,
+                "order_day_pattern": ORDER_DAY_PATTERN,
             }.get(key)
             if allowed_map is None:
                 text = _as_string(key, value)
@@ -253,6 +278,12 @@ def validate_parameters(
             raise InputValidationError(
                 "정확한 위치 사용 시 'store_address'(정확한 매장 주소)가 필요합니다.",
             )
+
+    # Optional policy levers — defaults when omitted.
+    if "service_level" not in normalized:
+        normalized["service_level"] = "sl_95"
+    if "order_day_pattern" not in normalized:
+        normalized["order_day_pattern"] = "auto"
 
     store_type = str(normalized["store_type"])
     store_size = str(normalized["store_size"])

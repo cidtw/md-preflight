@@ -63,7 +63,41 @@ ACCESSIBILITY: Final[dict[str, str]] = {
     "indoor": "건물 내 입지",
 }
 
+# --- Service level (fill-rate policy → base Z from normal approx) ---
+SERVICE_LEVEL: Final[dict[str, str]] = {
+    "sl_90": "서비스 레벨 90% (재고 부담↓ · 품절 허용↑)",
+    "sl_95": "서비스 레벨 95% (표준 균형)",
+    "sl_99": "서비스 레벨 99% (품절 최소화 · 안전재고↑)",
+}
+
+# Standard normal z for cycle service level targets.
+SERVICE_LEVEL_Z: Final[dict[str, float]] = {
+    "sl_90": 1.28,
+    "sl_95": 1.65,
+    "sl_99": 2.33,
+}
+
+# --- Order weekday pattern (operator lever; LT stays fixed) ---
+ORDER_DAY_PATTERN: Final[dict[str, str]] = {
+    "auto": "자동 추천 (CAPA·수요집중 기준)",
+    "mon_wed_fri": "월·수·금 (주 3회)",
+    "tue_thu": "화·목 (주 2회)",
+    "mon_thu": "월·목 (주 2회)",
+    "weekly_mon": "주 1회 (월요일)",
+    "daily_flex": "매일·수시 (고회전)",
+}
+
+# pattern_key -> (cycle_days, weekday labels, times_per_week hint)
+ORDER_PATTERN_META: Final[dict[str, tuple[float, str, int]]] = {
+    "mon_wed_fri": (2.33, "월·수·금", 3),
+    "tue_thu": (3.5, "화·목", 2),
+    "mon_thu": (3.5, "월·목", 2),
+    "weekly_mon": (7.0, "월요일", 1),
+    "daily_flex": (1.0, "매일·수시", 6),
+}
+
 # Default channel baselines when user omits standard LT (days).
+# LT differs by product/channel — always an input, never a recommended change.
 DEFAULT_STANDARD_LT: Final[dict[str, float]] = {
     "convenience": 1.5,
     "supermarket": 2.0,

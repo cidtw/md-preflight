@@ -10,7 +10,7 @@
     <main class="shell">
       <header class="site-header">
         <p class="eyebrow">MD Preflight · ROP</p>
-        <h1>매장 특화 Lead Time / ROP 재조정</h1>
+        <h1>매장 특화 ROP · 발주 운영 재조정</h1>
         <p class="meta">version __APP_VERSION__</p>
       </header>
 
@@ -25,9 +25,9 @@
           <p class="welcome-kicker">환영합니다</p>
           <h2 class="welcome-title">매장에 맞는 발주 기준을 다시 잡아 드릴게요</h2>
           <p class="lede">
-            업계·사내 표준 Lead Time과 ROP는 평균에 가깝습니다. 이 도구는
-            <strong>매장 유형·규모·상권·접근성</strong>을 반영해 추천 LT/ROP와
-            근거를 제시합니다.
+            리드타임은 계약·표준값으로 고정하고, 업계·사내 평균 ROP만으로는 부족한
+            부분을 <strong>매장 유형·규모·상권·접근성</strong>으로 반영해
+            <strong>ROP·안전재고·1회 발주량·발주 주기</strong>와 근거를 제시합니다.
           </p>
           <ul class="welcome-points">
             <li>입력은 짧은 세션으로 나뉩니다 (기본 정보 → 세부 정보 → 품목).</li>
@@ -48,7 +48,7 @@
           <div id="step-detail" class="wizard-step" data-step="detail" hidden>
             <p class="step-eyebrow">세션 2 / 3</p>
             <h2>매장 세부 정보</h2>
-            <p class="step-lede">입지·상권·접근성은 물류 지연과 수요 변동 반영에 쓰입니다.</p>
+            <p class="step-lede">입지·상권·접근성은 물류 리스크 버퍼와 수요 변동 반영에 쓰입니다. (LT는 고정)</p>
             <div
               class="field-mount"
               data-keys="location_dong,use_precise_location,store_address,trade_area,accessibility"
@@ -59,12 +59,13 @@
             <p class="step-eyebrow">세션 3 / 3</p>
             <h2>품목 · 운영 기준</h2>
             <p class="step-lede">
-              최적화할 품목과 일평균 소진량을 입력하세요. 표준 LT/ROP는 비워 두면
-              채널 기본값으로 계산합니다.
+              품목·소진량과 함께 서비스 레벨·발주 요일을 선택하세요. 품목별 LT는
+              입력으로 유지되며 결과에서 LT 변동을 추천하지 않습니다. 표준 ROP는
+              비워 두면 채널 기본값으로 계산합니다.
             </p>
             <div
               class="field-mount"
-              data-keys="product_name,daily_demand,standard_lead_time_days,standard_rop"
+              data-keys="product_name,daily_demand,standard_lead_time_days,service_level,order_day_pattern,standard_rop"
             ></div>
           </div>
 

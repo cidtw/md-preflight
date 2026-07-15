@@ -41,7 +41,14 @@ const STEPS = [
   {
     id: "inventory",
     label: "품목·운영",
-    keys: ["product_name", "daily_demand", "standard_lead_time_days", "standard_rop"],
+    keys: [
+      "product_name",
+      "daily_demand",
+      "standard_lead_time_days",
+      "service_level",
+      "order_day_pattern",
+      "standard_rop",
+    ],
     el: () => document.getElementById("step-inventory"),
   },
 ];
@@ -61,6 +68,8 @@ const DEFAULTS = {
   accessibility: "indoor",
   daily_demand: 12,
   standard_lead_time_days: 2,
+  service_level: "sl_95",
+  order_day_pattern: "auto",
   standard_rop: 15,
 };
 
@@ -364,6 +373,8 @@ function renderResult(payload) {
         <dt>입지 / 접근성</dt><dd>${escapeHtml(s.location_dong)} / ${escapeHtml(s.accessibility_label)}</dd>
         ${addressRow}
         <dt>상권</dt><dd>${escapeHtml(s.trade_area_label)}</dd>
+        <dt>서비스 레벨</dt><dd>${escapeHtml(s.service_level_label || "-")}</dd>
+        <dt>발주 요일 패턴</dt><dd>${escapeHtml(s.order_day_pattern_label || "-")}</dd>
       </dl>
     </section>
     <section class="card">

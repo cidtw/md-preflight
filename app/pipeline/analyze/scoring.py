@@ -33,7 +33,7 @@ _TRADE_SCORES: dict[str, tuple[int, int]] = {
     "tourist": (5, 5),
 }
 
-# accessibility -> lead-time day delta
+# accessibility -> logistics risk days (converted to buffer stock; does NOT change LT)
 _ACCESS_LT_DELTA: dict[str, float] = {
     "main_road": -0.5,
     "alley": 0.5,

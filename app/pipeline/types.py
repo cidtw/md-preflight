@@ -15,6 +15,7 @@ PoiCategory = Literal[
     "education",
     "office",
     "retail_anchor",
+    "convenience",
     "other",
 ]
 
@@ -89,6 +90,7 @@ class KnowledgeSignals(BaseModel):
     logistics_delay_days: float
     safety_z_factor: float
     safety_z_base: float = 0.0
+    service_level_z: float = 0.0
     foot_traffic_index: float = 0.0
     foot_traffic_peak_note: str
     logistics_issue_note: str
@@ -97,15 +99,34 @@ class KnowledgeSignals(BaseModel):
 
 
 class CalcBreakdown(BaseModel):
+    """Internal calc. Lead time is a fixed product input, not a recommended lever."""
+
+    # Product/channel LT from input (recommended_* kept equal — no LT change in output).
     standard_lead_time_days: float
     recommended_lead_time_days: float
-    lead_time_delta_days: float
+    lead_time_delta_days: float = 0.0
+    lead_time_fixed: bool = True
+    # Logistics risk is converted to buffer stock, not LT change.
+    logistics_risk_days: float = 0.0
+    logistics_buffer_units: float = 0.0
+    statistical_safety_stock: float = 0.0
+    # Policy inputs / resolved levers.
+    service_level: str = "sl_95"
+    service_level_label: str = ""
+    order_day_pattern_input: str = "auto"
+    order_day_pattern: str = "tue_thu"
+    order_days_label: str = ""
+    order_pattern_auto: bool = True
+    # Adjustable operational levers.
     standard_rop: float
     recommended_rop: float
     rop_delta: float
     daily_demand: float
     base_safety_stock: float
     store_safety_stock: float
+    order_cycle_days: float = 0.0
+    suggested_order_qty: float = 0.0
+    order_frequency_label: str = ""
     recommended_rop_raw: float
     capa_capped: bool
     max_rop_cap: float | None = None
@@ -123,6 +144,8 @@ class StoreSummary(BaseModel):
     location_dong: str
     trade_area_label: str
     accessibility_label: str
+    service_level_label: str = ""
+    order_day_pattern_label: str = ""
     use_precise_location: bool = False
     store_address: str | None = None
 

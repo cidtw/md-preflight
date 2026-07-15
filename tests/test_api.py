@@ -27,6 +27,9 @@ def test_template_has_rop_fields(client: TestClient) -> None:
         "trade_area",
         "accessibility",
         "daily_demand",
+        "service_level",
+        "order_day_pattern",
+        "standard_lead_time_days",
     }.issubset(keys)
     precise = next(p for p in body["parameters"] if p["key"] == "use_precise_location")
     assert precise["type"] == "boolean"

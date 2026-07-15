@@ -28,12 +28,26 @@ def test_pipeline_is_deterministic() -> None:
     assert a.model_dump() == b.model_dump()
 
 
-def test_recommended_lt_includes_access_and_kb() -> None:
+def test_lead_time_is_fixed_and_risk_becomes_buffer() -> None:
     result = run(BASE)
-    # indoor +1.0 plus positive KB delay → LT > standard 2.0
-    assert result.calc.recommended_lead_time_days > result.calc.standard_lead_time_days
-    assert result.calc.recommended_rop > 0
-    assert "ROP" in result.recommendation or "ROP" in result.recommendation
+    calc = result.calc
+    # LT is contractual/standard — not a recommended delta.
+    assert calc.lead_time_fixed is True
+    assert calc.recommended_lead_time_days == calc.standard_lead_time_days
+    assert calc.lead_time_delta_days == 0.0
+    # indoor access + KB logistics → positive risk buffer
+    assert calc.logistics_risk_days > 0
+    assert calc.logistics_buffer_units == pytest.approx(
+        calc.daily_demand * calc.logistics_risk_days,
+    )
+    assert calc.store_safety_stock == pytest.approx(
+        calc.statistical_safety_stock + calc.logistics_buffer_units,
+    )
+    assert calc.suggested_order_qty > 0
+    assert calc.order_cycle_days > 0
+    assert calc.order_frequency_label
+    assert "ROP" in result.recommendation
+    assert "고정" in result.recommendation
 
 
 def test_mismatch_guidance_prefers_size_and_ticket() -> None:
@@ -69,10 +83,66 @@ def test_capa_cap_triggers_multi_order() -> None:
         assert result.calc.recommended_rop <= (result.calc.max_rop_cap or 0)
 
 
-def test_main_road_can_shorten_lt_vs_indoor() -> None:
+def test_main_road_has_lower_logistics_buffer_than_indoor() -> None:
     indoor = run({**BASE, "accessibility": "indoor"})
     road = run({**BASE, "accessibility": "main_road"})
-    assert road.calc.recommended_lead_time_days < indoor.calc.recommended_lead_time_days
+    # Same fixed LT; better access reduces risk buffer and usually ROP.
+    assert road.calc.recommended_lead_time_days == indoor.calc.recommended_lead_time_days
+    assert road.calc.logistics_risk_days < indoor.calc.logistics_risk_days
+    assert road.calc.logistics_buffer_units < indoor.calc.logistics_buffer_units
+    assert road.calc.recommended_rop <= indoor.calc.recommended_rop
+
+
+def test_comparison_includes_operational_levers() -> None:
+    result = run(BASE)
+    metrics = [row.metric for row in result.comparison.rows]
+    assert any("리드타임" in m for m in metrics)
+    assert any("서비스 레벨" in m for m in metrics)
+    assert any("안전재고" in m for m in metrics)
+    assert any("발주량" in m for m in metrics)
+    assert any("발주 요일" in m for m in metrics)
+    assert any("ROP" in m for m in metrics)
+    lt_row = next(r for r in result.comparison.rows if "리드타임" in r.metric)
+    assert lt_row.delta == 0.0
+    assert lt_row.standard_value == lt_row.recommended_value
+    assert "미조정" in lt_row.delta_label or "유지" in lt_row.delta_label
+
+
+def test_service_level_raises_z_and_rop() -> None:
+    # Use roomy CAPA so ROP is not flattened by max-cap.
+    roomy = {
+        **BASE,
+        "store_type": "ssm",
+        "store_size": "ssm",
+        "avg_ticket": "t_15k_25k",
+    }
+    low = run({**roomy, "service_level": "sl_90"})
+    high = run({**roomy, "service_level": "sl_99"})
+    assert high.calc.knowledge.service_level_z > low.calc.knowledge.service_level_z
+    assert high.calc.knowledge.safety_z_factor > low.calc.knowledge.safety_z_factor
+    assert high.calc.store_safety_stock > low.calc.store_safety_stock
+    assert high.calc.recommended_rop > low.calc.recommended_rop
+    assert low.calc.capa_capped is False
+    assert high.calc.capa_capped is False
+
+
+def test_order_day_pattern_selection() -> None:
+    auto = run({**BASE, "order_day_pattern": "auto", "store_size": "cv_xs"})
+    fixed = run({**BASE, "order_day_pattern": "tue_thu", "store_size": "cv_xs"})
+    assert auto.calc.order_pattern_auto is True
+    assert auto.calc.order_day_pattern == "mon_wed_fri"  # tight CAPA auto
+    assert "월" in auto.calc.order_days_label
+    assert fixed.calc.order_pattern_auto is False
+    assert fixed.calc.order_day_pattern == "tue_thu"
+    assert "화" in fixed.calc.order_days_label
+    assert fixed.calc.order_cycle_days == pytest.approx(3.5)
+
+
+def test_product_lt_input_is_kept_not_adjusted() -> None:
+    result = run({**BASE, "standard_lead_time_days": 3.5})
+    assert result.calc.standard_lead_time_days == 3.5
+    assert result.calc.recommended_lead_time_days == 3.5
+    assert result.calc.lead_time_delta_days == 0.0
 
 
 def test_missing_required() -> None:
@@ -99,6 +169,9 @@ def test_evidence_is_input_specific_not_fixed_doc_example() -> None:
 def test_analyze_formula_rop_identity() -> None:
     validated = validate_parameters(BASE)
     calc = analyze(validated)
-    expected = calc.daily_demand * calc.recommended_lead_time_days + calc.store_safety_stock
+    expected = calc.daily_demand * calc.standard_lead_time_days + calc.store_safety_stock
     if not calc.capa_capped:
         assert calc.recommended_rop == pytest.approx(round(expected, 2))
+    assert calc.store_safety_stock == pytest.approx(
+        calc.statistical_safety_stock + calc.logistics_buffer_units,
+    )

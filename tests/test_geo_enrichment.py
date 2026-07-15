@@ -33,6 +33,7 @@ BASE: dict[str, ParameterValue] = {
 def test_map_kakao_category() -> None:
     assert map_kakao_category("SW8") == "transit_rail"
     assert map_kakao_category("MT1") == "retail_anchor"
+    assert map_kakao_category("CS2") == "convenience"
     assert map_kakao_category("XX") == "other"
 
 
@@ -47,6 +48,49 @@ def test_foot_traffic_index_increases_with_close_rail() -> None:
     assert empty == 0.0
     assert near > far > 0.0
     assert near <= 1.0
+
+
+def test_foot_traffic_index_category_weights_differ() -> None:
+    d = 80.0
+    rail = compute_foot_traffic_index(
+        [NearbyPoi(category="transit_rail", name="R", distance_m=d)],
+    )
+    bus = compute_foot_traffic_index(
+        [NearbyPoi(category="transit_bus", name="B", distance_m=d)],
+    )
+    convenience = compute_foot_traffic_index(
+        [NearbyPoi(category="convenience", name="C", distance_m=d)],
+    )
+    assert rail > bus > convenience > 0.0
+
+
+def test_foot_traffic_index_does_not_saturate_on_dense_urban_mix() -> None:
+    """Many nearby POIs must not clamp to 1.0 (pre-fix urban saturation)."""
+    dense = [
+        NearbyPoi(category="transit_rail", name="st1", distance_m=80.0),
+        NearbyPoi(category="transit_rail", name="st2", distance_m=350.0),
+        NearbyPoi(category="transit_bus", name="b1", distance_m=50.0),
+        NearbyPoi(category="transit_bus", name="b2", distance_m=120.0),
+        NearbyPoi(category="transit_bus", name="b3", distance_m=200.0),
+        NearbyPoi(category="transit_bus", name="b4", distance_m=280.0),
+        NearbyPoi(category="retail_anchor", name="mart", distance_m=150.0),
+        NearbyPoi(category="convenience", name="cv1", distance_m=80.0),
+        NearbyPoi(category="convenience", name="cv2", distance_m=200.0),
+        NearbyPoi(category="convenience", name="cv3", distance_m=90.0),
+        NearbyPoi(category="education", name="school", distance_m=300.0),
+        NearbyPoi(category="education", name="academy", distance_m=150.0),
+        NearbyPoi(category="landmark", name="park", distance_m=400.0),
+        NearbyPoi(category="office", name="bank", distance_m=100.0),
+    ]
+    index = compute_foot_traffic_index(dense)
+    # Conservative mid-high band for dense commercial, not a hard ceiling.
+    assert 0.35 <= index < 0.95
+    # Extra convenience spam should not move the needle much (cap + rank decay).
+    denser = dense + [
+        NearbyPoi(category="convenience", name=f"cvx{i}", distance_m=60.0 + i)
+        for i in range(10)
+    ]
+    assert abs(compute_foot_traffic_index(denser) - index) < 0.02
 
 
 def test_precise_location_requires_address() -> None:

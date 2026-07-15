@@ -26,7 +26,9 @@
     ↓
 [7/14 p.m.] 방향 피벗    v1 아카이브 · 3단 파이프라인 스켈레톤 · 재설계 판 (국면 VI)
     ↓
-[7/14 eve] ROP 제품화   매장 파라미터 → LT/ROP 추천 · 근거 리포트 (국면 VII)
+[7/14 eve] ROP 제품화   매장 파라미터 → 추천·근거 리포트 (국면 VII)
+    ↓
+[7/14 late] 운영 레버   지도 POI · LT 입력 유지 · SS/Q/요일/SL (국면 VII+)
 ```
 
 | 국면 | 기간 | 한 줄 목표 | 대표 산출 |
@@ -37,14 +39,15 @@
 | **IV. 발표 품질** | 7/9–13 | 스토리·데모가 안 깨지게 | 덱 · seed · 스모크 · 모듈 분리 |
 | **V. 중간발표 이후** | 7/14 오전 | 약점(고정 컬럼·한 화면) 해소 | T48–T59 · UI 리프레시 |
 | **VI. 방향성 재설계** | 7/14 오후 | v1 동결 · 모듈 3단 판 | archive · pipeline skeleton |
-| **VII. ROP 서비스** | 7/14 저녁~ | 매장 특화 LT/ROP 재조정 제품화 | scoring · KB · report UI |
+| **VII. ROP 서비스** | 7/14 저녁 | 매장 특화 발주 기준 재조정 MVP | scoring · KB · report UI |
+| **VII+ 운영 레버** | 7/14 심야~ | 현실적 조정 대상 정합 | Kakao POI · LT 고정 출력 · SL·요일 |
 
 **불변 원칙**
 
 | 구간 | 원칙 |
 |------|------|
-| **국면 I–V (v1, D3)** | 판정 = 결정론 룰 · 서술 = LLM(실패 시 fallback) · 검수 비로그인 200 · 이력은 격리·append-only |
-| **국면 VI+ (재설계)** | 판정 = 결정론 **가중치 점수** · 입력 = 파라미터 템플릿 · 출력 = **한 줄 recommendation** · 스테이지 모듈 추가만 허용 · 실 가중치는 조사 후 주입 (R0–R2 선행) |
+| **국면 I–V (v1, D3 / `main`)** | 판정 = 결정론 룰 · 서술 = LLM(실패 시 fallback) · 검수 비로그인 200 · 이력은 격리·append-only |
+| **국면 VI+ (재설계 / `pivot/project-direction`)** | 판정 = 결정론 **가중치 점수** · 입력 = 파라미터 템플릿 · 출력 = **한 줄 recommendation** · **LT는 품목 입력(유지)** · 조정 레버 = ROP·SS·Q·발주 요일·서비스 레벨 |
 
 **v1 복원 키**: 태그 `archive/v1-md-preflight` @ `b444be0` · 문서 `archive/v1-md-preflight/`
 
@@ -121,7 +124,22 @@
 | P4 | 재설계 판 `docs/redesign/` | 7/14 | **DONE** |
 | P5 | README·AGENTS·BRIEF·일지·의존성 슬림화 | 7/14 | **DONE** |
 | R0–R6 | ROP 도메인·테이블·엔진·UI·근거 패널 | 7/14 | **DONE** |
-| R7+ | 배포·실 KB·실 Agent | 이후 | **TODO** |
+| R7a | 멀티 세션 입력 위저드 | 7/14 | **DONE** |
+| R7b | 정확한 위치 · 지도 POI 유동지수 (Kakao Local) | 7/14 | **DONE** |
+| R7c | foot_traffic 포화 완화 (카테고리 캡·소프트 반포화) | 7/14 | **DONE** |
+| R7d | LT 출력 고정 · 운영 레버(SS/Q/주기) | 7/14 | **DONE** |
+| R7e | 서비스 레벨 · 발주 요일 패턴 입력 | 7/14 | **DONE** |
+| R8+ | 배포·실 KB·실 Agent · 품목 마스터 | 이후 | **TODO** |
+
+### 1.6 브랜치 타임라인 (main ↔ pivot)
+
+| 브랜치 | 시점 | 역할 |
+|--------|------|------|
+| **`main`** | ~`b444be0` | v1 MD Preflight 정본. 프로모션 사전검수 · T1–T59 · pytest **150** 피크 · Vercel 라이브 |
+| 태그 `archive/v1-md-preflight` | 7/14 | main 스냅샷 동결 (복원 키) |
+| **`pivot/project-direction`** | 7/14~ | v1 패키지 제거 후 ROP 파이프라인. 본 일지 국면 VI–VII+ 정본 브랜치 |
+
+> 발표 시: “**main = 중간발표까지 완성된 v1** / **pivot = 피드백 후 방향 전환 제품**”으로 한 줄 구분.
 
 ---
 
@@ -132,13 +150,14 @@
 | 7/2 전후 | 초기 스위트 | 룰 확장·서비스 분리 |
 | 7/4 상태 스냅샷 | **47** | T1–T12 핵심 엔진 거의 완료 |
 | 7/9 T42/T43 | **104** | 프로덕션 hardening 직전·직후 |
-| 7/9–10 덱/폴리시 | **132** | 발표 KPI로 고정 |
+| 7/9–10 덱/폴리시 | **132** | 중간발표 KPI로 고정 |
 | 7/14 T48–T51 | **141–142** | 별칭·라우트·UI |
 | 7/14 T52–T53 | **143** | catalog + error UX |
-| 7/14 T56–T59 | **150** | v1 입력 어댑터 피크 (아카이브 기준점) |
+| 7/14 T56–T59 (`main` 피크) | **150** | v1 입력 어댑터 · 아카이브 기준점 |
 | **7/14 재설계 스켈레톤** | **12** | 파이프라인 unit/API only (의도적 슬림) |
-| **7/14 ROP 서비스** | **14** | LT/ROP 엔진 · 불일치 guidance · 리포트 UI |
-| 이후 | green + R7+ | 배포·실 KB 확장 |
+| **7/14 ROP MVP** | **14** | 스코어링 · KB · 리포트 UI |
+| **7/14 ROP + geo/ops** | **30** | Kakao · 탈포화 · LT 고정 · SL·요일 |
+| 이후 | green + R8+ | 배포·실 KB 확장 |
 
 ---
 
@@ -516,15 +535,15 @@ uv run pytest                   # 12 passed
 
 | 필드 | 내용 |
 |------|------|
-| **테마** | `2026-07-14-New-Service-Flow.md` 기준 매장 특화 LT/ROP 재조정 구현 |
+| **테마** | `2026-07-14-New-Service-Flow.md` 기준 매장 특화 발주 기준 재조정 MVP |
 | **브랜치** | `pivot/project-direction` |
-| **검증** | ruff pass · basedpyright 0 · **pytest 14 passed** |
+| **검증 (당시)** | ruff · basedpyright · **pytest 14** |
 
-#### 서비스 정의
+#### 서비스 정의 (초기)
 - 입력: 매장 유형·규모·객단가·행정동·상권·접근성 + 품목·일평균 소진 + (선택) 표준 LT/ROP
-- 내부: 스코어링 테이블 + 결정론 KB 매칭 + 공식 (LT/ROP/CAPA 상한)
-- 출력: 한 줄 추천 · 비교 대시보드 · 근거 3블록 (문서 예시 문장 고정 출력 금지)
-- UX: 폼 → 짧은 로딩 → 리포트 (2단계는 내부 전용)
+- 내부: 스코어링 + 결정론 KB + LT/ROP/CAPA 공식
+- 출력: 한 줄 추천 · 비교 대시보드 · 근거 블록 (문서 예시 고정 출력 금지)
+- UX: 폼 → 짧은 로딩 → 리포트
 
 #### 주요 코드
 | 경로 | 역할 |
@@ -533,48 +552,91 @@ uv run pytest                   # 12 passed
 | `app/pipeline/input/template.py` | 템플릿·검증·불일치 guidance |
 | `app/pipeline/analyze/scoring.py` | CAPA/수요/접근성 가중치 |
 | `app/pipeline/analyze/knowledge_base.py` | 행정동+품목 KB 시그널 |
-| `app/pipeline/analyze/engine.py` | 추천 LT/ROP · CAPA 캡 |
+| `app/pipeline/analyze/engine.py` | ROP·안전재고·CAPA 캡 |
 | `app/pipeline/output/recommendation.py` | 비교표·근거 리포트 |
-| `app/web/*` | 입력 폼·로딩·결과 UI |
+| `app/web/*` | 입력·로딩·결과 UI |
 
-#### 보드
-R0–R6 **DONE** · R7+ (배포·실 KB·실 Agent) backlog
+#### 아키텍처 요약
+- 정본: `docs/architecture.md` · redesign 인덱스 링크
 
 #### 한 줄
-> 스켈레톤 quality/cost/risk 를 걷어내고, 플로우 문서의 ROP 재조정 제품을 결정론 파이프라인으로 채웠다.
-#### 아키텍처 요약 발행
-- 정본: `docs/architecture.md` (전체 구조 · 3단 파이프라인 · 공식 · 코드맵 · 배포 · v1 경계)
-- README / redesign 인덱스 링크 추가
+> 스켈레톤을 걷어내고 플로우 문서의 ROP 재조정 제품을 결정론 파이프라인으로 채웠다.
 
+---
 
-### 2026-07-15 이후 — ROP 고도화 (예정)
+### 2026-07-14 (월) 심야~ — ROP 운영 레버 정합 (국면 VII+) **DONE**
+
+| 필드 | 내용 |
+|------|------|
+| **테마** | “LT는 가변 추천이 아니다” · 지도 유동 · 현실적 운영 레버 |
+| **브랜치** | `pivot/project-direction` |
+| **검증 (현재)** | ruff · basedpyright 0 · **pytest 30 passed** |
+| **템플릿** | `rop-adjust-v1` **1.3.0** |
+
+#### 작업 묶음
+
+| ID | 내용 | 핵심 산출 |
+|----|------|-----------|
+| **R7a** | 멀티 세션 입력 위저드 | `app/web` 환영→기본→세부→품목·운영 |
+| **R7b** | 정확한 위치 + POI 유동지수 | Google Maps 시안 → **Kakao Local** 전환 (`geo_enrichment.py`) · `docs/setup-kakao-local.md` |
+| **R7c** | foot_traffic 포화 완화 | 카테고리별 N캡 · 순위 감쇠 · soft_sat(raw/(raw+2.4)) · CS2=`convenience` 저가중 · 도심 혼합 ~0.5대 (과거 1.0 고정 해소) |
+| **R7d** | LT 출력 고정 · 운영 레버 | **품목 LT 입력 유지** · 출력 delta=0 · 접근성/KB 리스크 → **버퍼 재고** · 비교표에 SS·Q·주기 |
+| **R7e** | 서비스 레벨 · 발주 요일 | `service_level` 90/95/99 → 정책 Z · `order_day_pattern` 자동/화목/월수금 등 · 1회 발주량 Q 연동 |
+
+#### 제품 공식 (현행 요약)
+
+```
+LT_input     = 품목 표준/계약 LT  (입력 유지 · 출력에서 변동 추천 없음)
+Z            = SERVICE_LEVEL_Z[sl] + 맥락(변동성·품목·유동지수)
+risk_days    = max(0, 접근성 + KB 상권·행정동 리스크)
+buffer       = D * risk_days
+SS           = Z * sqrt(LT * vol) * turnover + buffer
+ROP          = D * LT + SS
+(Q, 요일)    = 선택 패턴 또는 CAPA 자동 추천
+CAPA 협소 시 ROP 상한 + 다회 소량 메시지
+```
+
+#### 핸드오프
+- `handoff/2026-07-14-rop-service-build.md`
+- `handoff/2026-07-14-foot-traffic-desaturation.md`
+- `handoff/2026-07-14-lt-fixed-ops-levers.md`
+- `handoff/2026-07-14-service-level-order-days.md`
+
+#### 한 줄
+> 매장이 **실제로 바꿀 수 있는 것**(ROP·안전재고·발주량·요일·서비스 레벨)에 추천을 모으고, LT는 품목 입력으로만 다룬다.
+
+---
+
+### 이후 — ROP 고도화 (예정)
 
 | 항목 | 상태 | 비고 |
 |------|------|------|
-| R7 배포·환경 패리티 | TODO | Vercel |
+| R8 배포·환경 패리티 | TODO | Vercel · Kakao 키 시크릿 |
 | R9 실측 KB / 공공 데이터 | TODO | 현재 결정론 KB |
 | R10 실 Agent AI 교체 | TODO | `knowledge_base.py` 포트 |
-| R11–R12 품목 마스터·발주 스케줄 | TODO | |
+| R11 품목 마스터 연동 | TODO | |
+| R12 발주 스케줄 캘린더 UX | TODO | 요일 패턴 시각화 |
 | (구) T54/T55 v1 freeze | **SUPERSEDED** | v1 아카이브 |
-
-> 국면 VII에서 ROP MVP 동작. 다음 확장은 실데이터 KB·배포.
 
 ---
 
 ## 5. 발표용 스토리 스크립트
 
-### 5.1 30초 (국면 VI 반영)
-> 7월에 유통 프로모션 사전검수 v1을 엔진부터 라이브까지 올렸고, 중간발표 뒤 입력 유연성까지 다듬었습니다.  
-> 피드백 후 v1은 아카이브하고, **매장 특화 Lead Time / ROP 재조정**(파라미터 → 내부 점수·KB → 근거 리포트)으로 방향을 바꿨습니다.
+### 5.1 30초
+> 7월에 유통 **프로모션 사전검수 v1**을 엔진부터 Vercel 라이브까지 올렸고, 중간발표 뒤 입력 유연성까지 다듬었습니다.  
+> 피드백 후 v1은 태그 아카이브하고, **매장 특화 발주 기준(ROP) 재조정**으로 방향을 바꿨습니다.  
+> 리드타임은 품목 입력으로 유지하고, 실제로 조정하는 것은 ROP·안전재고·발주 요일·서비스 레벨입니다.
 
 ### 5.2 2분 (국면별)
-1. **엔진(v1)** — 판정은 룰, LLM은 설명. 계약 테스트로 증명.  
-2. **워크스페이스·라이브(v1)** — SPA, Clerk/Neon, degrade.  
+1. **엔진(v1 / main)** — 판정은 룰, LLM은 설명. 계약 테스트로 증명.  
+2. **워크스페이스·라이브(v1)** — SPA, Clerk/Neon, degrade, pytest 132→150.  
 3. **피드백(v1)** — 별칭·4화면·어댑터(T48–T59).  
-4. **피벗·ROP** — 태그 아카이브 후 매장 파라미터 기반 LT/ROP 추천과 근거 3블록.
+4. **피벗** — `archive/v1-md-preflight` · 3단 파이프라인.  
+5. **ROP 제품** — 파라미터 → 점수·KB·Kakao 유동 → 근거 리포트 · 운영 레버.
 
 ### 5.3 5분
-위 + CAPA 상한·불일치 guidance · `POST /api/evaluate` 데모 · 결정론 KB vs 향후 실 Agent 로드맵.
+위 + CAPA 상한 · 불일치 guidance · foot_traffic 탈포화 · `POST /api/evaluate` 데모 · 실 KB/Agent 로드맵.  
+발표 장표 정본: **`slide-outline.md`** (slides-grab Stage 1 · 생성은 승인 후).
 
 ---
 
@@ -586,6 +648,8 @@ R0–R6 **DONE** · R7+ (배포·실 KB·실 Agent) backlog
 | **재설계 지시** | `2026-07-14-Project-Redesign.md` |
 | **ROP 서비스 플로우** | `2026-07-14-New-Service-Flow.md` |
 | **재설계 판** | `docs/redesign/` |
+| **Kakao Local 설정** | `docs/setup-kakao-local.md` |
+| **최종 발표 아웃라인 (slides-grab)** | `slide-outline.md` |
 | **v1 아카이브** | `archive/v1-md-preflight/` · tag `archive/v1-md-preflight` |
 | 쉬운 아키텍처 (v1) | `docs/architecture-easy.md` |
 | 백엔드 설계 (v1 archived) | `BACKEND_ARCHITECTURE.md` |
@@ -603,14 +667,15 @@ R0–R6 **DONE** · R7+ (배포·실 KB·실 Agent) backlog
 
 1. **기능 커밋/배포 후** 해당 일자 행과 티켓/보드를 갱신한다.  
 2. 수치는 **그 세션에서 돌린 pytest** 를 우선한다 (과거 스냅샷은 “참고”).  
-3. `handoff/` 는 gitignore — **발표용 정본은 본 `docs/` 파일**.  
+3. `handoff/` 는 gitignore — **발표용 정본은 본 `docs/` 파일** 및 `slide-outline.md`.  
 4. 신규 국면이 생기면 §0 아크 다이어그램에 한 줄만 추가한다.  
 5. **국면 VI 이후** 활성 아키텍처 정본은 `docs/architecture.md`, 계약·보드는 `docs/redesign/` 이다. v1 문서는 아카이브 배너를 유지한다.  
-6. 스코어링/KB 변경 시 테스트·일지·`docs/architecture.md`를 함께 갱신한다.
+6. 스코어링/KB/지도/운영 레버 변경 시 테스트·일지·`docs/architecture.md`·필요 시 `slide-outline.md`를 함께 갱신한다.
 
 ---
 
 *정본 경로: `docs/dev-journal-2026-07.md`*  
 *최초 작성(7/14 구간): 2026-07-14 · 전체 흐름 통합: 2026-07-14 (7/1–13 소급 정리)*  
-*국면 VI 재설계 준비 반영: 2026-07-14*
-*국면 VII ROP 서비스 빌드 반영: 2026-07-14*
+*국면 VI 재설계 준비 반영: 2026-07-14*  
+*국면 VII ROP 서비스 빌드 반영: 2026-07-14*  
+*국면 VII+ 운영 레버·일지/발표 아웃라인 갱신: 2026-07-14*

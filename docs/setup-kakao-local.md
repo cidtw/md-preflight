@@ -56,25 +56,32 @@ GET /v2/local/search/address.json     ← 좌표 (x=경도, y=위도)
     └─ GET /v2/local/search/keyword.json   (query=버스정류장)
     │
     ▼
-foot_traffic_index = Σ w(cat)*exp(-d/250) / 4   → [0,1]
+scoring POI = 카테고리별 최근접 N곳만 (버스·편의점 스팸 방지)
+raw = Σ w(cat)*exp(-d/250)*0.5^rank
+foot_traffic_index = raw / (raw + 2.4)   → (0,1), 도심도 1.0 희귀
     │
     ▼
 safety_z += 0.35 * foot_traffic_index
+# (LT remains fixed; Z/buffer feed ROP — not a new recommended LT)
 ```
 
 구현 파일: `app/pipeline/analyze/geo_enrichment.py`  
 설정: `app/core/config.py` → `kakao_rest_api_key`
 
+포화 완화 요지: 카테고리 상한(N) + 동일 카테고리 순위 감쇠(0.5^rank) + 소프트 반포화(half=2.4).  
+편의점(CS2)은 `convenience` 저가중치로 분리해 대형 앵커(MT1)와 구분.
+
 ### 카테고리 매핑
 
-| Kakao code | 의미 | 내부 category |
-|------------|------|----------------|
-| SW8 | 지하철역 | transit_rail |
-| (keyword) 버스정류장 | 버스 | transit_bus |
-| MT1 / CS2 | 대형마트 / 편의점 | retail_anchor |
-| SC4 / AC5 | 학교 / 학원 | education |
-| AT4 / CT1 | 관광명소 / 문화시설 | landmark |
-| PO3 / BK9 | 공공기관 / 은행 | office |
+| Kakao code | 의미 | 내부 category | 가중치(w) |
+|------------|------|----------------|-----------|
+| SW8 | 지하철역 | transit_rail | 1.0 |
+| (keyword) 버스정류장 | 버스 | transit_bus | 0.4 |
+| MT1 | 대형마트 | retail_anchor | 0.65 |
+| CS2 | 편의점 | convenience | 0.22 |
+| SC4 / AC5 | 학교 / 학원 | education | 0.35 |
+| AT4 / CT1 | 관광명소 / 문화시설 | landmark | 0.35 |
+| PO3 / BK9 | 공공기관 / 은행 | office | 0.45 |
 
 ## 5. 실패 시 동작
 

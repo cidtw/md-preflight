@@ -30,22 +30,44 @@ JsonObject = dict[str, object]
 # (url, headers) -> JSON object
 JsonFetch = Callable[[str, Mapping[str, str]], JsonObject]
 
+# Base weights: transit-first, dense low-signal POIs (편의점·버스) stay modest.
 CATEGORY_WEIGHT: dict[PoiCategory, float] = {
     "transit_rail": 1.0,
-    "transit_bus": 0.55,
-    "retail_anchor": 0.7,
-    "office": 0.65,
-    "education": 0.5,
-    "landmark": 0.45,
-    "other": 0.2,
+    "transit_bus": 0.4,
+    "retail_anchor": 0.65,
+    "convenience": 0.22,
+    "office": 0.45,
+    "education": 0.35,
+    "landmark": 0.35,
+    "other": 0.15,
 }
+
+# Cap how many nearest POIs of each category enter the score (anti-spam).
+_MAX_PER_CATEGORY: dict[PoiCategory, int] = {
+    "transit_rail": 2,
+    "transit_bus": 2,
+    "retail_anchor": 2,
+    "convenience": 2,
+    "office": 2,
+    "education": 2,
+    "landmark": 1,
+    "other": 1,
+}
+
+# 2nd nearest same-category POI gets half the contribution, 3rd gets 1/4, …
+_WITHIN_CATEGORY_DECAY = 0.5
+
+# Soft half-saturation: index = raw / (raw + H). raw=H → 0.5; hard 1.0 only as raw→∞.
+_HALF_SATURATION = 2.4
+_DECAY_METERS = 250.0
+_PROVIDER = "kakao"
 
 # Kakao category_group_code → internal category
 # https://developers.kakao.com/docs/latest/ko/local/dev-guide#search-by-category
 _KAKAO_CATEGORY_MAP: dict[str, PoiCategory] = {
     "SW8": "transit_rail",  # 지하철역
     "MT1": "retail_anchor",  # 대형마트
-    "CS2": "retail_anchor",  # 편의점 (소매 밀도 신호)
+    "CS2": "convenience",  # 편의점 (밀도 신호, 저가중)
     "SC4": "education",  # 학교
     "AC5": "education",  # 학원
     "AT4": "landmark",  # 관광명소
@@ -64,10 +86,6 @@ _CATEGORY_QUERIES: tuple[str, ...] = (
     "PO3",
     "CS2",
 )
-
-_INDEX_SOFT_CAP = 4.0
-_DECAY_METERS = 250.0
-_PROVIDER = "kakao"
 
 
 def _as_mapping(value: object) -> Mapping[str, object] | None:
@@ -139,15 +157,50 @@ def map_kakao_category(category_group_code: str) -> PoiCategory:
     return _KAKAO_CATEGORY_MAP.get(category_group_code, "other")
 
 
+def _select_scoring_pois(pois: list[NearbyPoi]) -> list[NearbyPoi]:
+    """Nearest N per category only — keeps dense-urban spam from dominating raw."""
+    by_cat: dict[PoiCategory, list[NearbyPoi]] = {}
+    for poi in sorted(pois, key=lambda p: p.distance_m):
+        bucket = by_cat.setdefault(poi.category, [])
+        limit = _MAX_PER_CATEGORY.get(poi.category, 1)
+        if len(bucket) < limit:
+            bucket.append(poi)
+    selected: list[NearbyPoi] = []
+    for bucket in by_cat.values():
+        selected.extend(bucket)
+    return selected
+
+
 def compute_foot_traffic_index(pois: list[NearbyPoi]) -> float:
-    """Sum weight(category) * exp(-distance/250), normalized to [0, 1]."""
+    """Conservative foot-traffic score in [0, 1].
+
+    Steps:
+      1. Keep nearest N POIs per category (anti-saturation).
+      2. raw = Σ w(cat) * exp(-d/250) * 0.5^rank_within_category
+      3. index = raw / (raw + half_saturation)  — soft ceiling, rare hard 1.0
+    """
     if not pois:
         return 0.0
+
+    selected = _select_scoring_pois(pois)
+    by_cat: dict[PoiCategory, list[NearbyPoi]] = {}
+    for poi in selected:
+        by_cat.setdefault(poi.category, []).append(poi)
+
     raw = 0.0
-    for poi in pois:
-        weight = CATEGORY_WEIGHT.get(poi.category, CATEGORY_WEIGHT["other"])
-        raw += weight * math.exp(-max(0.0, poi.distance_m) / _DECAY_METERS)
-    return round(min(1.0, max(0.0, raw / _INDEX_SOFT_CAP)), 4)
+    for category, group in by_cat.items():
+        weight = CATEGORY_WEIGHT.get(category, CATEGORY_WEIGHT["other"])
+        ordered = sorted(group, key=lambda p: p.distance_m)
+        for rank, poi in enumerate(ordered):
+            distance_factor = math.exp(-max(0.0, poi.distance_m) / _DECAY_METERS)
+            rank_factor = _WITHIN_CATEGORY_DECAY**rank
+            raw += weight * distance_factor * rank_factor
+
+    if raw <= 0.0:
+        return 0.0
+    # Soft saturation: mid-density lands mid-scale; extreme clusters approach 1.
+    index = raw / (raw + _HALF_SATURATION)
+    return round(min(1.0, max(0.0, index)), 4)
 
 
 def disabled_enrichment(*, notes: list[str] | None = None) -> GeoEnrichment:
