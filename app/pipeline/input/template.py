@@ -25,7 +25,7 @@ from app.pipeline.types import (
 )
 
 TEMPLATE_ID = "rop-adjust-v1"
-TEMPLATE_VERSION = "1.3.0"
+TEMPLATE_VERSION = "1.3.1"
 
 
 def _opts(mapping: dict[str, str]) -> list[ParameterOption]:
@@ -124,7 +124,7 @@ def get_template() -> InputTemplate:
                 required=False,
                 description=(
                     "품목마다 다를 수 있는 표준/계약 LT 입력. "
-                    "미입력 시 매장 유형 채널 기본값. 출력에서는 LT 변동을 추천하지 않습니다."
+                    "미입력 시 매장 규모 밴드 채널 기본값. 출력에서는 LT 변동을 추천하지 않습니다."
                 ),
                 minimum=0.5,
                 maximum=30.0,
@@ -202,7 +202,8 @@ def _build_guidance(store_type: str, store_size: str, avg_ticket: str) -> list[s
         size_label = STORE_SIZE[store_size]
         notes.append(
             "매장 유형과 연면적(규모) 정보가 상이합니다. "
-            + f"연산에는 선택하신 매장 규모 '{size_label}'를 기준으로 적용합니다.",
+            + f"연산에는 선택하신 매장 규모 '{size_label}'를 기준으로 적용합니다 "
+            + "(미입력 LT·표준 ROP 기본값도 규모 밴드 기준).",
         )
     ticket_expect = STORE_TYPE_TICKET_EXPECT.get(store_type, frozenset())
     if avg_ticket not in ticket_expect:

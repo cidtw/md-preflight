@@ -112,3 +112,15 @@ DEFAULT_BASE_SAFETY_FRAC: Final[dict[str, float]] = {
     "ssm": 0.45,
     "hypermarket": 0.55,
 }
+
+# Map floor-area size band → channel key for omitted LT / base-SS defaults.
+# Prefer size over store_type when they conflict (AGENTS / scoring already size-first).
+SIZE_TO_CHANNEL: Final[dict[str, str]] = {
+    "cv_xs": "convenience",
+    "cv_s": "convenience",
+    "cv_m": "convenience",
+    "cv_l": "convenience",
+    "sm": "supermarket",
+    "ssm": "ssm",
+    "hyper": "hypermarket",
+}

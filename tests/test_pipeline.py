@@ -77,10 +77,11 @@ def test_capa_cap_triggers_multi_order() -> None:
         "accessibility": "indoor",
     }
     result = run(params)
-    if result.calc.recommended_rop_raw > (result.calc.max_rop_cap or 0):
-        assert result.calc.capa_capped is True
-        assert result.calc.multi_order_suggestion is not None
-        assert result.calc.recommended_rop <= (result.calc.max_rop_cap or 0)
+    assert result.calc.max_rop_cap is not None
+    assert result.calc.recommended_rop_raw > result.calc.max_rop_cap
+    assert result.calc.capa_capped is True
+    assert result.calc.multi_order_suggestion is not None
+    assert result.calc.recommended_rop == pytest.approx(result.calc.max_rop_cap)
 
 
 def test_main_road_has_lower_logistics_buffer_than_indoor() -> None:
@@ -106,6 +107,56 @@ def test_comparison_includes_operational_levers() -> None:
     assert lt_row.delta == 0.0
     assert lt_row.standard_value == lt_row.recommended_value
     assert "미조정" in lt_row.delta_label or "유지" in lt_row.delta_label
+    z_row = next(r for r in result.comparison.rows if "서비스 레벨" in r.metric)
+    assert z_row.standard_value == pytest.approx(result.calc.knowledge.service_level_z)
+    assert z_row.recommended_value == pytest.approx(result.calc.knowledge.safety_z_factor)
+    assert z_row.delta == pytest.approx(
+        result.calc.knowledge.safety_z_factor - result.calc.knowledge.service_level_z,
+    )
+    cycle_row = next(r for r in result.comparison.rows if "발주 요일" in r.metric)
+    # Auto pattern: standard is weekly 7d, not LT days
+    assert cycle_row.standard_value == pytest.approx(7.0)
+    assert cycle_row.standard_value != result.calc.standard_lead_time_days
+
+
+def test_statistical_ss_scales_with_daily_demand() -> None:
+    # Roomy CAPA so raw statistical SS is visible (not only CAPA-capped ROP).
+    roomy = {
+        **BASE,
+        "store_type": "ssm",
+        "store_size": "ssm",
+        "avg_ticket": "t_15k_25k",
+        "standard_lead_time_days": 2,
+    }
+    low = run({**roomy, "daily_demand": 10})
+    high = run({**roomy, "daily_demand": 20})
+    assert low.calc.statistical_safety_stock > 0
+    # Per-call round(..., 2) can introduce 0.01-level drift on exact 2x.
+    assert high.calc.statistical_safety_stock == pytest.approx(
+        low.calc.statistical_safety_stock * 2,
+        abs=0.05,
+    )
+    assert high.calc.logistics_buffer_units == pytest.approx(
+        low.calc.logistics_buffer_units * 2,
+        abs=0.05,
+    )
+
+
+def test_size_band_defaults_when_lt_rop_omitted() -> None:
+    # hypermarket type + cv_xs size: defaults must follow size (convenience), not type.
+    params = {
+        "product_name": "냉장 간편식",
+        "store_type": "hypermarket",
+        "store_size": "cv_xs",
+        "avg_ticket": "t_le_8k",
+        "location_dong": "서울시 마포구 서교동",
+        "trade_area": "office",
+        "accessibility": "indoor",
+        "daily_demand": 12,
+    }
+    result = run(params)
+    assert result.calc.standard_lead_time_days == pytest.approx(1.5)  # convenience
+    assert any("규모" in g for g in result.guidance)
 
 
 def test_service_level_raises_z_and_rop() -> None:
@@ -124,6 +175,11 @@ def test_service_level_raises_z_and_rop() -> None:
     assert high.calc.recommended_rop > low.calc.recommended_rop
     assert low.calc.capa_capped is False
     assert high.calc.capa_capped is False
+    # Comparison standard Z is selected policy, not a hardcoded sl_95 baseline.
+    low_z = next(r for r in low.comparison.rows if "서비스 레벨" in r.metric)
+    high_z = next(r for r in high.comparison.rows if "서비스 레벨" in r.metric)
+    assert low_z.standard_value == pytest.approx(1.28)
+    assert high_z.standard_value == pytest.approx(2.33)
 
 
 def test_order_day_pattern_selection() -> None:

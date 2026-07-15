@@ -48,15 +48,22 @@ def score_store(
     trade_area: str,
     accessibility: str,
 ) -> ScoreBreakdown:
-    capa, demand_conc = _SIZE_SCORES[store_size]
-    supply_diff, demand_vol = _TRADE_SCORES[trade_area]
+    try:
+        capa, demand_conc = _SIZE_SCORES[store_size]
+        supply_diff, demand_vol = _TRADE_SCORES[trade_area]
+        turnover = _TICKET_TURNOVER[avg_ticket]
+        access_delta = _ACCESS_LT_DELTA[accessibility]
+    except KeyError as exc:
+        missing = exc.args[0] if exc.args else "unknown"
+        msg = f"Unknown scoring key: {missing!r}"
+        raise KeyError(msg) from exc
     return ScoreBreakdown(
         capa_score=capa,
         demand_concentration=demand_conc,
-        turnover_weight=_TICKET_TURNOVER[avg_ticket],
+        turnover_weight=turnover,
         supply_difficulty=supply_diff,
         demand_volatility=demand_vol,
-        accessibility_lt_delta_days=_ACCESS_LT_DELTA[accessibility],
+        accessibility_lt_delta_days=access_delta,
     )
 
 

@@ -24,6 +24,7 @@ from app.pipeline.domain_catalog import (
     DEFAULT_STANDARD_LT,
     ORDER_DAY_PATTERN,
     SERVICE_LEVEL,
+    SIZE_TO_CHANNEL,
 )
 from app.pipeline.types import CalcBreakdown, GeoEnrichment, ValidatedInput
 
@@ -110,11 +111,14 @@ def analyze(
         service_level=service_level,
     )
 
+    # Defaults follow size band (channel map), not store_type — size/ticket win on conflict.
+    channel_key = SIZE_TO_CHANNEL.get(store_size, store_type)
+
     # LT is a product-specific INPUT (kept). Output never recommends changing it.
     if "standard_lead_time_days" in p:
         standard_lt = max(0.5, _as_float(p["standard_lead_time_days"], 2.0))
     else:
-        standard_lt = DEFAULT_STANDARD_LT.get(store_type, 2.0)
+        standard_lt = DEFAULT_STANDARD_LT.get(channel_key, 2.0)
 
     fixed_lt = standard_lt
     logistics_risk_days = round(
@@ -123,7 +127,7 @@ def analyze(
     )
     logistics_buffer = round(daily_demand * logistics_risk_days, 2)
 
-    base_frac = DEFAULT_BASE_SAFETY_FRAC.get(store_type, 0.35)
+    base_frac = DEFAULT_BASE_SAFETY_FRAC.get(channel_key, 0.35)
     base_safety = round(daily_demand * fixed_lt * base_frac, 2)
 
     if "standard_rop" in p:
@@ -136,6 +140,7 @@ def analyze(
         lead_time_days=fixed_lt,
         demand_volatility=scores.demand_volatility,
         turnover_weight=scores.turnover_weight,
+        daily_demand=daily_demand,
     )
     # Total safety stock = statistical SS + logistics risk buffer (units).
     store_safety = round(statistical_ss + logistics_buffer, 2)

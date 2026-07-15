@@ -70,7 +70,7 @@ const DEFAULTS = {
   standard_lead_time_days: 2,
   service_level: "sl_95",
   order_day_pattern: "auto",
-  standard_rop: 15,
+  // standard_rop left empty so comparison uses channel baseline when omitted
 };
 
 function fieldControl(spec) {
@@ -421,6 +421,35 @@ btnNext?.addEventListener("click", () => {
   if (stepIndex < STEPS.length - 1) showStep(stepIndex + 1);
 });
 
+/** Normalize FastAPI / network error payloads into a short Korean message. */
+function formatApiError(detail, fallback) {
+  if (detail == null || detail === "") return fallback;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          const loc = Array.isArray(item.loc) ? item.loc.join(".") : "";
+          const msg = item.msg || item.message || JSON.stringify(item);
+          return loc ? `${loc}: ${msg}` : String(msg);
+        }
+        return String(item);
+      })
+      .filter(Boolean)
+      .join(" · ");
+  }
+  if (typeof detail === "object") {
+    if (typeof detail.message === "string") return detail.message;
+    try {
+      return JSON.stringify(detail);
+    } catch {
+      return fallback;
+    }
+  }
+  return String(detail);
+}
+
 form?.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!validateCurrentStep()) return;
@@ -440,7 +469,12 @@ form?.addEventListener("submit", async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ parameters }),
     });
-    const payload = await response.json();
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
     const wait = Math.max(0, 280 - (performance.now() - started));
     await new Promise((r) => setTimeout(r, wait));
     loadingPanel.hidden = true;
@@ -449,7 +483,10 @@ form?.addEventListener("submit", async (event) => {
       stepProgress.hidden = false;
       showStep(STEPS.length - 1);
       formError.hidden = false;
-      formError.textContent = payload.detail || JSON.stringify(payload);
+      formError.textContent = formatApiError(
+        payload?.detail ?? payload,
+        `요청 실패 (HTTP ${response.status})`,
+      );
       return;
     }
     renderResult(payload);
@@ -459,7 +496,10 @@ form?.addEventListener("submit", async (event) => {
     stepProgress.hidden = false;
     showStep(STEPS.length - 1);
     formError.hidden = false;
-    formError.textContent = String(error);
+    formError.textContent =
+      error instanceof TypeError
+        ? "네트워크 오류로 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요."
+        : formatApiError(null, String(error));
   }
 });
 

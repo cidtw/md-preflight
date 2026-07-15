@@ -162,13 +162,19 @@ def store_safety_stock(
     lead_time_days: float,
     demand_volatility: int,
     turnover_weight: float,
+    daily_demand: float,
 ) -> float:
-    """Statistical safety stock = Z * sqrt(LT * demand_volatility) * turnover_weight.
+    """Statistical safety stock in units (개), demand-proportional.
 
-    Uses fixed contractual LT only. Logistics risk is added separately as buffer units.
+    SS = Z * daily_demand * sqrt(LT * vol_norm) * turnover_weight
+    where vol_norm = demand_volatility / 5 (score 1-5 -> 0.2-1.0).
+
+    Scales with daily demand like logistics buffer (daily * risk_days).
+    Uses fixed contractual LT only; logistics risk is added separately.
     """
-    inner = max(0.0, lead_time_days * float(demand_volatility))
-    raw = safety_z * math.sqrt(inner)
+    vol_norm = max(0.0, float(demand_volatility)) / 5.0
+    inner = max(0.0, lead_time_days * vol_norm)
+    raw = safety_z * max(0.0, daily_demand) * math.sqrt(inner)
     return round(raw * turnover_weight, 2)
 
 

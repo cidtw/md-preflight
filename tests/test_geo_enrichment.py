@@ -171,6 +171,9 @@ def test_enrich_without_api_key_falls_back() -> None:
 
 
 def test_engine_applies_foot_traffic_to_z() -> None:
+    from app.pipeline.analyze.knowledge_base import FOOT_TRAFFIC_Z_BOOST
+    from app.pipeline.output.recommendation import render
+
     validated = validate_parameters(
         {
             **BASE,
@@ -191,6 +194,11 @@ def test_engine_applies_foot_traffic_to_z() -> None:
     assert with_geo.store_safety_stock >= without.store_safety_stock
     assert with_geo.geo.used_fallback is False
     assert with_geo.geo.provider == "kakao"
+    # Geo evidence attributes only FTI boost, not full Z delta from policy base.
+    report = render(validated, with_geo)
+    geo_block = next(b for b in report.evidence if b.id == "geo_poi")
+    fti_boost = FOOT_TRAFFIC_Z_BOOST * with_geo.geo.foot_traffic_index
+    assert any("유동 기여" in p and f"{fti_boost:.2f}" in p for p in geo_block.points)
 
 
 def test_run_without_precise_still_has_geo_block() -> None:

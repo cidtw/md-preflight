@@ -13,6 +13,7 @@ Docs: https://developers.kakao.com/docs/latest/ko/local/dev-guide
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import math
@@ -20,11 +21,18 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from typing import cast
 
 from app.pipeline.types import GeoEnrichment, NearbyPoi, PoiCategory
 
 logger = logging.getLogger(__name__)
+
+# Cap wall-clock for nearby POI fan-out (geocode is outside this budget).
+_POI_TOTAL_BUDGET_S = 4.0
+_HTTP_TIMEOUT_S = 2.5
+_POI_MAX_WORKERS = 6
 
 JsonObject = dict[str, object]
 # (url, headers) -> JSON object
@@ -120,7 +128,7 @@ def _http_get_json(
     url: str,
     headers: Mapping[str, str],
     *,
-    timeout: float = 8.0,
+    timeout: float = _HTTP_TIMEOUT_S,
 ) -> JsonObject:
     req = urllib.request.Request(
         url,
@@ -407,26 +415,55 @@ def enrich_from_address(
 
     merged: list[NearbyPoi] = []
     try:
-        for code in _CATEGORY_QUERIES:
-            merged.extend(
-                _search_category(
+        def _jobs() -> list[Callable[[], list[NearbyPoi]]]:
+            jobs: list[Callable[[], list[NearbyPoi]]] = [
+                lambda code=code: _search_category(
                     lat=lat,
                     lng=lng,
                     category_code=code,
                     radius_m=radius_m,
                     api_key=api_key,
                     fetch=do_fetch,
+                )
+                for code in _CATEGORY_QUERIES
+            ]
+            jobs.append(
+                lambda: _search_keyword_bus(
+                    lat=lat,
+                    lng=lng,
+                    radius_m=radius_m,
+                    api_key=api_key,
+                    fetch=do_fetch,
                 ),
             )
-        merged.extend(
-            _search_keyword_bus(
-                lat=lat,
-                lng=lng,
-                radius_m=radius_m,
-                api_key=api_key,
-                fetch=do_fetch,
-            ),
-        )
+            return jobs
+
+        with ThreadPoolExecutor(max_workers=_POI_MAX_WORKERS) as pool:
+            futures = [pool.submit(job) for job in _jobs()]
+            try:
+                for fut in as_completed(futures, timeout=_POI_TOTAL_BUDGET_S):
+                    try:
+                        merged.extend(fut.result())
+                    except (
+                        urllib.error.URLError,
+                        TimeoutError,
+                        TypeError,
+                        ValueError,
+                        RuntimeError,
+                    ) as sub_exc:
+                        logger.warning("kakao poi sub-query failed: %s", sub_exc)
+            except FuturesTimeoutError:
+                logger.warning(
+                    "kakao nearby budget %.1fs exceeded for %s; using partial POIs",
+                    _POI_TOTAL_BUDGET_S,
+                    cleaned,
+                )
+                for fut in futures:
+                    if fut.done() and not fut.cancelled():
+                        with contextlib.suppress(Exception):
+                            merged.extend(fut.result(timeout=0))
+                    else:
+                        _ = fut.cancel()
     except (urllib.error.URLError, TimeoutError, TypeError, ValueError) as exc:
         logger.exception("kakao nearby failed for %s", cleaned)
         return GeoEnrichment(

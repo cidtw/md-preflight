@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from app.pipeline.analyze.knowledge_base import FOOT_TRAFFIC_Z_BOOST
 from app.pipeline.domain_catalog import (
     ACCESSIBILITY,
     AVG_TICKET,
     ORDER_DAY_PATTERN,
+    ORDER_PATTERN_META,
     SERVICE_LEVEL,
     STORE_SIZE,
     STORE_TYPE,
@@ -80,9 +82,26 @@ def _comparison(calc: CalcBreakdown) -> ComparisonDashboard:
     std_q = round(calc.daily_demand * calc.standard_lead_time_days, 1)
     rec_q = calc.suggested_order_qty
     q_delta = round(rec_q - std_q, 1)
-    std_cycle = calc.standard_lead_time_days
+    # Cycle baseline is not LT: auto compares to weekly (7d); fixed pattern → same cycle.
     rec_cycle = calc.order_cycle_days
-    cycle_delta = round(rec_cycle - std_cycle, 2)
+    weekly_default = ORDER_PATTERN_META["weekly_mon"][0]
+    if calc.order_pattern_auto:
+        std_cycle = weekly_default
+        cycle_delta = round(rec_cycle - std_cycle, 2)
+        cycle_delta_label = (
+            f"주 1회 기본 {std_cycle:g}일 → {calc.order_days_label} "
+            f"{rec_cycle:g}일 · {calc.order_frequency_label}"
+        )
+    else:
+        std_cycle = rec_cycle
+        cycle_delta = 0.0
+        cycle_delta_label = (
+            f"선택 패턴 {calc.order_days_label} · {calc.order_frequency_label}"
+        )
+
+    policy_z = calc.knowledge.service_level_z
+    context_z = calc.knowledge.safety_z_factor
+    z_delta = round(context_z - policy_z, 2)
 
     rows = [
         ComparisonRow(
@@ -95,14 +114,13 @@ def _comparison(calc: CalcBreakdown) -> ComparisonDashboard:
         ),
         ComparisonRow(
             metric="서비스 레벨 Z",
-            standard_value=1.65,  # sl_95 policy baseline
-            recommended_value=calc.knowledge.safety_z_factor,
-            delta=round(calc.knowledge.safety_z_factor - 1.65, 2),
+            standard_value=policy_z,
+            recommended_value=context_z,
+            delta=z_delta,
             unit="",
             delta_label=(
-                f"{calc.service_level_label} · 정책 Z "
-                f"{calc.knowledge.service_level_z:.2f} → 최종 "
-                f"{calc.knowledge.safety_z_factor:.2f}"
+                f"{calc.service_level_label} · 정책 Z {policy_z:.2f} → "
+                f"맥락 반영 최종 {context_z:.2f}"
             ),
         ),
         ComparisonRow(
@@ -127,9 +145,7 @@ def _comparison(calc: CalcBreakdown) -> ComparisonDashboard:
             recommended_value=rec_cycle,
             delta=cycle_delta,
             unit="일",
-            delta_label=(
-                f"{calc.order_days_label} · {calc.order_frequency_label}"
-            ),
+            delta_label=cycle_delta_label,
         ),
         ComparisonRow(
             metric="재발주점 (ROP)",
@@ -200,12 +216,14 @@ def _geo_evidence(calc: CalcBreakdown) -> EvidenceBlock:
         points.append("상위 유동 유발 요소: " + " · ".join(poi_lines))
     else:
         points.append(f"반경 {geo.radius_m}m 내 분류 가능한 POI가 거의 없었습니다.")
-    z_delta = calc.knowledge.safety_z_factor - calc.knowledge.safety_z_base
+    fti = geo.foot_traffic_index
+    fti_boost = round(FOOT_TRAFFIC_Z_BOOST * fti, 2)
+    kb = calc.knowledge
     points.append(
-        f"foot_traffic_index={geo.foot_traffic_index:.3f} → "
-        + f"안전계수 Z {calc.knowledge.safety_z_base:.2f}에서 "
-        + f"{calc.knowledge.safety_z_factor:.2f}로 보정 "
-        + f"(+{z_delta:.2f}).",
+        f"foot_traffic_index={fti:.3f} → 안전계수 Z에 유동 기여 "
+        + f"+{fti_boost:.2f} (가중 {FOOT_TRAFFIC_Z_BOOST}). "
+        + f"정책 Z {kb.service_level_z:.2f} + 맥락(수요·품목·시드·유동) → "
+        + f"최종 {kb.safety_z_factor:.2f}.",
     )
     if geo.address_queried:
         points.append(f"조회 주소: {geo.address_queried}")
@@ -272,8 +290,9 @@ def _evidence(validated: ValidatedInput, calc: CalcBreakdown) -> list[EvidenceBl
             (
                 f"서비스 레벨 정책 Z={kb.service_level_z:.2f} "
                 f"({calc.service_level_label}) → 맥락 반영 최종 Z={kb.safety_z_factor:.2f}. "
-                f"통계 안전재고 = Z * sqrt(입력LT {calc.standard_lead_time_days} * "
-                f"수요변동성 {scores.demand_volatility}) * 회전가중 "
+                f"통계 안전재고 = Z * 일평균소진 {calc.daily_demand:g} * "
+                f"sqrt(입력LT {calc.standard_lead_time_days} * "
+                f"vol_norm {scores.demand_volatility}/5) * 회전가중 "
                 f"{scores.turnover_weight} = {calc.statistical_safety_stock:.1f}개. "
                 f"총 안전재고 = 통계 + 물류버퍼 "
                 f"{calc.logistics_buffer_units:.1f} = {calc.store_safety_stock:.1f}개."

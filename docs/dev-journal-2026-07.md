@@ -29,6 +29,8 @@
 [7/14 eve] ROP 제품화   매장 파라미터 → 추천·근거 리포트 (국면 VII)
     ↓
 [7/14 late] 운영 레버   지도 POI · LT 입력 유지 · SS/Q/요일/SL (국면 VII+)
+    ↓
+[7/15]     정확도 수정  SS∝수요 · 비교표·geo 귀속 · size 기본값 (국면 VIII)
 ```
 
 | 국면 | 기간 | 한 줄 목표 | 대표 산출 |
@@ -41,13 +43,14 @@
 | **VI. 방향성 재설계** | 7/14 오후 | v1 동결 · 모듈 3단 판 | archive · pipeline skeleton |
 | **VII. ROP 서비스** | 7/14 저녁 | 매장 특화 발주 기준 재조정 MVP | scoring · KB · report UI |
 | **VII+ 운영 레버** | 7/14 심야~ | 현실적 조정 대상 정합 | Kakao POI · LT 고정 출력 · SL·요일 |
+| **VIII. 정확도 패치** | 7/15 | 리뷰 P0 정확도·UX 회귀 수정 | SS∝D · Z/geo 표시 · size 기본값 |
 
 **불변 원칙**
 
 | 구간 | 원칙 |
 |------|------|
 | **국면 I–V (v1, D3 / `main`)** | 판정 = 결정론 룰 · 서술 = LLM(실패 시 fallback) · 검수 비로그인 200 · 이력은 격리·append-only |
-| **국면 VI+ (재설계 / `pivot/project-direction`)** | 판정 = 결정론 **가중치 점수** · 입력 = 파라미터 템플릿 · 출력 = **한 줄 recommendation** · **LT는 품목 입력(유지)** · 조정 레버 = ROP·SS·Q·발주 요일·서비스 레벨 |
+| **국면 VI+ (재설계 / `pivot/project-direction`)** | 판정 = 결정론 **가중치 점수** · 입력 = 파라미터 템플릿 · 출력 = **한 줄 recommendation** · **LT는 품목 입력(유지)** · 조정 레버 = ROP·SS·Q·발주 요일·서비스 레벨 · **SS 통계항∝일평균 소진** (VIII) · 미입력 기본값=규모 밴드 |
 
 **v1 복원 키**: 태그 `archive/v1-md-preflight` @ `b444be0` · 문서 `archive/v1-md-preflight/`
 
@@ -157,6 +160,7 @@
 | **7/14 재설계 스켈레톤** | **12** | 파이프라인 unit/API only (의도적 슬림) |
 | **7/14 ROP MVP** | **14** | 스코어링 · KB · 리포트 UI |
 | **7/14 ROP + geo/ops** | **30** | Kakao · 탈포화 · LT 고정 · SL·요일 |
+| **7/15 정확도 패치** | **32** | SS∝수요 · 비교표 수정 · CAPA/geo 테스트 보강 |
 | 이후 | green + R8+ | 배포·실 KB 확장 |
 
 ---
@@ -570,8 +574,8 @@ uv run pytest                   # 12 passed
 |------|------|
 | **테마** | “LT는 가변 추천이 아니다” · 지도 유동 · 현실적 운영 레버 |
 | **브랜치** | `pivot/project-direction` |
-| **검증 (현재)** | ruff · basedpyright 0 · **pytest 30 passed** |
-| **템플릿** | `rop-adjust-v1` **1.3.0** |
+| **검증 (당시)** | ruff · basedpyright 0 · **pytest 30 passed** |
+| **템플릿** | `rop-adjust-v1` **1.3.0** (→ 7/15에 1.3.1) |
 
 #### 작업 묶음
 
@@ -583,14 +587,14 @@ uv run pytest                   # 12 passed
 | **R7d** | LT 출력 고정 · 운영 레버 | **품목 LT 입력 유지** · 출력 delta=0 · 접근성/KB 리스크 → **버퍼 재고** · 비교표에 SS·Q·주기 |
 | **R7e** | 서비스 레벨 · 발주 요일 | `service_level` 90/95/99 → 정책 Z · `order_day_pattern` 자동/화목/월수금 등 · 1회 발주량 Q 연동 |
 
-#### 제품 공식 (현행 요약)
+#### 제품 공식 (7/14 당시 · 7/15에 SS 단위 정합 패치)
 
 ```
 LT_input     = 품목 표준/계약 LT  (입력 유지 · 출력에서 변동 추천 없음)
 Z            = SERVICE_LEVEL_Z[sl] + 맥락(변동성·품목·유동지수)
 risk_days    = max(0, 접근성 + KB 상권·행정동 리스크)
 buffer       = D * risk_days
-SS           = Z * sqrt(LT * vol) * turnover + buffer
+SS           = Z * sqrt(LT * vol) * turnover + buffer   ← 7/15 이전: SS 통계항이 D 비비례
 ROP          = D * LT + SS
 (Q, 요일)    = 선택 패턴 또는 CAPA 자동 추천
 CAPA 협소 시 ROP 상한 + 다회 소량 메시지
@@ -607,7 +611,74 @@ CAPA 협소 시 ROP 상한 + 다회 소량 메시지
 
 ---
 
-### 이후 — ROP 고도화 (예정)
+### 2026-07-15 (화) — 리뷰 권장 수정 · 정확도 패치 (국면 VIII) **DONE**
+
+| 필드 | 내용 |
+|------|------|
+| **테마** | 브랜치 리뷰 P0/P1: 추천 정확도 · 비교표 오표시 · UX 회귀 · 테스트 공백 |
+| **브랜치** | `cidtw/auto-run-1-20260715T0032` (pivot ROP 스냅샷 계열) |
+| **검증** | `ruff` · `basedpyright app` 0 · **pytest 32 passed** |
+| **템플릿** | `rop-adjust-v1` **1.3.1** |
+| **핸드오프** | `handoff/2026-07-15-summary.md` |
+
+#### 배경
+
+7/14 VII+ 스냅샷 대비 코드 리뷰에서 **단위 비일관 통계 SS**, **geo Z 과대 귀속**, **서비스 레벨 비교 1.65 하드코딩** 등이 정확도 위험으로 지적됨.  
+권장 수정(P0→UX→테스트→Kakao 안정성)을 일괄 반영.
+
+#### 작업 묶음
+
+| ID | 심각도 | 내용 | 핵심 산출 |
+|----|--------|------|-----------|
+| **R8a** | bug | 통계 SS를 **일평균 소진 비례**로 수정 | `store_safety_stock(..., daily_demand)` · `vol_norm=vol/5` |
+| **R8b** | bug | geo 근거: Z 전체 델타 대신 **FTI boost만** 귀속 | `recommendation._geo_evidence` + `FOOT_TRAFFIC_Z_BOOST` |
+| **R8c** | bug | 비교표 “서비스 레벨 Z” 표준 = **선택 정책 Z** (1.65 제거) | `_comparison` policy_z / context_z |
+| **R8d** | UX | 발주 주기 표준이 LT 일수를 쓰지 않음 | auto→주1회 7일 · 고정 패턴→동일 cycle |
+| **R8e** | UX | 폼 `standard_rop` prefill 제거 · API 에러 정규화 | `app/web/app.js` |
+| **R8f** | 정책 | 미입력 LT·base SS 기본값 = **규모 밴드→채널** | `SIZE_TO_CHANNEL` · mismatch guidance 문구 |
+| **R8g** | 안정성 | Kakao 인근 POI **병렬** + total budget 4s · HTTP 2.5s | `geo_enrichment.py` ThreadPoolExecutor |
+| **R8h** | 테스트 | CAPA 무조건 assert · SS∝D · policy Z · size 기본값 · FTI 귀속 | `tests/test_pipeline.py` · `test_geo_enrichment.py` |
+
+#### 제품 공식 (현행 · 7/15 이후)
+
+```
+LT_input     = 품목 표준/계약 LT  (입력 유지 · 출력에서 변동 추천 없음)
+               미입력 시 SIZE_TO_CHANNEL[store_size] 채널 기본값
+Z_policy     = SERVICE_LEVEL_Z[service_level]
+Z            = Z_policy + 맥락(변동성·품목·시드·FOOT_TRAFFIC_Z_BOOST*fti)
+risk_days    = max(0, 접근성 + KB 상권·행정동 리스크)
+buffer       = D * risk_days
+SS_stat      = Z * D * sqrt(LT * vol/5) * turnover     ← demand 비례
+SS           = SS_stat + buffer
+ROP          = D * LT + SS
+(Q, 요일)    = 선택 패턴 또는 CAPA 자동 추천
+비교표 cycle = auto면 주1회(7일) 기준 · 고정 패턴이면 선택 cycle
+CAPA 협소 시 ROP 상한 + 다회 소량 메시지
+```
+
+#### 검증 기록
+
+```
+uv run ruff check app tests     # pass
+uv run basedpyright app         # 0 errors
+uv run pytest                   # 32 passed
+```
+
+#### 의도적으로 미룬 것
+
+| 항목 | 비고 |
+|------|------|
+| 클라이언트 `AbortController` / 평가 취소 | 서버 budget으로 1차 완화 |
+| Kakao fallback rate 메트릭·서킷 | 관측 인프라 이후 |
+| hash-seed “품절 %” 서술 완화 | 캘리브레이션 오인 방지 — 카피 작업 |
+| R8 배포·환경 패리티 | Vercel · 시크릿 (기존 백로그) |
+
+#### 한 줄
+> 추천이 **수요 단위와 비교 라벨에서 틀어지지 않게** 고쳤다. 파이프라인 골격은 유지하고 공식·표시·테스트만 정합.
+
+---
+
+### 이후 — ROP 고도화 (백로그)
 
 | 항목 | 상태 | 비고 |
 |------|------|------|
@@ -616,6 +687,8 @@ CAPA 협소 시 ROP 상한 + 다회 소량 메시지
 | R10 실 Agent AI 교체 | TODO | `knowledge_base.py` 포트 |
 | R11 품목 마스터 연동 | TODO | |
 | R12 발주 스케줄 캘린더 UX | TODO | 요일 패턴 시각화 |
+| R13 클라이언트 타임아웃·취소 UX | TODO | AbortController |
+| R14 stockout% 서술 캘리브 문구 | TODO | seed 기반 추정임을 명시 |
 | (구) T54/T55 v1 freeze | **SUPERSEDED** | v1 아카이브 |
 
 ---
@@ -632,7 +705,8 @@ CAPA 협소 시 ROP 상한 + 다회 소량 메시지
 2. **워크스페이스·라이브(v1)** — SPA, Clerk/Neon, degrade, pytest 132→150.  
 3. **피드백(v1)** — 별칭·4화면·어댑터(T48–T59).  
 4. **피벗** — `archive/v1-md-preflight` · 3단 파이프라인.  
-5. **ROP 제품** — 파라미터 → 점수·KB·Kakao 유동 → 근거 리포트 · 운영 레버.
+5. **ROP 제품** — 파라미터 → 점수·KB·Kakao 유동 → 근거 리포트 · 운영 레버.  
+6. **정확도 패치(7/15)** — SS∝수요 · 비교표 Z/주기 · size 기본값 · CAPA/geo 테스트.
 
 ### 5.3 5분
 위 + CAPA 상한 · 불일치 guidance · foot_traffic 탈포화 · `POST /api/evaluate` 데모 · 실 KB/Agent 로드맵.  
@@ -678,4 +752,5 @@ CAPA 협소 시 ROP 상한 + 다회 소량 메시지
 *최초 작성(7/14 구간): 2026-07-14 · 전체 흐름 통합: 2026-07-14 (7/1–13 소급 정리)*  
 *국면 VI 재설계 준비 반영: 2026-07-14*  
 *국면 VII ROP 서비스 빌드 반영: 2026-07-14*  
-*국면 VII+ 운영 레버·일지/발표 아웃라인 갱신: 2026-07-14*
+*국면 VII+ 운영 레버·일지/발표 아웃라인 갱신: 2026-07-14*  
+*국면 VIII 정확도 패치(리뷰 권장 수정) 반영: 2026-07-15*
