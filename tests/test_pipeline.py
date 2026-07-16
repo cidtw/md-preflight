@@ -258,3 +258,113 @@ def test_analyze_formula_rop_identity() -> None:
         assert calc.store_safety_stock == pytest.approx(
             calc.statistical_safety_stock + calc.logistics_buffer_units,
         )
+
+
+def test_ss_comparison_identity_with_custom_standard_rop() -> None:
+    """SS standard column must match user standard_rop under ROP = D*LT + SS."""
+    # BASE has standard_rop=15, D=12, LT=2 -> demand during LT = 24 > 15 -> std SS = 0
+    result = run(BASE)
+    d_lt = result.calc.daily_demand * result.calc.standard_lead_time_days
+    expected_std_ss = max(0.0, result.calc.standard_rop - d_lt)
+    ss_row = next(r for r in result.comparison.rows if "안전재고" in r.metric)
+    assert ss_row.standard_value == pytest.approx(expected_std_ss)
+    assert ss_row.standard_value != pytest.approx(result.calc.base_safety_stock)
+    # Identity: standard ROP ~ D*LT + standard SS (when standard_rop >= D*LT, exact).
+    roomy = {
+        **BASE,
+        "store_type": "ssm",
+        "store_size": "ssm",
+        "avg_ticket": "t_15k_25k",
+        "standard_rop": 50,
+        "daily_demand": 10,
+        "standard_lead_time_days": 2,
+    }
+    roomy_result = run(roomy)
+    d_lt_r = roomy_result.calc.daily_demand * roomy_result.calc.standard_lead_time_days
+    ss_r = next(r for r in roomy_result.comparison.rows if "안전재고" in r.metric)
+    assert ss_r.standard_value == pytest.approx(50 - d_lt_r)
+    assert roomy_result.calc.standard_rop == pytest.approx(
+        d_lt_r + ss_r.standard_value,
+    )
+
+
+def test_q_baseline_uses_cycle_not_lt() -> None:
+    """Q standard must share the cycle-row baseline, not LT days."""
+    # Auto weekly default → std cycle 7d; tight CAPA auto may pick mon_wed_fri.
+    # Use roomy size so auto resolves to weekly_mon (7d).
+    roomy = {
+        **BASE,
+        "store_type": "ssm",
+        "store_size": "ssm",
+        "avg_ticket": "t_15k_25k",
+        "order_day_pattern": "auto",
+    }
+    auto = run(roomy)
+    q_row = next(r for r in auto.comparison.rows if "발주량" in r.metric)
+    cycle_row = next(r for r in auto.comparison.rows if "발주 요일" in r.metric)
+    assert cycle_row.standard_value == pytest.approx(7.0)
+    assert q_row.standard_value == pytest.approx(auto.calc.daily_demand * 7.0)
+    assert q_row.standard_value != pytest.approx(
+        auto.calc.daily_demand * auto.calc.standard_lead_time_days,
+    )
+
+    fixed = run({**roomy, "order_day_pattern": "mon_wed_fri"})
+    q_fixed = next(r for r in fixed.comparison.rows if "발주량" in r.metric)
+    # Fixed pattern: std cycle == rec cycle → Q delta should not invent LT uplift.
+    assert q_fixed.standard_value == pytest.approx(fixed.calc.suggested_order_qty)
+    assert q_fixed.delta == pytest.approx(0.0)
+
+
+def test_capa_clamps_order_qty_to_max_rop_cap() -> None:
+    """When CAPA sets max ROP, suggested order qty must not exceed that ceiling."""
+    # capa 2 (cv_m-ish) + high D + short LT: cycle can exceed cover window.
+    # cv_xs → capa 1, auto mon_wed_fri cycle ~2.33d; max cover often < cycle*D for high D.
+    params: dict[str, ParameterValue] = {
+        **BASE,
+        "store_size": "cv_xs",
+        "daily_demand": 40,
+        "standard_lead_time_days": 2,
+        "trade_area": "tourist",
+        "accessibility": "indoor",
+        "order_day_pattern": "weekly_mon",  # cycle 7d → Q=280, max_rop much smaller
+    }
+    result = run(params)
+    assert result.calc.max_rop_cap is not None
+    assert result.calc.suggested_order_qty <= result.calc.max_rop_cap + 1e-9
+    # Without clamp, D*7 would exceed max_rop for this setup.
+    uncapped_q = result.calc.daily_demand * 7.0
+    assert uncapped_q > result.calc.max_rop_cap
+    assert result.calc.multi_order_suggestion is not None
+    assert "발주량" in result.calc.multi_order_suggestion or "1회" in (
+        result.calc.multi_order_suggestion or ""
+    )
+
+
+def test_store_safety_stock_edge_cases() -> None:
+    from app.pipeline.analyze.knowledge_base import store_safety_stock
+
+    # vol score 1 → vol_norm 0.2; short LT half-day still yields finite SS.
+    low = store_safety_stock(
+        safety_z=1.65,
+        lead_time_days=0.5,
+        demand_volatility=1,
+        turnover_weight=1.0,
+        daily_demand=10.0,
+    )
+    assert low > 0
+    high_vol = store_safety_stock(
+        safety_z=1.65,
+        lead_time_days=0.5,
+        demand_volatility=5,
+        turnover_weight=1.0,
+        daily_demand=10.0,
+    )
+    assert high_vol > low
+    zero_d = store_safety_stock(
+        safety_z=1.65,
+        lead_time_days=2.0,
+        demand_volatility=3,
+        turnover_weight=1.0,
+        daily_demand=0.0,
+    )
+    assert zero_d == 0.0

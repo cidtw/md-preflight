@@ -1,3 +1,11 @@
+import {
+  evaluateErrorUiState,
+  formatApiError,
+  restoreStepIndexAfterEvaluateError,
+  sanitizeEvaluateParameters,
+  validateStoreAddress,
+} from "./wizard_logic.mjs";
+
 const form = document.getElementById("eval-form");
 const inputPanel = document.getElementById("input-panel");
 const loadingPanel = document.getElementById("loading-panel");
@@ -255,14 +263,16 @@ function validateCurrentStep() {
 
     if (spec.type === "boolean") continue;
 
-    if (key === "store_address" && preciseOn) {
-      const value = "value" in el ? String(el.value).trim() : "";
-      if (!value) {
+    if (key === "store_address") {
+      const value = "value" in el ? el.value : "";
+      const check = validateStoreAddress(preciseOn, value);
+      if (!check.ok) {
         formError.hidden = false;
-        formError.textContent = "정확한 위치 사용 시 매장 주소를 입력해 주세요.";
+        formError.textContent = check.message;
         el.focus?.();
         return false;
       }
+      if (!preciseOn) continue;
     }
 
     if (typeof el.checkValidity === "function" && !el.checkValidity()) {
@@ -306,10 +316,7 @@ function readParameters(formEl) {
     parameters[key] = String(raw);
   }
 
-  if (!parameters.use_precise_location) {
-    delete parameters.store_address;
-  }
-  return parameters;
+  return sanitizeEvaluateParameters(parameters);
 }
 
 function fmt(n, digits = 1) {
@@ -424,33 +431,14 @@ btnNext?.addEventListener("click", () => {
   if (stepIndex < STEPS.length - 1) showStep(stepIndex + 1);
 });
 
-/** Normalize FastAPI / network error payloads into a short Korean message. */
-function formatApiError(detail, fallback) {
-  if (detail == null || detail === "") return fallback;
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item) => {
-        if (typeof item === "string") return item;
-        if (item && typeof item === "object") {
-          const loc = Array.isArray(item.loc) ? item.loc.join(".") : "";
-          const msg = item.msg || item.message || JSON.stringify(item);
-          return loc ? `${loc}: ${msg}` : String(msg);
-        }
-        return String(item);
-      })
-      .filter(Boolean)
-      .join(" · ");
-  }
-  if (typeof detail === "object") {
-    if (typeof detail.message === "string") return detail.message;
-    try {
-      return JSON.stringify(detail);
-    } catch {
-      return fallback;
-    }
-  }
-  return String(detail);
+function applyEvaluateErrorUi(message) {
+  const ui = evaluateErrorUiState();
+  loadingPanel.hidden = ui.loadingHidden;
+  inputPanel.hidden = ui.inputHidden;
+  stepProgress.hidden = ui.stepProgressHidden;
+  formError.hidden = ui.formErrorHidden;
+  formError.textContent = message;
+  showStep(restoreStepIndexAfterEvaluateError(STEPS.length));
 }
 
 form?.addEventListener("submit", async (event) => {
@@ -480,29 +468,23 @@ form?.addEventListener("submit", async (event) => {
     }
     const wait = Math.max(0, 280 - (performance.now() - started));
     await new Promise((r) => setTimeout(r, wait));
-    loadingPanel.hidden = true;
     if (!response.ok) {
-      inputPanel.hidden = false;
-      stepProgress.hidden = false;
-      showStep(STEPS.length - 1);
-      formError.hidden = false;
-      formError.textContent = formatApiError(
-        payload?.detail ?? payload,
-        `요청 실패 (HTTP ${response.status})`,
+      applyEvaluateErrorUi(
+        formatApiError(
+          payload?.detail ?? payload,
+          `요청 실패 (HTTP ${response.status})`,
+        ),
       );
       return;
     }
+    loadingPanel.hidden = true;
     renderResult(payload);
   } catch (error) {
-    loadingPanel.hidden = true;
-    inputPanel.hidden = false;
-    stepProgress.hidden = false;
-    showStep(STEPS.length - 1);
-    formError.hidden = false;
-    formError.textContent =
+    applyEvaluateErrorUi(
       error instanceof TypeError
         ? "네트워크 오류로 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요."
-        : formatApiError(null, String(error));
+        : formatApiError(null, String(error)),
+    );
   }
 });
 

@@ -38,10 +38,10 @@
 
 ## 2. Analyze (`app/pipeline/analyze`)
 
-1. **스코어링 테이블** (`scoring.py`) — CAPA, 수요집중, 회전가중, 공급난이도, 수요변동, 접근성 ΔLT  
+1. **스코어링 테이블** (`scoring.py`) — CAPA, 수요집중, 회전가중, 공급난이도, 수요변동, 접근성 리스크(일)  
 2. **(선택) Kakao Local 보강** (`geo_enrichment.py`) — 주소 검색 + 카테고리/키워드 POI → `foot_traffic_index`  
 3. **KB 매칭** (`knowledge_base.py`) — 행정동+품목+상권 시드 + 유동지수 기반 물류지연·Z계수·서술  
-4. **공식** (`engine.py`)
+4. **공식** (`engine.py`) — SSOT; 상세는 `docs/architecture.md` 와 동기화
 
 ```
 foot_traffic_index = soft_sat(
@@ -49,25 +49,34 @@ foot_traffic_index = soft_sat(
 )  where soft_sat(raw) = raw / (raw + 2.4) → (0,1)
   N_cat: rail/bus/anchor/… 최근접 1~2곳, CS2=convenience 저가중
 # LT is product input (kept as-is). Output never recommends changing LT.
-LT = 입력 품목 표준 LT
+LT = 입력 품목 표준 LT   # 고정 — 조정 레버 아님
 Z = 서비스레벨 정책 Z(90/95/99) + 맥락(변동성·품목·유동지수)
 물류 리스크일 = max(0, 접근성 성분 + KB 상권·행정동 리스크)
-물류 버퍼개 = 일평균소진 * 물류 리스크일
-통계 안전재고 = Z * sqrt(LT * 수요변동성) * 회전가중치
+물류 버퍼개 = 일평균소진(D) * 물류 리스크일
+통계 안전재고 = Z * D * sqrt(LT * vol/5) * 회전가중치   # demand-proportional
 총 안전재고 = 통계 안전재고 + 물류 버퍼개
-추천 ROP = 일평균소진 * LT + 총 안전재고
+추천 ROP = D * LT + 총 안전재고
 발주 요일·주기·Q = 선택 패턴 또는 CAPA 자동 추천
-CAPA 1~2 이고 상한 초과 시 ROP = MaxCap, 다회 소량 발주 강화
+  Q ≈ D × cycle_days
+CAPA 1~2 이고 상한 초과 시:
+  ROP = MaxCap, 표시 SS = max(0, MaxCap − D×LT)   # 항등 유지
+  Q = min(Q, MaxCap)                              # 1회 발주량도 천장 적용
+  → 다회 소량 발주 강화
 ```
+
+비교 표 기준선:
+
+- **표준 SS** = `max(0, standard_rop − D×LT)` (user `standard_rop` 또는 모형 기본 ROP와 항등)
+- **표준 Q** = `D × std_cycle` (자동: 주 1회 7일, 고정 패턴: 선택 cycle) — LT 일수 아님
 
 지도 API 키 없음/실패 시 **행정동 경로 fallback** (evaluate 200 유지 + guidance).
 
 ## 3. Output (`app/pipeline/output`)
 
-- 한 줄 recommendation (LT 입력 유지 + ROP·SS·요일·Q·SL)  
+- 한 줄 recommendation (**LT 입력 유지** · 레버: ROP · SS · Q · cycle · SL)  
 - 매장 요약 (서비스 레벨·발주 요일 포함)  
 - 비교 표 (입력 LT · SL/Z · 안전재고 · Q · 발주 요일·주기 · ROP)  
-- 근거 블록 (물류리스크→버퍼 / 수요·운영레버 / geo / CAPA)  
+- 근거 블록 4개 (물류리스크→버퍼 / 수요·운영레버 / geo / CAPA)  
 - guidance 배열  
 
 ## API
@@ -78,4 +87,4 @@ CAPA 1~2 이고 상한 초과 시 ROP = MaxCap, 다회 소량 발주 강화
 | `GET` | `/api/template` |
 | `POST` | `/api/evaluate` |
 
-지시 원문: `2026-07-14-New-Service-Flow.md`
+원 지시(역사 문서, Adjusted LT 서사 포함): `2026-07-14-New-Service-Flow.md` — **구현 SSOT는 본 파일 + `docs/architecture.md`**.

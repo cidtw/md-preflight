@@ -75,15 +75,18 @@ def _summary(validated: ValidatedInput, calc: CalcBreakdown) -> StoreSummary:
     )
 
 
+def _standard_safety_stock(calc: CalcBreakdown) -> float:
+    """SS baseline consistent with standard ROP under ROP = D*LT + SS."""
+    demand_during_lt = calc.daily_demand * calc.standard_lead_time_days
+    return round(max(0.0, calc.standard_rop - demand_during_lt), 2)
+
+
 def _comparison(calc: CalcBreakdown) -> ComparisonDashboard:
     # LT is fixed (not an adjustable lever). Surface adjustable ops: SS, Q, cycle, ROP.
-    std_ss = calc.base_safety_stock
+    # SS baseline follows standard_rop identity (user or model), not channel fraction alone.
+    std_ss = _standard_safety_stock(calc)
     rec_ss = calc.store_safety_stock
     ss_delta = round(rec_ss - std_ss, 2)
-    # Baseline order qty ≈ daily * standard LT (rough industry habit).
-    std_q = round(calc.daily_demand * calc.standard_lead_time_days, 1)
-    rec_q = calc.suggested_order_qty
-    q_delta = round(rec_q - std_q, 1)
     # Cycle baseline is not LT: auto compares to weekly (7d); fixed pattern → same cycle.
     rec_cycle = calc.order_cycle_days
     weekly_default = ORDER_PATTERN_META["weekly_mon"][0]
@@ -100,6 +103,10 @@ def _comparison(calc: CalcBreakdown) -> ComparisonDashboard:
         cycle_delta_label = (
             f"선택 패턴 {calc.order_days_label} · {calc.order_frequency_label}"
         )
+    # Q baseline uses the same cycle days as the cycle row (not LT days).
+    std_q = round(calc.daily_demand * std_cycle, 1)
+    rec_q = calc.suggested_order_qty
+    q_delta = round(rec_q - std_q, 1)
 
     policy_z = calc.knowledge.service_level_z
     context_z = calc.knowledge.safety_z_factor
@@ -305,11 +312,12 @@ def _evidence(validated: ValidatedInput, calc: CalcBreakdown) -> list[EvidenceBl
         ],
     )
 
+    std_ss = _standard_safety_stock(calc)
     rop_block = EvidenceBlock(
         id="demand_safety",
         title="상권 특성 및 운영 레버 (안전재고 · 발주량 · ROP)",
         calc_summary=(
-            f"표준 안전재고({calc.base_safety_stock:.1f}개) → "
+            f"표준 안전재고({std_ss:.1f}개) → "
             f"매장 특화({calc.store_safety_stock:.1f}개) · "
             f"1회 발주 {calc.suggested_order_qty:g}개 / "
             f"주기 {calc.order_cycle_days:g}일"
@@ -364,14 +372,16 @@ def _evidence(validated: ValidatedInput, calc: CalcBreakdown) -> list[EvidenceBl
 
 
 def _one_liner(summary: StoreSummary, calc: CalcBreakdown) -> str:
+    std_ss = _standard_safety_stock(calc)
+    ss_delta = calc.store_safety_stock - std_ss
     sign_rop = "▲" if calc.rop_delta >= 0 else "▼"
-    sign_ss = "▲" if calc.store_safety_stock >= calc.base_safety_stock else "▼"
+    sign_ss = "▲" if ss_delta >= 0 else "▼"
     base = (
         f"[{summary.product_name}] LT {calc.standard_lead_time_days:.1f}일(입력 유지) · "
         f"ROP {calc.recommended_rop:.0f}개"
         f"({sign_rop}{abs(calc.rop_delta):.0f}) · "
         f"안전재고 {calc.store_safety_stock:.0f}개"
-        f"({sign_ss}{abs(calc.store_safety_stock - calc.base_safety_stock):.0f}) · "
+        f"({sign_ss}{abs(ss_delta):.0f}) · "
         f"발주 {calc.order_days_label} · 1회 {calc.suggested_order_qty:g}개 · "
         f"SL {calc.knowledge.service_level_z:.2f}→Z {calc.knowledge.safety_z_factor:.2f}"
     )

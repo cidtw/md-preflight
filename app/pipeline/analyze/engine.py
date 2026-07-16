@@ -165,6 +165,7 @@ def analyze(
     max_cap: float | None = None
     multi_order: str | None = None
     recommended_rop = raw_rop
+    order_qty_raw = order_qty
 
     if scores.capa_score <= 2:
         max_cap = round(
@@ -183,12 +184,28 @@ def analyze(
                 max(0.0, recommended_rop - daily_demand * fixed_lt),
                 2,
             )
+        # Physical stock ceiling also bounds per-receipt order qty (cycle may exceed cover).
+        if order_qty > max_cap:
+            order_qty = max(1.0, round(max_cap, 1))
+        if capa_capped or order_qty < order_qty_raw:
+            if capa_capped:
+                rop_part = (
+                    f"계산 ROP {raw_rop:.1f}개가 상한 {max_cap:.1f}개를 초과해 "
+                    f"상한으로 고정했습니다. "
+                    f"표시 안전재고는 캡 반영 유효값 {store_safety:.1f}개 "
+                    f"(캡 전 통계+버퍼 {statistical_ss + logistics_buffer:.1f}개). "
+                )
+            else:
+                rop_part = f"발주량 상한 {max_cap:.1f}개를 적용했습니다. "
+            if order_qty < order_qty_raw:
+                qty_part = (
+                    f"1회 발주량 {order_qty_raw:g}개 → CAPA 상한 {order_qty:g}개로 절사. "
+                )
+            else:
+                qty_part = f"1회 약 {order_qty:g}개 수준. "
             multi_order = (
-                f"물류 창고 CAPA 점수 {scores.capa_score}/5(협소)로 계산 ROP "
-                f"{raw_rop:.1f}개가 상한 {max_cap:.1f}개를 초과해 상한으로 고정했습니다. "
-                f"표시 안전재고는 캡 반영 유효값 {store_safety:.1f}개 "
-                f"(캡 전 통계+버퍼 {statistical_ss + logistics_buffer:.1f}개). "
-                f"발주 요일 {days_label} · 1회 약 {order_qty:g}개 수준을 권장합니다."
+                f"물류 창고 CAPA 점수 {scores.capa_score}/5(협소)로 {rop_part}"
+                f"{qty_part}발주 요일 {days_label} · 다회 소량 발주를 권장합니다."
             )
 
     return CalcBreakdown(

@@ -12,7 +12,7 @@
 ## 0. 한 줄
 
 매장·상권·접근성 파라미터와 품목 소진량을 받아, **결정론적 점수·지식 베이스 매칭**으로  
-**추천 Lead Time / Re-Order Point**와 **근거 리포트**를 반환한다.
+**LT 고정 · 안전재고/발주량/주기/ROP 조정**과 **근거 리포트**를 반환한다.
 
 ---
 
@@ -99,7 +99,7 @@
 ValidatedInput
       │
       ├─► scoring.score_store()
-      │      CAPA · 수요집중 · 회전가중 · 공급난이도 · 수요변동 · 접근성 ΔLT
+      │      CAPA · 수요집중 · 회전가중 · 공급난이도 · 수요변동 · 접근성 리스크(일)
       │
       ├─► knowledge_base.match_knowledge()
       │      행정동+품목+상권 시드 → 물류지연일 · 안전계수 Z · 서술 노트
@@ -117,7 +117,7 @@ ValidatedInput
 | 회전 가중치 | `avg_ticket` | 0.7 / 1.0 / 1.5 |
 | 공급 난이도 | `trade_area` | 1~5 (LT 영향) |
 | 수요 변동성 | `trade_area` | 1~5 (ROP 영향) |
-| 접근성 ΔLT | `accessibility` | −0.5 / +0.5 / +1.0 일 |
+| 접근성 리스크(일) | `accessibility` | −0.5 / +0.5 / +1.0 일 → 버퍼 재고 환산 |
 
 #### 지식 베이스 (Agent 형태 · 현재 구현)
 
@@ -140,18 +140,23 @@ buffer       = D × risk_days
 SS_stat      = Z × D × √(LT × vol/5) × 회전 가중치   # 휴리스틱, 실측 σ 아님
 SS           = SS_stat + buffer
 ROP          = D × LT + SS
+Q            = D × cycle_days
 CAPA 캡 시   표시 SS = max(0, ROP_cap − D×LT)  # 항등 유지
+             Q = min(Q, MaxCap)
 ```
 
 **CAPA 필터** (CAPA 점수 ≤ 2):
 
 - 물리 상한 `MaxCap` 초과 시 ROP를 상한으로 고정하고 **유효 SS**를 재계산  
+- 1회 발주량 `Q`도 `MaxCap`을 넘지 않도록 절사  
 - **다회 소량 발주** 제안 문구 활성화  
 
-**표준(baseline) ROP**
+**표준(baseline) ROP / 비교 표**
 
 - 사용자 `standard_rop` 우선  
-- 없으면 `(일평균 × 표준 LT) + 채널 기본 안전재고 비율` (채널 = 규모 밴드 우선)
+- 없으면 `(일평균 × 표준 LT) + 채널 기본 안전재고 비율` (채널 = 규모 밴드 우선)  
+- 비교 **표준 SS** = `max(0, standard_rop − D×LT)` (ROP 항등)  
+- 비교 **표준 Q** = `D × std_cycle` (자동: 주 1회 7일; 고정 패턴: 선택 cycle)
 
 ---
 
@@ -159,17 +164,17 @@ CAPA 캡 시   표시 SS = max(0, ROP_cap − D×LT)  # 항등 유지
 
 | 모듈 | 역할 |
 |------|------|
-| `recommendation.py` | 한 줄 추천 · 비교 대시보드 · 근거 3블록 |
+| `recommendation.py` | 한 줄 추천 · 비교 대시보드 · 근거 4블록 |
 
 **응답 페이로드 (`RecommendationResult`)**
 
 | 필드 | 내용 |
 |------|------|
-| `recommendation` | 한 줄 요약 (품목 · ΔLT · ΔROP) |
+| `recommendation` | 한 줄 요약 (품목 · LT 유지 · ΔROP · SS · Q · cycle · SL) |
 | `guidance` | 입력 불일치 안내 (있을 때만) |
 | `summary` | 매장·품목·입지 라벨 요약 |
-| `comparison` | 표준 vs 추천 LT/ROP 표 + ROP 안내 문장 |
-| `evidence[]` | ① 물류·접근성 ② 상권·안전재고 ③ CAPA 필터 |
+| `comparison` | 표준 vs 추천 (LT 고정 · Z · SS · Q · cycle · ROP) + ROP 안내 |
+| `evidence[]` | ① 물류→버퍼 ② 수요·운영레버 ③ geo ④ CAPA 필터 |
 | `calc` | 수치 breakdown (점수·KB·공식 중간값) |
 
 **출력 원칙**: 플로우 문서의 예시 문장/수치를 고정 복붙하지 않는다.  
