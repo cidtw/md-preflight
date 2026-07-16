@@ -149,3 +149,19 @@ def test_index_page(client: TestClient) -> None:
     # Version lives in footer, not the sticky nav.
     assert "nav-meta" not in response.text
     assert "footer-version" in response.text
+    # Third-party demo readiness shell
+    assert "demo-scenario-list" in response.text
+    assert "시연 시나리오" in response.text
+    assert 'href="/static/favicon.svg"' in response.text
+    assert 'name="description"' in response.text
+
+
+def test_static_demo_assets(client: TestClient) -> None:
+    for path in (
+        "/static/demo_scenarios.mjs",
+        "/static/favicon.svg",
+        "/static/report_export.mjs",
+        "/static/wizard_logic.mjs",
+    ):
+        response = client.get(path)
+        assert response.status_code == 200, path

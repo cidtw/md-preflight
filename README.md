@@ -29,6 +29,8 @@ uv run uvicorn app.main:app --reload --port 8000
 # open http://127.0.0.1:8000
 ```
 
+**라이브 (제3자 시연)**: [https://md-preflight.vercel.app](https://md-preflight.vercel.app)
+
 ```bash
 curl -s -X POST http://127.0.0.1:8000/api/evaluate \
   -H 'content-type: application/json' \
@@ -48,12 +50,31 @@ curl -s -X POST http://127.0.0.1:8000/api/evaluate \
   }' | jq .recommendation
 ```
 
+### 제3자 시연 체크
+
+1. 브라우저에서 라이브 URL 또는 로컬 `http://127.0.0.1:8000` 을 연다.  
+2. 환영 화면 **시연 시나리오** 카드에서  
+   - **좁은 편의점 · CAPA** → 다회 소량·상한  
+   - **대형마트** → 채널 체급 비교  
+   - **상세 주소 · 일시 유동** → Kakao POI·행사 수요 증분 (키 없으면 fallback 200)  
+   - **유형·규모 불일치** → guidance 배너  
+3. 결과에서 **쉬운 설명 / 전문 해설** 토글 · **리포트 내보내기**(PDF·MD·CSV·JSON).  
+4. API·정적 자산 일괄 스모크:
+
+```bash
+./demo.sh            # local :8000
+./demo.sh --prod     # production
+```
+
 검증:
 
 ```bash
 uv run ruff check app tests
 uv run basedpyright app
 uv run pytest
+node scripts/verify_wizard_logic.mjs
+node scripts/verify_report_export.mjs
+node scripts/verify_demo_scenarios.mjs
 ```
 
 ---

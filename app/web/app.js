@@ -7,6 +7,7 @@ import {
 } from "./wizard_logic.mjs";
 import { initTheme } from "./theme.mjs";
 import { exportReport } from "./report_export.mjs";
+import { DEMO_SCENARIOS, getDemoScenario } from "./demo_scenarios.mjs";
 
 const EXPERT_KEY = "rop-expert-mode";
 
@@ -25,6 +26,7 @@ const stepProgress = document.getElementById("step-progress");
 const stepProgressList = document.getElementById("step-progress-list");
 const welcomeStep = document.getElementById("step-welcome");
 const comingSoon = document.getElementById("coming-soon");
+const demoScenarioList = document.getElementById("demo-scenario-list");
 
 /** @type {object | null} */
 let lastPayload = null;
@@ -229,7 +231,83 @@ async function buildForm() {
   });
 
   syncPreciseLocationUI();
+  mountDemoScenarios();
   showStep(0);
+}
+
+/**
+ * Fill form controls from a demo scenario parameter map.
+ * @param {Record<string, string|number|boolean>} parameters
+ */
+function applyParametersToForm(parameters) {
+  if (!form) return;
+  for (const [key, value] of Object.entries(parameters)) {
+    const el = form.elements.namedItem(key);
+    if (!el) continue;
+    if (el instanceof RadioNodeList) continue;
+    if (el.type === "checkbox") {
+      el.checked = Boolean(value);
+      continue;
+    }
+    if (value === "" || value == null) {
+      el.value = "";
+      continue;
+    }
+    el.value = String(value);
+  }
+  syncPreciseLocationUI();
+}
+
+function mountDemoScenarios() {
+  if (!demoScenarioList) return;
+  demoScenarioList.innerHTML = "";
+  for (const scenario of DEMO_SCENARIOS) {
+    const card = document.createElement("article");
+    card.className = "demo-card";
+    card.dataset.scenarioId = scenario.id;
+    card.innerHTML = `
+      <span class="demo-card-title">${escapeHtml(scenario.title)}</span>
+      <span class="demo-card-blurb">${escapeHtml(scenario.blurb)}</span>
+      <span class="demo-card-highlight">볼 포인트 · ${escapeHtml(scenario.highlight)}</span>
+      <div class="demo-card-actions">
+        <button type="button" class="btn btn-primary" data-demo-action="run">바로 분석</button>
+        <button type="button" class="btn btn-ghost" data-demo-action="fill">입력만 채우기</button>
+      </div>
+    `;
+    demoScenarioList.appendChild(card);
+  }
+
+  demoScenarioList.addEventListener("click", (ev) => {
+    const target = ev.target;
+    if (!(target instanceof Element)) return;
+    const actionBtn = target.closest("[data-demo-action]");
+    if (!actionBtn) return;
+    const card = actionBtn.closest("[data-scenario-id]");
+    const id = card?.getAttribute("data-scenario-id");
+    const action = actionBtn.getAttribute("data-demo-action");
+    if (!id || !action) return;
+    void handleDemoScenario(id, action);
+  });
+}
+
+/**
+ * @param {string} id
+ * @param {"run"|"fill"} action
+ */
+async function handleDemoScenario(id, action) {
+  const scenario = getDemoScenario(id);
+  if (!scenario || !form) return;
+  applyParametersToForm(scenario.parameters);
+  if (action === "fill") {
+    showStep(1);
+    formError.hidden = false;
+    formError.textContent = `시연 시나리오 「${scenario.title}」 입력을 채웠습니다. 값을 확인한 뒤 분석하세요.`;
+    return;
+  }
+  // Jump to inventory so validate path matches normal submit, then evaluate.
+  showStep(STEPS.length - 1);
+  formError.hidden = true;
+  await runEvaluate();
 }
 
 function showStep(index) {
@@ -685,15 +763,18 @@ function applyEvaluateErrorUi(message) {
   showStep(restoreStepIndexAfterEvaluateError(STEPS.length));
 }
 
-form?.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  // Guard: only inventory step may run evaluate (button can be forced via Enter).
-  if (stepIndex !== STEPS.length - 1) {
+/**
+ * Run evaluate from the current form state (wizard inventory or demo one-shot).
+ * @param {{ skipStepGuard?: boolean }} [opts]
+ */
+async function runEvaluate(opts = {}) {
+  if (!form) return;
+  if (!opts.skipStepGuard && stepIndex !== STEPS.length - 1) {
     if (!validateCurrentStep()) return;
     if (stepIndex < STEPS.length - 1) showStep(stepIndex + 1);
     return;
   }
-  if (!validateCurrentStep()) return;
+  if (!opts.skipStepGuard && !validateCurrentStep()) return;
 
   formError.hidden = true;
   inputPanel.hidden = true;
@@ -738,6 +819,11 @@ form?.addEventListener("submit", async (event) => {
         : formatApiError(null, String(error)),
     );
   }
+}
+
+form?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await runEvaluate();
 });
 
 buildForm().catch((err) => {

@@ -33,6 +33,8 @@
 [7/15]     정확도 수정  SS∝수요 · 비교표·geo 귀속 · size 기본값 (국면 VIII)
     ↓
 [7/16]     안정화·기능  CAPA/Q · 추천 윤문 · export · 일시 유동 옵션 (국면 IX)
+    ↓
+[7/16+]    제3자 시연   프리셋·demo.sh·폴리시 (국면 X)
 ```
 
 | 국면 | 기간 | 한 줄 목표 | 대표 산출 |
@@ -47,6 +49,7 @@
 | **VII+ 운영 레버** | 7/14 심야~ | 현실적 조정 대상 정합 | Kakao POI · LT 고정 출력 · SL·요일 |
 | **VIII. 정확도 패치** | 7/15 | 리뷰 P0 정확도·UX 회귀 수정 | SS∝D · Z/geo 표시 · size 기본값 |
 | **IX. 안정화·일시 유동** | 7/16 | CAPA/UX 픽스 · 추천 윤문 · 행사 수요 증분 | Q clamp · export 위임 · event 200m |
+| **X. 제3자 시연** | 7/16+ | 데모 프리셋 · 스모크 · 탭 폴리시 | demo_scenarios · demo.sh · favicon |
 
 **불변 원칙**
 
@@ -762,6 +765,27 @@ vercel deploy --prod            # md-preflight.vercel.app
 
 ---
 
+### 2026-07-16 (수+) — 제3자 시연 준비 (국면 X / R14) **DONE**
+
+| 필드 | 내용 |
+|------|------|
+| **테마** | 커밋 tip 리뷰 후, 외부 시연에 필요한 원클릭 프리셋·스모크·탭 폴리시 |
+| **버전** | `0.3.3-rop` |
+| **검증** | pytest **47** · node verify_demo_scenarios · `demo.sh` |
+
+#### 작업
+| ID | 내용 |
+|----|------|
+| **R14a** | 환영 화면 시연 시나리오 4종 (CAPA / 대형 / geo+event / mismatch) |
+| **R14b** | `demo.sh` · `verify_demo_scenarios.mjs` |
+| **R14c** | favicon · meta description · CORS prod · 버전 정합 |
+| **R14d** | README 시연 절 · board Done · handoff |
+
+#### 한 줄
+> 숫자·문장이 이미 시연 가능했던 제품에 **제3자가 바로 누르는 경로**를 붙였다.
+
+---
+
 ### 이후 — ROP 고도화 (백로그)
 
 | 항목 | 상태 | 비고 |
@@ -840,4 +864,5 @@ vercel deploy --prod            # md-preflight.vercel.app
 *국면 VII ROP 서비스 빌드 반영: 2026-07-14*  
 *국면 VII+ 운영 레버·일지/발표 아웃라인 갱신: 2026-07-14*  
 *국면 VIII 정확도 패치(리뷰 권장 수정) 반영: 2026-07-15*  
-*국면 IX 안정화·일시 유동·배포 반영: 2026-07-16*
+*국면 IX 안정화·일시 유동·배포 반영: 2026-07-16*  
+*국면 X 제3자 시연 준비(R14): 2026-07-16*

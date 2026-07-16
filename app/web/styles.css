@@ -961,6 +961,92 @@ table.cmp td strong {
   font-weight: 500;
 }
 
+/* ---------- demo scenarios (welcome) ---------- */
+.demo-scenarios {
+  margin-top: var(--s-xl);
+  padding-top: var(--s-lg);
+  border-top: 1px solid var(--hairline);
+}
+.demo-scenarios-kicker {
+  margin: 0 0 var(--s-xxs);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.demo-scenarios-lede {
+  margin: 0 0 var(--s-md);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--body);
+}
+.demo-scenario-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-sm);
+}
+.demo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  padding: var(--s-md);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.demo-card:hover {
+  border-color: var(--primary);
+  background: var(--canvas);
+  box-shadow: 0 0 0 1px var(--primary-soft);
+}
+.demo-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.demo-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.2px;
+}
+.demo-card-blurb {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--body);
+}
+.demo-card-highlight {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--primary);
+  font-weight: 500;
+}
+.demo-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--s-xs);
+}
+.demo-card-actions .btn {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.demo-card-actions .btn-ghost {
+  background: transparent;
+  border: 1px solid var(--hairline);
+  color: var(--body);
+}
+.demo-card-actions .btn-ghost:hover {
+  border-color: var(--hairline-strong);
+  color: var(--ink);
+}
+
 /* ---------- responsive ---------- */
 @media (max-width: 900px) {
   .stat-grid {
@@ -983,6 +1069,9 @@ table.cmp td strong {
   }
   .panel {
     padding: var(--s-md);
+  }
+  .demo-scenario-list {
+    grid-template-columns: 1fr;
   }
   .step-progress ol {
     grid-template-columns: 1fr;

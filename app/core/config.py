@@ -18,13 +18,14 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "MD Preflight ROP"
-    app_version: str = "0.3.2-rop"
+    app_version: str = "0.3.3-rop"
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
             "http://localhost:8000",
             "http://127.0.0.1:8000",
+            "https://md-preflight.vercel.app",
         ],
     )
     kakao_rest_api_key: str | None = Field(

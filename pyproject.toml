@@ -1,6 +1,6 @@
 [project]
 name = "md-preflight-api"
-version = "0.3.0"
+version = "0.3.3"
 description = "Store-specific Lead Time / ROP adjustment (input → analyze → output)"
 requires-python = ">=3.11"
 dependencies = [
