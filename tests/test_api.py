@@ -141,3 +141,11 @@ def test_index_page(client: TestClient) -> None:
     assert "theme-toggle" in response.text
     assert 'data-theme-btn="system"' in response.text
     assert "top-nav" in response.text
+    assert "site-footer" in response.text
+    assert "MD Preflight – Find ROP" in response.text
+    assert "coming-soon" in response.text
+    assert "개발자에게 제안하기" in response.text
+    assert "taewon1119@gmail.com" in response.text
+    # Version lives in footer, not the sticky nav.
+    assert "nav-meta" not in response.text
+    assert "footer-version" in response.text

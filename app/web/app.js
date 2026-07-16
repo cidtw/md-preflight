@@ -24,6 +24,7 @@ const wizardNav = document.getElementById("wizard-nav");
 const stepProgress = document.getElementById("step-progress");
 const stepProgressList = document.getElementById("step-progress-list");
 const welcomeStep = document.getElementById("step-welcome");
+const comingSoon = document.getElementById("coming-soon");
 
 /** @type {object | null} */
 let lastPayload = null;
@@ -228,6 +229,8 @@ function showStep(index) {
   form.hidden = isWelcome;
   wizardNav.hidden = isWelcome;
   stepProgress.hidden = isWelcome;
+  // Roadmap dummy only on landing welcome (hidden during wizard / loading / result).
+  if (comingSoon) comingSoon.hidden = !isWelcome;
 
   for (const step of STEPS) {
     if (step.id === "welcome") continue;
@@ -536,6 +539,7 @@ function renderResult(payload, expertOverride) {
     </section>
   `;
   resultPanel.hidden = false;
+  if (comingSoon) comingSoon.hidden = true;
   document.getElementById("again-btn")?.addEventListener("click", () => {
     resultPanel.hidden = true;
     inputPanel.hidden = false;
@@ -654,6 +658,7 @@ form?.addEventListener("submit", async (event) => {
   inputPanel.hidden = true;
   stepProgress.hidden = true;
   resultPanel.hidden = true;
+  if (comingSoon) comingSoon.hidden = true;
   loadingPanel.hidden = false;
 
   const started = performance.now();
