@@ -461,7 +461,7 @@ function renderResult(payload, expertOverride) {
             리포트 내보내기
           </button>
           <div class="export-dropdown" id="export-dropdown" hidden role="menu">
-            <button type="button" class="export-item" data-export="pdf" role="menuitem">PDF (인쇄·저장)</button>
+            <button type="button" class="export-item" data-export="pdf" role="menuitem">PDF (인쇄 대화상자)</button>
             <button type="button" class="export-item" data-export="markdown" role="menuitem">Markdown (.md)</button>
             <button type="button" class="export-item" data-export="csv" role="menuitem">비교표 CSV (.csv)</button>
             <button type="button" class="export-item" data-export="json" role="menuitem">원본 JSON (.json)</button>
@@ -576,16 +576,21 @@ function bindExportMenu(expert) {
 
   dropdown.querySelectorAll("[data-export]").forEach((item) => {
     item.addEventListener("click", (ev) => {
+      ev.preventDefault();
       ev.stopPropagation();
       const format = item.getAttribute("data-export");
-      close();
-      if (!lastPayload || !format) return;
+      if (!lastPayload || !format) {
+        close();
+        return;
+      }
+      // Call export while still in the user-gesture stack (before close/DOM churn).
+      const expertOn = document.getElementById("expert-mode")?.checked ?? expert;
       try {
-        exportReport(format, lastPayload, {
-          expert: document.getElementById("expert-mode")?.checked ?? expert,
-        });
+        exportReport(format, lastPayload, { expert: expertOn });
       } catch (err) {
         window.alert(err instanceof Error ? err.message : String(err));
+      } finally {
+        close();
       }
     });
   });

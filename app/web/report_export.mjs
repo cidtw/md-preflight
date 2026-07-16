@@ -270,24 +270,89 @@ export function downloadText(filename, content, mime) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
+/**
+ * PDF export without window.open (works even when site popups are restricted).
+ * Writes a temporary hidden iframe and opens the browser print dialog
+ * (user chooses "Save as PDF").
+ */
 export function openPrintablePdf(payload, { expert = false } = {}) {
   const html = buildPrintableHtml(payload, { expert });
-  const w = window.open("", "_blank");
-  if (!w) {
-    throw new Error("팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해 주세요.");
+  // Drop the on-page "print" chrome — print dialog is the primary path.
+  const printHtml = html
+    .replace(/<div class="no-print"[\s\S]*?<\/div>/, "")
+    .replace(
+      "</head>",
+      "<style>@media print{body{padding:12mm}}</style></head>",
+    );
+
+  // Remove any previous export iframe
+  document.getElementById("rop-print-frame")?.remove();
+
+  const iframe = document.createElement("iframe");
+  iframe.id = "rop-print-frame";
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.setAttribute("title", "ROP report print");
+  // Off-screen but not zero-size: some engines skip print on 0×0 frames.
+  Object.assign(iframe.style, {
+    position: "fixed",
+    right: "0",
+    bottom: "0",
+    width: "1px",
+    height: "1px",
+    opacity: "0",
+    border: "0",
+    pointerEvents: "none",
+  });
+  document.body.appendChild(iframe);
+
+  const win = iframe.contentWindow;
+  const doc = win?.document;
+  if (!win || !doc) {
+    iframe.remove();
+    // Last resort: download HTML the user can open and print.
+    downloadText(
+      `${reportBasename(payload)}.html`,
+      printHtml,
+      "text/html;charset=utf-8",
+    );
+    return;
   }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  // Give the new document a moment to layout before print dialog.
-  setTimeout(() => {
+
+  doc.open();
+  doc.write(printHtml);
+  doc.close();
+
+  const cleanup = () => {
+    setTimeout(() => {
+      iframe.remove();
+    }, 1500);
+  };
+
+  const triggerPrint = () => {
     try {
-      w.focus();
-      w.print();
+      win.focus();
+      win.print();
     } catch {
-      /* user can click the print button in the page */
+      // Fallback: download HTML if print API is unavailable.
+      downloadText(
+        `${reportBasename(payload)}.html`,
+        printHtml,
+        "text/html;charset=utf-8",
+      );
+    } finally {
+      cleanup();
     }
-  }, 350);
+  };
+
+  // Prefer onload; also schedule a short delay for engines that skip onload after doc.write.
+  let printed = false;
+  const once = () => {
+    if (printed) return;
+    printed = true;
+    triggerPrint();
+  };
+  iframe.addEventListener("load", once, { once: true });
+  setTimeout(once, 250);
 }
 
 /**
