@@ -15,10 +15,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.config import Settings, get_settings
+from app.pipeline.analyze.decline_advice import generate_decline_advice
 from app.pipeline.analyze.engine import analyze
 from app.pipeline.input.template import validate_parameters
 from app.pipeline.types import CalcBreakdown, GeoEnrichment, ParameterValue
-
 SimScenario = Literal[
     "own_service_up",
     "competitor_pressure",
@@ -43,6 +44,7 @@ class SimulationSide(BaseModel):
     standard_lead_time_days: float
     competition_demand_factor: float
     competition_intensity: float
+    order_days_label: str = ""
 
 
 class SimulationResponse(BaseModel):
@@ -56,6 +58,11 @@ class SimulationResponse(BaseModel):
     guidance: list[str] = Field(default_factory=list)
     plain_summary: str
     technical_summary: str = ""
+    # AI response plan when sales index declines (delta < 0).
+    sales_decline: bool = False
+    ai_advice: str | None = None
+    ai_used: bool = False
+    ai_note: str | None = None
 
 
 _SCENARIO_LABEL: dict[SimScenario, str] = {
@@ -77,6 +84,7 @@ def _side(label: str, calc: CalcBreakdown) -> SimulationSide:
         standard_lead_time_days=calc.standard_lead_time_days,
         competition_demand_factor=calc.competition_demand_factor,
         competition_intensity=calc.competition_intensity,
+        order_days_label=calc.order_days_label or calc.order_frequency_label or "",
     )
 
 
@@ -122,7 +130,9 @@ def run_simulation(
     body: SimulationRequest,
     *,
     geo_override: GeoEnrichment | None = None,
+    settings: Settings | None = None,
 ) -> SimulationResponse:
+    cfg = settings if settings is not None else get_settings()
     base_params = dict(body.parameters)
     # Simulation is most meaningful with precise address + competition context,
     # but still runs without it (demand/LT shocks only).
@@ -198,6 +208,27 @@ def run_simulation(
             "정확한 주소·경쟁 포화 옵션을 켜면 시뮬레이션이 상권 경쟁 계수와 함께 해석됩니다.",
         )
 
+    # Sales-decline → fixed-prompt AI (or fallback) response plan.
+    sales_decline = delta_pct < -0.05  # treat near-zero as no decline
+    ai_advice: str | None = None
+    ai_used = False
+    ai_note: str | None = None
+    if sales_decline:
+        base_map = base_side.model_dump()
+        base_map["order_days_from_calc"] = base_side.order_days_label
+        shock_map = shock_side.model_dump()
+        ai_advice, ai_used, ai_note = generate_decline_advice(
+            parameters=base_params,
+            scenario_label=label,
+            intensity=body.intensity,
+            delta_pct=delta_pct,
+            plain_summary=plain,
+            baseline=base_map,
+            shocked=shock_map,
+            api_key=cfg.xai_api_key,
+            model=cfg.xai_model,
+        )
+
     return SimulationResponse(
         scenario=body.scenario,
         scenario_label=label,
@@ -209,4 +240,8 @@ def run_simulation(
         guidance=guidance,
         plain_summary=plain,
         technical_summary=technical,
+        sales_decline=sales_decline,
+        ai_advice=ai_advice,
+        ai_used=ai_used,
+        ai_note=ai_note,
     )
