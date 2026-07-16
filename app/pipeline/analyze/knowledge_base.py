@@ -115,32 +115,36 @@ def match_knowledge(
         min(85, max(45, round(48 + scores.demand_volatility * 5 + unit * 10 + fti * 6))),
     )
 
+    # Plain-language notes for store owners (numbers kept; jargon minimized).
     logistics_issue = (
-        f"'{dong}' 인근 배송 이력 패턴과 '{access_label}' 조건을 매칭한 결과, "
-        f"상권·행정동 기인 물류 리스크 성분이 약 {logistics_delay:.1f}일로 추정됩니다. "
-        f"품목 리드타임 입력값은 유지하고, 이 리스크는 버퍼 재고(개)로 전환합니다. "
-        f"(상권 공급 난이도 {scores.supply_difficulty}/5, "
-        f"안정 시드 잔차 {dong_component:.2f}일)"
+        f"'{dong}'·'{access_label}'이면 배송·하역이 평균보다 "
+        f"약 {logistics_delay:.1f}일 더 걸릴 수 있어, 그 분량을 여유 재고로 둡니다."
     )
+    if stockout_risk_index >= 70:
+        stockout_plain = "바쁠 때 품절 위험이 큰 편"
+    elif stockout_risk_index >= 50:
+        stockout_plain = "바쁠 때 품절 위험이 있는 편"
+    else:
+        stockout_plain = "품절 위험이 상대적으로 낮은 편"
+    if peak_intensity_index >= 70:
+        peak_plain = "손님이 몰리는 시간대가 뚜렷합니다"
+    elif peak_intensity_index >= 55:
+        peak_plain = "손님이 몰리는 시간대가 어느 정도 있습니다"
+    else:
+        peak_plain = "수요가 비교적 고른 편입니다"
     demand_risk = (
-        f"'{trade_label}' 특성과 품목 '{product_name}' 조합에서 {peak} 패턴이 두드러집니다. "
-        f"피크 상대 강도 지수 {peak_intensity_index}/100 · 선택 정책 '{sl_label}' 기준 "
-        f"표준 ROP 유지 시 피크 품절 상대 위험 점수 {stockout_risk_index}/100"
-        f"(모형 추정 인덱스, 실측 확률이 아님)으로 산출되어 "
-        f"안전재고·ROP 조정이 필요합니다."
+        f"'{trade_label}'의 '{product_name}'은 {peak}. {peak_plain}. "
+        f"{sl_label} 기준으로는 {stockout_plain}이라 여유 재고를 넉넉히 잡습니다."
     )
     if fti > 0:
         foot_note = (
-            f"{dong} · {trade_label}: {peak}. "
-            f"서비스레벨 Z {z_policy:.2f} + 맥락 {z_context:.2f} "
-            f"(수요변동 {scores.demand_volatility}/5, 유동지수 {fti:.3f}) "
-            f"→ 최종 Z={safety_z:.2f}."
+            f"'{dong}'({trade_label})은 {peak}. "
+            f"주변 유동이 있어 여유 재고를 조금 더 높게 잡았습니다."
         )
     else:
         foot_note = (
-            f"{dong} · {trade_label}: {peak}. "
-            f"서비스레벨 Z {z_policy:.2f} + 맥락 {z_context:.2f} "
-            f"(수요변동 {scores.demand_volatility}/5) → 최종 Z≈{safety_z:.2f}."
+            f"'{dong}'({trade_label})은 {peak}. "
+            f"상권 특성을 반영해 여유 재고 수준을 조정했습니다."
         )
     query = f"{dong} + {product_name} + {trade_label}"
 

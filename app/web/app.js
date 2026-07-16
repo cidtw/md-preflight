@@ -388,17 +388,17 @@ function renderResult(payload) {
       </dl>
     </section>
     <section class="card">
-      <h2>ROP 비교 대시보드</h2>
+      <h2>한눈에 보는 발주 기준</h2>
       <table class="cmp">
         <thead>
-          <tr><th>구분</th><th>업계/사내 표준</th><th>매장 맞춤 추천</th><th>변동</th></tr>
+          <tr><th>구분</th><th>일반(업계·사내) 기준</th><th>이 매장 추천</th><th>어떻게 달라졌나</th></tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
       <p class="rop-guide">${escapeHtml(payload.comparison.rop_guidance)}</p>
     </section>
     <section>
-      <h2 class="section-heading">계산 근거 · 지식 베이스</h2>
+      <h2 class="section-heading">왜 이렇게 나왔나요? (쉬운 설명)</h2>
       ${evidence}
     </section>
     <div class="actions">

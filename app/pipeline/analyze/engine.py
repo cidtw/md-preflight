@@ -190,22 +190,23 @@ def analyze(
         if capa_capped or order_qty < order_qty_raw:
             if capa_capped:
                 rop_part = (
-                    f"계산 ROP {raw_rop:.1f}개가 상한 {max_cap:.1f}개를 초과해 "
-                    f"상한으로 고정했습니다. "
-                    f"표시 안전재고는 캡 반영 유효값 {store_safety:.1f}개 "
-                    f"(캡 전 통계+버퍼 {statistical_ss + logistics_buffer:.1f}개). "
+                    f"한 번에 쌓아 두기엔 많아 보여 발주 기준(재고 {raw_rop:.0f}개)을 "
+                    f"매장에 맞는 상한 {max_cap:.0f}개로 낮췄습니다. "
                 )
             else:
-                rop_part = f"발주량 상한 {max_cap:.1f}개를 적용했습니다. "
+                rop_part = (
+                    f"창고가 좁아 1회 발주량 상한 {max_cap:.0f}개를 적용했습니다. "
+                )
             if order_qty < order_qty_raw:
                 qty_part = (
-                    f"1회 발주량 {order_qty_raw:g}개 → CAPA 상한 {order_qty:g}개로 절사. "
+                    f"1회 발주량도 {order_qty_raw:g}개 → {order_qty:g}개로 줄였습니다. "
                 )
             else:
-                qty_part = f"1회 약 {order_qty:g}개 수준. "
+                qty_part = f"1회 약 {order_qty:g}개 수준입니다. "
             multi_order = (
-                f"물류 창고 CAPA 점수 {scores.capa_score}/5(협소)로 {rop_part}"
-                f"{qty_part}발주 요일 {days_label} · 다회 소량 발주를 권장합니다."
+                f"매장·창고 공간이 넉넉하지 않습니다. {rop_part}"
+                f"{qty_part}"
+                f"대신 '{days_label}'처럼 자주 조금씩 넣는 편이 안전합니다."
             )
 
     return CalcBreakdown(

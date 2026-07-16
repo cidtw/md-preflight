@@ -57,8 +57,8 @@ def test_lead_time_is_fixed_and_risk_becomes_buffer() -> None:
     assert calc.suggested_order_qty > 0
     assert calc.order_cycle_days > 0
     assert calc.order_frequency_label
-    assert "ROP" in result.recommendation
-    assert "고정" in result.recommendation
+    assert "발주" in result.recommendation
+    assert "그대로" in result.recommendation
 
 
 def test_mismatch_guidance_prefers_size_and_ticket() -> None:
@@ -119,16 +119,16 @@ def test_comparison_includes_operational_levers() -> None:
     result = run(BASE)
     metrics = [row.metric for row in result.comparison.rows]
     assert any("리드타임" in m for m in metrics)
-    assert any("서비스 레벨" in m for m in metrics)
-    assert any("안전재고" in m for m in metrics)
+    assert any("품절 방어" in m for m in metrics)
+    assert any("여유 재고" in m for m in metrics)
     assert any("발주량" in m for m in metrics)
     assert any("발주 요일" in m for m in metrics)
-    assert any("ROP" in m for m in metrics)
+    assert any("발주 시점" in m for m in metrics)
     lt_row = next(r for r in result.comparison.rows if "리드타임" in r.metric)
     assert lt_row.delta == 0.0
     assert lt_row.standard_value == lt_row.recommended_value
-    assert "미조정" in lt_row.delta_label or "유지" in lt_row.delta_label
-    z_row = next(r for r in result.comparison.rows if "서비스 레벨" in r.metric)
+    assert "유지" in lt_row.delta_label or "그대로" in lt_row.delta_label
+    z_row = next(r for r in result.comparison.rows if "품절 방어" in r.metric)
     assert z_row.standard_value == pytest.approx(result.calc.knowledge.service_level_z)
     assert z_row.recommended_value == pytest.approx(result.calc.knowledge.safety_z_factor)
     assert z_row.delta == pytest.approx(
@@ -197,8 +197,8 @@ def test_service_level_raises_z_and_rop() -> None:
     assert low.calc.capa_capped is False
     assert high.calc.capa_capped is False
     # Comparison standard Z is selected policy, not a hardcoded sl_95 baseline.
-    low_z = next(r for r in low.comparison.rows if "서비스 레벨" in r.metric)
-    high_z = next(r for r in high.comparison.rows if "서비스 레벨" in r.metric)
+    low_z = next(r for r in low.comparison.rows if "품절 방어" in r.metric)
+    high_z = next(r for r in high.comparison.rows if "품절 방어" in r.metric)
     assert low_z.standard_value == pytest.approx(1.28)
     assert high_z.standard_value == pytest.approx(2.33)
 
@@ -266,7 +266,7 @@ def test_ss_comparison_identity_with_custom_standard_rop() -> None:
     result = run(BASE)
     d_lt = result.calc.daily_demand * result.calc.standard_lead_time_days
     expected_std_ss = max(0.0, result.calc.standard_rop - d_lt)
-    ss_row = next(r for r in result.comparison.rows if "안전재고" in r.metric)
+    ss_row = next(r for r in result.comparison.rows if "여유 재고" in r.metric)
     assert ss_row.standard_value == pytest.approx(expected_std_ss)
     assert ss_row.standard_value != pytest.approx(result.calc.base_safety_stock)
     # Identity: standard ROP ~ D*LT + standard SS (when standard_rop >= D*LT, exact).
@@ -281,7 +281,7 @@ def test_ss_comparison_identity_with_custom_standard_rop() -> None:
     }
     roomy_result = run(roomy)
     d_lt_r = roomy_result.calc.daily_demand * roomy_result.calc.standard_lead_time_days
-    ss_r = next(r for r in roomy_result.comparison.rows if "안전재고" in r.metric)
+    ss_r = next(r for r in roomy_result.comparison.rows if "여유 재고" in r.metric)
     assert ss_r.standard_value == pytest.approx(50 - d_lt_r)
     assert roomy_result.calc.standard_rop == pytest.approx(
         d_lt_r + ss_r.standard_value,
