@@ -25,13 +25,26 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from typing import cast
 
+from app.pipeline.analyze.competition_saturation import (
+    CompetitorQuery,
+    classify_competitor,
+    competitor_queries,
+    profile_for_store_type,
+    score_competitors,
+)
 from app.pipeline.analyze.event_foot_traffic import (
     EVENT_KEYWORD_QUERIES,
     EVENT_SCAN_RADIUS_M,
     classify_event_venue,
     score_event_venues,
 )
-from app.pipeline.types import EventVenueSignal, GeoEnrichment, NearbyPoi, PoiCategory
+from app.pipeline.types import (
+    CompetitionCompetitor,
+    EventVenueSignal,
+    GeoEnrichment,
+    NearbyPoi,
+    PoiCategory,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -517,6 +530,134 @@ def _scan_event_venues(
     return scored, uplift, multiplier, notes
 
 
+def _scan_competitors(
+    *,
+    lat: float,
+    lng: float,
+    store_type: str,
+    api_key: str,
+    fetch: JsonFetch,
+) -> tuple[list[CompetitionCompetitor], float, float, int, int, list[str]]:
+    """Search competitors by industry matrix; return scored list + intensity + factor."""
+    profile = profile_for_store_type(store_type)
+    queries = competitor_queries(store_type)
+    notes: list[str] = []
+    raw_hits: list[CompetitionCompetitor] = []
+    workers = min(6, max(1, len(queries)))
+    pool = ThreadPoolExecutor(max_workers=workers)
+
+    def _run_one(q: CompetitorQuery) -> list[CompetitionCompetitor]:
+        hits: list[CompetitionCompetitor] = []
+        if q.mode == "category":
+            pois = _search_category(
+                lat=lat,
+                lng=lng,
+                category_code=q.code_or_query,
+                radius_m=q.radius_m,
+                api_key=api_key,
+                fetch=fetch,
+            )
+            for poi in pois:
+                kind = classify_competitor(
+                    poi.name,
+                    default_kind=q.default_kind,
+                    query_hint=q.code_or_query,
+                )
+                hits.append(
+                    CompetitionCompetitor(
+                        name=poi.name,
+                        kind=kind,
+                        tier=q.tier,
+                        distance_m=poi.distance_m,
+                    ),
+                )
+            return hits
+        places = _search_keyword_places(
+            lat=lat,
+            lng=lng,
+            radius_m=q.radius_m,
+            keyword=q.code_or_query,
+            api_key=api_key,
+            fetch=fetch,
+        )
+        for name, distance, kw in places:
+            kind = classify_competitor(
+                name,
+                default_kind=q.default_kind,
+                query_hint=kw,
+            )
+            hits.append(
+                CompetitionCompetitor(
+                    name=name,
+                    kind=kind,
+                    tier=q.tier,
+                    distance_m=round(distance, 1),
+                ),
+            )
+        return hits
+
+    futures = [pool.submit(_run_one, q) for q in queries]
+    try:
+        try:
+            for fut in as_completed(futures, timeout=_POI_TOTAL_BUDGET_S):
+                try:
+                    raw_hits.extend(fut.result())
+                except (
+                    urllib.error.URLError,
+                    TimeoutError,
+                    TypeError,
+                    ValueError,
+                    RuntimeError,
+                ) as sub_exc:
+                    logger.warning("kakao competition query failed: %s", sub_exc)
+        except FuturesTimeoutError:
+            notes.append(
+                f"경쟁 매장 검색 예산({_POI_TOTAL_BUDGET_S:.0f}s) 초과 — 부분 결과 사용",
+            )
+            for fut in futures:
+                if fut.done() and not fut.cancelled():
+                    with contextlib.suppress(Exception):
+                        raw_hits.extend(fut.result(timeout=0))
+                else:
+                    _ = fut.cancel()
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+
+    intensity, demand_factor, scored = score_competitors(
+        raw_hits,
+        decay_m=profile.decay_m,
+        max_radius_m=profile.search_radius_m,
+    )
+    if scored:
+        top = ", ".join(
+            f"{c.name}({c.tier}/{c.distance_m:.0f}m)" for c in scored[:3]
+        )
+        notes.append(
+            (
+                f"경쟁 포화 스캔 · 1차 상권 {profile.primary_radius_m}m · "
+                f"검색 {profile.search_radius_m}m · 경쟁 {len(scored)}곳 · "
+                f"강도 {intensity:.3f} · 수요계수 {demand_factor:.3f} · 상위: {top}"
+            ),
+        )
+        notes.append(profile.notes)
+    else:
+        notes.append(
+            (
+                f"경쟁 포화 옵션 활성 · 검색 반경 {profile.search_radius_m}m 안 "
+                "동종·위협 경쟁 점포가 검색되지 않아 수요 분산 0으로 둡니다."
+            ),
+        )
+        notes.append(profile.notes)
+    return (
+        scored,
+        intensity,
+        demand_factor,
+        profile.primary_radius_m,
+        profile.search_radius_m,
+        notes,
+    )
+
+
 def enrich_from_address(
     address: str,
     *,
@@ -524,6 +665,8 @@ def enrich_from_address(
     radius_m: int = 500,
     fetch: JsonFetch | None = None,
     scan_events: bool = False,
+    scan_competition: bool = False,
+    store_type: str = "convenience",
 ) -> GeoEnrichment:
     """Geocode address and collect nearby foot-traffic POIs via Kakao Local."""
     cleaned = address.strip()
@@ -661,6 +804,35 @@ def enrich_from_address(
             logger.warning("event venue scan failed: %s", event_exc)
             notes.append(f"일시 유동 시설 검색 실패 — 증분 0 처리: {event_exc}")
 
+    competitors: list[CompetitionCompetitor] = []
+    comp_intensity = 0.0
+    comp_factor = 1.0
+    comp_primary = 0
+    comp_search = 0
+    if scan_competition:
+        try:
+            (
+                competitors,
+                comp_intensity,
+                comp_factor,
+                comp_primary,
+                comp_search,
+                comp_notes,
+            ) = _scan_competitors(
+                lat=lat,
+                lng=lng,
+                store_type=store_type,
+                api_key=api_key,
+                fetch=do_fetch,
+            )
+            notes.extend(comp_notes)
+        except (urllib.error.URLError, TimeoutError, TypeError, ValueError) as comp_exc:
+            logger.warning("competition scan failed: %s", comp_exc)
+            notes.append(f"경쟁 매장 검색 실패 — 수요 분산 0 처리: {comp_exc}")
+            profile = profile_for_store_type(store_type)
+            comp_primary = profile.primary_radius_m
+            comp_search = profile.search_radius_m
+
     return GeoEnrichment(
         enabled=True,
         lat=lat,
@@ -677,4 +849,11 @@ def enrich_from_address(
         event_venues=event_venues,
         event_foot_traffic_uplift=event_uplift,
         event_demand_multiplier=event_mult,
+        competition_scan_enabled=scan_competition,
+        competition_radius_m=comp_search,
+        competition_primary_radius_m=comp_primary,
+        competition_store_type=store_type if scan_competition else None,
+        competitors=competitors,
+        competition_intensity=comp_intensity,
+        competition_demand_factor=comp_factor,
     )

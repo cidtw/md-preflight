@@ -7,6 +7,7 @@ Produces dual narratives:
 
 from __future__ import annotations
 
+from app.pipeline.analyze.competition_saturation import KIND_LABEL_KO, TIER_LABEL_KO
 from app.pipeline.analyze.knowledge_base import FOOT_TRAFFIC_Z_BOOST
 from app.pipeline.domain_catalog import (
     ACCESSIBILITY,
@@ -77,6 +78,9 @@ def _summary(validated: ValidatedInput, calc: CalcBreakdown) -> StoreSummary:
         use_precise_location=use_precise,
         store_address=str(address) if address is not None else None,
         consider_temp_foot_traffic=bool(p.get("consider_temp_foot_traffic", False)),
+        consider_competition_saturation=bool(
+            p.get("consider_competition_saturation", False),
+        ),
     )
 
 
@@ -294,15 +298,61 @@ def _event_plain_points(calc: CalcBreakdown) -> list[str]:
                 f"반경 {geo.event_radius_m}m 안 행사·대형 유동 가능 시설을 반영해 "
                 f"잠재 수요를 약 {pct:.0f}% 올려 잡았습니다. (예: {names})"
             ),
-            (
-                f"일평균 소진 {calc.daily_demand:g}개 → 행사 반영 "
-                f"{calc.effective_daily_demand:g}개로 재고·발주량을 계산했습니다."
-            ),
         ]
     return [
         (
             f"일시 유동 옵션을 켰지만 반경 {geo.event_radius_m}m 안 "
             "대형 행사·유동 시설이 검색되지 않아 수요 증분은 0입니다."
+        ),
+    ]
+
+
+def _competition_plain_points(calc: CalcBreakdown) -> list[str]:
+    geo = calc.geo
+    if not geo.competition_scan_enabled:
+        return []
+    if geo.competitors:
+        top = geo.competitors[:3]
+        names = ", ".join(
+            (
+                f"{c.name}("
+                f"{TIER_LABEL_KO.get(c.tier, c.tier)}·"
+                f"{KIND_LABEL_KO.get(c.kind, c.kind)}·"
+                f"{c.distance_m:.0f}m)"
+            )
+            for c in top
+        )
+        cut_pct = calc.competition_demand_cut_frac * 100
+        return [
+            (
+                f"업태 1차 상권(약 {geo.competition_primary_radius_m}m) 기준으로 "
+                f"경쟁 점포 {len(geo.competitors)}곳을 반영해 시장 포화 수요를 "
+                f"약 {cut_pct:.0f}% 낮춰 잡았습니다. (예: {names})"
+            ),
+        ]
+    return [
+        (
+            f"경쟁 포화 옵션을 켰지만 검색 반경 {geo.competition_radius_m}m 안 "
+            "동종·위협 경쟁 점포가 검색되지 않아 수요 분산은 0입니다."
+        ),
+    ]
+
+
+def _effective_demand_plain_point(calc: CalcBreakdown) -> list[str]:
+    """Explain D → D_eff when event and/or competition adjusted demand."""
+    if abs(calc.effective_daily_demand - calc.daily_demand) < 1e-9:
+        return []
+    parts: list[str] = []
+    if calc.event_demand_uplift_frac > 0:
+        parts.append(f"일시 유동 +{calc.event_demand_uplift_frac * 100:.0f}%")
+    if calc.competition_demand_cut_frac > 0:
+        parts.append(f"경쟁 포화 -{calc.competition_demand_cut_frac * 100:.0f}%")
+    label = " · ".join(parts) if parts else "보정"
+    return [
+        (
+            f"일평균 소진 {calc.daily_demand:g}개 → {label} 반영 "
+            f"{calc.effective_daily_demand:g}개로 재고·발주량을 계산했습니다. "
+            "(일반/표준 비교 기준은 보정 전 소진량)"
         ),
     ]
 
@@ -320,8 +370,7 @@ def _event_technical_points(calc: CalcBreakdown) -> list[str]:
             (
                 f"event_scan r={geo.event_radius_m}m · venues={len(geo.event_venues)} · "
                 f"uplift={geo.event_foot_traffic_uplift:.3f} · "
-                f"demand_mult={geo.event_demand_multiplier:.3f} · "
-                f"D {calc.daily_demand:g}→{calc.effective_daily_demand:g}."
+                f"demand_mult={geo.event_demand_multiplier:.3f}."
             ),
             f"상위 행사 시설: {top}",
         ]
@@ -329,6 +378,33 @@ def _event_technical_points(calc: CalcBreakdown) -> list[str]:
         (
             f"event_scan r={geo.event_radius_m}m · venues=0 · uplift=0 · "
             f"demand_mult=1.0 (no temporary demand add-on)."
+        ),
+    ]
+
+
+def _competition_technical_points(calc: CalcBreakdown) -> list[str]:
+    geo = calc.geo
+    if not geo.competition_scan_enabled:
+        return []
+    if geo.competitors:
+        top = ", ".join(
+            f"{c.name}[{c.tier}/{c.kind}] {c.distance_m:.0f}m w={c.weight:.3f}"
+            for c in geo.competitors[:5]
+        )
+        return [
+            (
+                f"competition_scan primary={geo.competition_primary_radius_m}m · "
+                f"search={geo.competition_radius_m}m · type={geo.competition_store_type} · "
+                f"n={len(geo.competitors)} · intensity={geo.competition_intensity:.3f} · "
+                f"demand_factor={geo.competition_demand_factor:.3f} · "
+                f"D {calc.daily_demand:g}→{calc.effective_daily_demand:g}."
+            ),
+            f"상위 경쟁: {top}",
+        ]
+    return [
+        (
+            f"competition_scan search={geo.competition_radius_m}m · n=0 · "
+            f"intensity=0 · demand_factor=1.0 (no saturation cut)."
         ),
     ]
 
@@ -351,6 +427,8 @@ def _geo_plain(calc: CalcBreakdown) -> EvidenceBlock:
             "이 경우에도 행정동·상권 정보로 여유 재고를 계산해 두었습니다.",
             "가능하면 도로명 주소(번지 포함)로 다시 시도해 주세요.",
             *_event_plain_points(calc),
+            *_competition_plain_points(calc),
+            *_effective_demand_plain_point(calc),
         ]
         return EvidenceBlock(
             id="geo_poi",
@@ -379,6 +457,8 @@ def _geo_plain(calc: CalcBreakdown) -> EvidenceBlock:
         "유동이 클수록 바쁠 때 품절을 막기 위해 여유 재고를 조금 더 잡습니다.",
     )
     points.extend(_event_plain_points(calc))
+    points.extend(_competition_plain_points(calc))
+    points.extend(_effective_demand_plain_point(calc))
     if geo.address_queried:
         points.append(f"조회한 주소: {geo.address_queried}")
     summary = (
@@ -387,6 +467,8 @@ def _geo_plain(calc: CalcBreakdown) -> EvidenceBlock:
     )
     if geo.event_scan_enabled and calc.event_demand_uplift_frac > 0:
         summary += f" · 일시 유동 수요 +{calc.event_demand_uplift_frac * 100:.0f}%"
+    if geo.competition_scan_enabled and calc.competition_demand_cut_frac > 0:
+        summary += f" · 경쟁 포화 수요 -{calc.competition_demand_cut_frac * 100:.0f}%"
     return EvidenceBlock(
         id="geo_poi",
         title="매장 위치·주변 손님 흐름",
@@ -417,6 +499,7 @@ def _geo_technical(calc: CalcBreakdown) -> EvidenceBlock:
                 *geo.notes,
                 "지도 API 보강에 실패하거나 키가 없어 행정동 경로로 안전재고를 계산했습니다.",
                 *_event_technical_points(calc),
+                *_competition_technical_points(calc),
             ],
         )
     top = geo.pois[:5]
@@ -439,6 +522,7 @@ def _geo_technical(calc: CalcBreakdown) -> EvidenceBlock:
         + f"최종 {kb.safety_z_factor:.2f}.",
     )
     points.extend(_event_technical_points(calc))
+    points.extend(_competition_technical_points(calc))
     if geo.address_queried:
         points.append(f"조회 주소: {geo.address_queried}")
     summary = (
@@ -449,6 +533,11 @@ def _geo_technical(calc: CalcBreakdown) -> EvidenceBlock:
         summary += (
             f" · event_uplift {geo.event_foot_traffic_uplift:.3f} · "
             f"D*{geo.event_demand_multiplier:.3f}"
+        )
+    if geo.competition_scan_enabled:
+        summary += (
+            f" · competition intensity {geo.competition_intensity:.3f} · "
+            f"D*{geo.competition_demand_factor:.3f}"
         )
     return EvidenceBlock(
         id="geo_poi",

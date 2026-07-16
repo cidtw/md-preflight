@@ -60,12 +60,16 @@ def _resolve_geo(
         return disabled_enrichment()
     address = _as_str(p.get("store_address", "")).strip()
     scan_events = _as_bool(p.get("consider_temp_foot_traffic"), False)
+    scan_competition = _as_bool(p.get("consider_competition_saturation"), False)
+    store_type = _as_str(p.get("store_type", "convenience"))
     return enrich_from_address(
         address,
         api_key=settings.kakao_rest_api_key,
         radius_m=settings.geo_radius_m,
         fetch=fetch,
         scan_events=scan_events,
+        scan_competition=scan_competition,
+        store_type=store_type,
     )
 
 
@@ -129,9 +133,18 @@ def analyze(
         standard_lt = DEFAULT_STANDARD_LT.get(channel_key, 2.0)
 
     fixed_lt = standard_lt
+    # Event uplift (≥1) then competition saturation (≤1). Standard comparison uses base D.
     mult = max(1.0, float(geo.event_demand_multiplier or 1.0))
-    effective_demand = round(daily_demand * mult, 4)
+    comp_factor = float(geo.competition_demand_factor or 1.0)
+    if not geo.competition_scan_enabled:
+        comp_factor = 1.0
+    comp_factor = min(1.0, max(0.0, comp_factor))
+    comp_intensity = (
+        float(geo.competition_intensity) if geo.competition_scan_enabled else 0.0
+    )
+    effective_demand = round(daily_demand * mult * comp_factor, 4)
     event_uplift_frac = round(max(0.0, mult - 1.0), 4)
+    competition_cut_frac = round(max(0.0, 1.0 - comp_factor), 4)
 
     logistics_risk_days = round(
         max(0.0, scores.accessibility_lt_delta_days + knowledge.logistics_delay_days),
@@ -245,6 +258,9 @@ def analyze(
         daily_demand=daily_demand,
         effective_daily_demand=effective_demand,
         event_demand_uplift_frac=event_uplift_frac,
+        competition_intensity=round(comp_intensity, 4),
+        competition_demand_factor=round(comp_factor, 4),
+        competition_demand_cut_frac=competition_cut_frac,
         base_safety_stock=base_safety,
         store_safety_stock=store_safety,
         order_cycle_days=order_cycle,

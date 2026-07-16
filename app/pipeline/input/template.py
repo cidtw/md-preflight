@@ -25,7 +25,7 @@ from app.pipeline.types import (
 )
 
 TEMPLATE_ID = "rop-adjust-v1"
-TEMPLATE_VERSION = "1.3.1"
+TEMPLATE_VERSION = "1.4.0"
 
 
 def _opts(mapping: dict[str, str]) -> list[ParameterOption]:
@@ -104,6 +104,17 @@ def get_template() -> InputTemplate:
                     "정확한 매장 주소를 켠 경우에만 사용. 주소 반경 200m 안 "
                     "대형 행사·유동 유발 시설(경기장·공연장·전시장 등)을 검색해 "
                     "예상 임시 유동에 따른 잠재 수요 증분을 ROP·안전재고·발주량에 반영합니다."
+                ),
+            ),
+            ParameterSpec(
+                key="consider_competition_saturation",
+                label="경쟁 매장 포화·수요 분산 반영",
+                type="boolean",
+                required=False,
+                description=(
+                    "정확한 매장 주소를 켠 경우에만 사용. 업태별 1차 상권 반경 안 "
+                    "동종·위협 경쟁 점포의 거리·인접도(직접/실질위협/간접)를 점수화해 "
+                    "시장 포화에 따른 수요 약화를 ROP·안전재고·발주량에 반영합니다."
                 ),
             ),
             ParameterSpec(
@@ -281,19 +292,27 @@ def validate_parameters(
             normalized[key] = _as_string(key, value)
 
     use_precise = bool(normalized.get("use_precise_location", False))
+    guidance_extras: list[str] = []
     if not use_precise:
         normalized["use_precise_location"] = False
         _ = normalized.pop("store_address", None)
-        # Event-crowd scan requires a precise geocoded address.
+        # Event / competition scans require a precise geocoded address.
         if bool(normalized.get("consider_temp_foot_traffic", False)):
             normalized["consider_temp_foot_traffic"] = False
-            guidance_extra = (
+            guidance_extras.append(
                 "일시 유동인구 증분 옵션은 정확한 매장 주소 사용 시에만 적용됩니다. "
-                "해당 옵션을 끄고 행정동 경로로 계산합니다."
+                + "해당 옵션을 끄고 행정동 경로로 계산합니다.",
             )
         else:
-            guidance_extra = None
             normalized["consider_temp_foot_traffic"] = False
+        if bool(normalized.get("consider_competition_saturation", False)):
+            normalized["consider_competition_saturation"] = False
+            guidance_extras.append(
+                "경쟁 매장 포화·수요 분산 옵션은 정확한 매장 주소 사용 시에만 적용됩니다. "
+                + "해당 옵션을 끄고 행정동 경로로 계산합니다.",
+            )
+        else:
+            normalized["consider_competition_saturation"] = False
     else:
         normalized["use_precise_location"] = True
         if "store_address" not in normalized:
@@ -303,7 +322,9 @@ def validate_parameters(
         normalized["consider_temp_foot_traffic"] = bool(
             normalized.get("consider_temp_foot_traffic", False),
         )
-        guidance_extra = None
+        normalized["consider_competition_saturation"] = bool(
+            normalized.get("consider_competition_saturation", False),
+        )
 
     # Optional policy levers — defaults when omitted.
     if "service_level" not in normalized:
@@ -315,8 +336,7 @@ def validate_parameters(
     store_size = str(normalized["store_size"])
     avg_ticket = str(normalized["avg_ticket"])
     guidance = _build_guidance(store_type, store_size, avg_ticket)
-    if guidance_extra:
-        guidance.append(guidance_extra)
+    guidance.extend(guidance_extras)
 
     return ValidatedInput(
         template_id=spec.id,

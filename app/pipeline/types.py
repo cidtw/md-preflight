@@ -78,6 +78,16 @@ class EventVenueSignal(BaseModel):
     weight: float = 0.0
 
 
+class CompetitionCompetitor(BaseModel):
+    """Nearby competing retail venue for market-saturation scoring."""
+
+    name: str
+    kind: str
+    tier: str  # direct | threat | indirect
+    distance_m: float
+    weight: float = 0.0
+
+
 class GeoEnrichment(BaseModel):
     """Map-API enrichment for precise store address (Kakao Local)."""
 
@@ -97,6 +107,14 @@ class GeoEnrichment(BaseModel):
     event_venues: list[EventVenueSignal] = Field(default_factory=list)
     event_foot_traffic_uplift: float = Field(default=0.0, ge=0.0, le=1.0)
     event_demand_multiplier: float = Field(default=1.0, ge=1.0)
+    # Optional competition / market-saturation scan (precise address only).
+    competition_scan_enabled: bool = False
+    competition_radius_m: int = 0
+    competition_primary_radius_m: int = 0
+    competition_store_type: str | None = None
+    competitors: list[CompetitionCompetitor] = Field(default_factory=list)
+    competition_intensity: float = Field(default=0.0, ge=0.0, le=1.0)
+    competition_demand_factor: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
 class KnowledgeSignals(BaseModel):
@@ -137,9 +155,12 @@ class CalcBreakdown(BaseModel):
     recommended_rop: float
     rop_delta: float
     daily_demand: float
-    # After optional temporary event-crowd demand uplift (else == daily_demand).
+    # After optional event uplift and/or competition saturation (else == daily_demand).
     effective_daily_demand: float = 0.0
     event_demand_uplift_frac: float = 0.0
+    competition_intensity: float = 0.0
+    competition_demand_factor: float = 1.0
+    competition_demand_cut_frac: float = 0.0
     base_safety_stock: float
     store_safety_stock: float
     order_cycle_days: float = 0.0
@@ -167,6 +188,7 @@ class StoreSummary(BaseModel):
     use_precise_location: bool = False
     store_address: str | None = None
     consider_temp_foot_traffic: bool = False
+    consider_competition_saturation: bool = False
 
 
 class ComparisonRow(BaseModel):

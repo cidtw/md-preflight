@@ -24,6 +24,7 @@
 | `use_precise_location` | (선택) 정확한 위치 사용 체크 |
 | `store_address` | 정확한 매장 주소 — 체크 시에만 필수 |
 | `consider_temp_foot_traffic` | (선택) 일시 유동인구 증분 — **정확한 주소 사용 시에만**. 주소 반경 200m 행사·유동 시설 검색 → 수요 배수 |
+| `consider_competition_saturation` | (선택) 경쟁 포화·수요 분산 — **정확한 주소 사용 시에만**. 업태별 1차 상권 반경 내 경쟁 점포 거리·인접도 → 수요 계수(≤1) |
 | `trade_area` | 상권 유형 |
 | `accessibility` | 대로변 / 이면 / 건물 내 |
 | `daily_demand` | 일평균 소진량 |
@@ -42,6 +43,7 @@
 1. **스코어링 테이블** (`scoring.py`) — CAPA, 수요집중, 회전가중, 공급난이도, 수요변동, 접근성 리스크(일)  
 2. **(선택) Kakao Local 보강** (`geo_enrichment.py`) — 주소 검색 + 카테고리/키워드 POI → `foot_traffic_index`  
    - **(선택) 일시 유동 스캔** (`event_foot_traffic.py`) — `consider_temp_foot_traffic` + 정확한 주소 시, 반경 **200m** 내 경기장·공연장·전시장·컨벤션 등 키워드 검색 → `event_foot_traffic_uplift` · `event_demand_multiplier`  
+   - **(선택) 경쟁 포화 스캔** (`competition_saturation.py`) — `consider_competition_saturation` + 정확한 주소 시, 업태별 1차 상권(CVS 300m · 슈퍼 500m · SSM 1km · 대형 5km) 내 동종·위협 경쟁 거리·인접도 → `competition_intensity` · `competition_demand_factor(≤1)`  
 3. **KB 매칭** (`knowledge_base.py`) — 행정동+품목+상권 시드 + (구조 FTI + 행사 블렌드) 기반 물류지연·Z계수·서술  
 4. **공식** (`engine.py`) — SSOT; 상세는 `docs/architecture.md` 와 동기화
 
@@ -53,7 +55,12 @@ foot_traffic_index = soft_sat(
 # Optional temporary event-crowd (precise address only, r=200m):
 event_uplift = soft_sat(Σ kind_w * exp(-d/100) * 0.5^rank_kind)
 event_demand_multiplier = 1 + 0.35 * event_uplift   # max +35% demand
-D_eff = D * event_demand_multiplier                 # 미옵션 시 D_eff=D
+# Optional competition saturation (precise address only; industry radii):
+competition_intensity = soft_sat(Σ tier_w * exp(-d/decay) * 0.5^rank_tier)
+  tier_w: direct=1.0 · threat=0.85 · indirect=0.40
+competition_demand_factor = 1 − 0.40 * intensity     # max −40% demand
+D_eff = D * event_demand_multiplier * competition_demand_factor
+  # 미옵션 시 각 배수=1 → D_eff=D
 FTI_kb = min(1, FTI + 0.20 * event_uplift)
 # LT is product input (kept as-is). Output never recommends changing LT.
 LT = 입력 품목 표준 LT   # 고정 — 조정 레버 아님
@@ -69,7 +76,7 @@ CAPA 1~2 이고 상한 초과 시:
   ROP = MaxCap, 표시 SS = max(0, MaxCap − D_eff×LT)   # 항등 유지
   Q = min(Q, MaxCap)
   → 다회 소량 발주 강화
-# 표준(비교 기준) ROP/SS는 행사 미반영 D 기준 — 임시 유동은 추천 측에만 반영
+# 표준(비교 기준) ROP/SS는 행사·경쟁 미반영 D 기준 — 보정은 추천 측에만 반영
 ```
 
 비교 표 기준선:

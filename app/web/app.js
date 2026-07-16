@@ -54,6 +54,7 @@ const STEPS = [
       "use_precise_location",
       "store_address",
       "consider_temp_foot_traffic",
+      "consider_competition_saturation",
       "trade_area",
       "accessibility",
     ],
@@ -86,6 +87,7 @@ const DEFAULTS = {
   use_precise_location: false,
   store_address: "",
   consider_temp_foot_traffic: false,
+  consider_competition_saturation: false,
   trade_area: "office",
   accessibility: "indoor",
   daily_demand: 12,
@@ -192,17 +194,26 @@ function syncPreciseLocationUI() {
     'label[data-field-key="consider_temp_foot_traffic"]',
   );
   const eventInput = form?.elements.namedItem("consider_temp_foot_traffic");
+  const compLabel = form?.querySelector(
+    'label[data-field-key="consider_competition_saturation"]',
+  );
+  const compInput = form?.elements.namedItem("consider_competition_saturation");
   const on = Boolean(checkbox && "checked" in checkbox && checkbox.checked);
   if (addressLabel) addressLabel.hidden = !on;
   if (addressInput && "required" in addressInput) {
     addressInput.required = on;
     if (!on && "value" in addressInput) addressInput.value = "";
   }
-  // Temporary foot-traffic option is only available with a precise address.
+  // Temporary foot-traffic / competition options only with a precise address.
   if (eventLabel) eventLabel.hidden = !on;
   if (eventInput && "checked" in eventInput) {
     eventInput.disabled = !on;
     if (!on) eventInput.checked = false;
+  }
+  if (compLabel) compLabel.hidden = !on;
+  if (compInput && "checked" in compInput) {
+    compInput.disabled = !on;
+    if (!on) compInput.checked = false;
   }
 }
 
@@ -369,6 +380,7 @@ function validateCurrentStep() {
   for (const key of step.keys) {
     if (key === "store_address" && !preciseOn) continue;
     if (key === "consider_temp_foot_traffic" && !preciseOn) continue;
+    if (key === "consider_competition_saturation" && !preciseOn) continue;
     const spec = specsByKey[key];
     if (!spec) continue;
     const el = form.elements.namedItem(key);
@@ -419,10 +431,21 @@ function readParameters(formEl) {
       "checked" in eventOpt &&
       eventOpt.checked,
   );
+  const compOpt = formEl.elements.namedItem("consider_competition_saturation");
+  parameters.consider_competition_saturation = Boolean(
+    parameters.use_precise_location &&
+      compOpt &&
+      "checked" in compOpt &&
+      compOpt.checked,
+  );
 
   const data = new FormData(formEl);
   for (const [key, raw] of data.entries()) {
-    if (key === "use_precise_location" || key === "consider_temp_foot_traffic") {
+    if (
+      key === "use_precise_location" ||
+      key === "consider_temp_foot_traffic" ||
+      key === "consider_competition_saturation"
+    ) {
       continue;
     }
     if (raw === "" || raw == null) continue;
@@ -512,6 +535,9 @@ function renderResult(payload, expertOverride) {
       : "";
   const eventRow = s.consider_temp_foot_traffic
     ? `<dt>일시 유동 증분</dt><dd>반영 (반경 200m 행사·유동 시설)</dd>`
+    : "";
+  const compRow = s.consider_competition_saturation
+    ? `<dt>경쟁 포화·수요 분산</dt><dd>반영 (업태별 1차 상권·경쟁 거리)</dd>`
     : "";
 
   const colStd = expert ? "표준" : "일반 기준";
@@ -609,6 +635,7 @@ function renderResult(payload, expertOverride) {
           <dt>입지 / 접근성</dt><dd>${escapeHtml(s.location_dong)} / ${escapeHtml(s.accessibility_label)}</dd>
           ${addressRow}
           ${eventRow}
+          ${compRow}
           <dt>상권</dt><dd>${escapeHtml(s.trade_area_label)}</dd>
           <dt>서비스 레벨</dt><dd>${escapeHtml(s.service_level_label || "-")}</dd>
           <dt>발주 패턴</dt><dd>${escapeHtml(s.order_day_pattern_label || "-")}</dd>
