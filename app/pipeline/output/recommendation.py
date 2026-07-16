@@ -663,48 +663,99 @@ def _evidence_technical(
     return [lt_block, rop_block, _geo_technical(calc), capa_block]
 
 
+def _delta_phrase_plain(delta: float, *, unit: str = "개") -> str:
+    """Human-readable delta for store owners (no ▲/▼ telegraph)."""
+    if abs(delta) < 0.5:
+        return "일반 기준과 거의 같습니다"
+    if delta > 0:
+        return f"일반 기준보다 약 {delta:.0f}{unit} 더 여유 있게 잡았습니다"
+    return f"일반 기준보다 약 {abs(delta):.0f}{unit} 가볍게 잡아도 됩니다"
+
+
 def _one_liner_plain(summary: StoreSummary, calc: CalcBreakdown) -> str:
+    """Store-owner recommendation in natural prose (not a bullet dump)."""
+    name = summary.product_name
     rop = calc.recommended_rop
     qty = calc.suggested_order_qty
     days = calc.order_days_label
+    lt = calc.standard_lead_time_days
+    lt_clause = (
+        f"배송 일정은 지금처럼 {lt:.0f}일 그대로 두면 됩니다"
+        if abs(lt - round(lt)) < 1e-9
+        else f"배송 일정은 지금처럼 {lt:g}일 그대로 두면 됩니다"
+    )
+
     if calc.multi_order_suggestion:
         return (
-            f"[{summary.product_name}] 재고가 {rop:.0f}개 이하면 발주하세요. "
-            f"창고가 좁으니 '{days}'에 한 번에 약 {qty:g}개씩 자주 넣는 편이 좋습니다. "
-            f"(배송 일정 {calc.standard_lead_time_days:.0f}일은 그대로 둡니다.)"
+            f"[{name}] 재고가 약 {rop:.0f}개 아래로 떨어지기 전에 발주해 주세요. "
+            f"매장·창고 공간이 넉넉하지 않아, {days} 일정에 맞춰 한 번에 약 {qty:g}개씩 "
+            f"자주 나눠 넣는 운영을 권합니다. {lt_clause}."
         )
-    if calc.rop_delta > 0:
-        why = "이 매장은 일반 기준보다 조금 더 여유 있게"
-    elif calc.rop_delta < 0:
-        why = "이 매장은 일반 기준보다 조금 더 가볍게"
-    else:
-        why = "일반 기준과 비슷하게"
+
+    posture = _delta_phrase_plain(calc.rop_delta)
     return (
-        f"[{summary.product_name}] {why} 운영하세요. "
-        f"재고 {rop:.0f}개 이하에서 발주 · '{days}' · 1회 약 {qty:g}개. "
-        f"(배송 일정 {calc.standard_lead_time_days:.0f}일은 그대로.)"
+        f"[{name}] {posture}. "
+        f"재고가 약 {rop:.0f}개 수준에 가까워지면 발주를 걸고, "
+        f"{days}에 한 번에 약 {qty:g}개 정도 넣으면 됩니다. "
+        f"{lt_clause}."
     )
+
+
+def _delta_phrase_technical(delta: float) -> str:
+    if abs(delta) < 1e-9:
+        return "±0"
+    sign = "+" if delta > 0 else "-"
+    return f"{sign}{abs(delta):.0f}"
 
 
 def _one_liner_technical(summary: StoreSummary, calc: CalcBreakdown) -> str:
+    """Specialist recommendation in readable prose (metrics still explicit)."""
+    name = summary.product_name
     std_ss = _standard_safety_stock(calc)
     ss_delta = calc.store_safety_stock - std_ss
-    sign_rop = "▲" if calc.rop_delta >= 0 else "▼"
-    sign_ss = "▲" if ss_delta >= 0 else "▼"
-    base = (
-        f"[{summary.product_name}] LT {calc.standard_lead_time_days:.1f}일(입력 유지) · "
-        f"ROP {calc.recommended_rop:.0f}개"
-        f"({sign_rop}{abs(calc.rop_delta):.0f}) · "
-        f"SS {calc.store_safety_stock:.0f}개"
-        f"({sign_ss}{abs(ss_delta):.0f}) · "
-        f"발주 {calc.order_days_label} · Q {calc.suggested_order_qty:g} · "
-        f"SL {calc.knowledge.service_level_z:.2f}→Z {calc.knowledge.safety_z_factor:.2f}"
-    )
+    rop_d = _delta_phrase_technical(calc.rop_delta)
+    ss_d = _delta_phrase_technical(ss_delta)
+    z_pol = calc.knowledge.service_level_z
+    z_ctx = calc.knowledge.safety_z_factor
+    lt = calc.standard_lead_time_days
+    rop = calc.recommended_rop
+    ss = calc.store_safety_stock
+    qty = calc.suggested_order_qty
+    days = calc.order_days_label
+    cycle = calc.order_cycle_days
+
+    fti_clause = ""
     if calc.geo.enabled and not calc.geo.used_fallback and calc.geo.foot_traffic_index > 0:
-        base += f" · FTI {calc.geo.foot_traffic_index:.2f}"
+        fti_clause = (
+            f" 주변 유동지수(FTI) {calc.geo.foot_traffic_index:.2f}를 안전계수에 반영했습니다."
+        )
+
+    head = (
+        f"[{name}] 입력 리드타임 {lt:g}일은 계약값으로 유지하고, "
+        f"발주점(ROP) {rop:.0f}개({rop_d} vs 표준), "
+        f"안전재고(SS) {ss:.0f}개({ss_d} vs 표준 ROP 항등 기준)를 권고합니다. "
+        f"발주 주기는 {days}(약 {cycle:g}일), 1회 수량 Q≈{qty:g}개이며, "
+        f"서비스 레벨 정책 Z={z_pol:.2f} → 맥락 반영 Z={z_ctx:.2f}입니다."
+    )
+
     if calc.multi_order_suggestion:
-        return f"{base}. CAPA 협소 → MaxCap 고정·다회 소량 발주."
-    return f"{base}. 조정 레버: ROP·SS·Q·cycle·SL."
+        if calc.capa_capped and calc.max_rop_cap is not None:
+            capa_tail = (
+                f" CAPA가 협소해 raw ROP를 MaxCap {calc.max_rop_cap:g} 이하로 맞췄고, "
+                f"한 번에 쌓기보다 다회·소량 발주로 운영하는 것이 안전합니다."
+            )
+        else:
+            capa_tail = (
+                f" CAPA 상한 때문에 1회 발주량을 MaxCap"
+                f"{f' {calc.max_rop_cap:g}' if calc.max_rop_cap is not None else ''} "
+                f"안으로 줄였으니, 같은 주기에 더 자주 소량 입고하는 편이 맞습니다."
+            )
+        return f"{head}{fti_clause}{capa_tail}"
+
+    return (
+        f"{head}{fti_clause} "
+        f"조정 레버는 ROP·SS·Q·발주주기이며, LT는 입력값을 유지합니다."
+    )
 
 
 def render(validated: ValidatedInput, calc: CalcBreakdown) -> RecommendationResult:

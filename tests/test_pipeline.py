@@ -59,6 +59,12 @@ def test_lead_time_is_fixed_and_risk_becomes_buffer() -> None:
     assert calc.order_frequency_label
     assert "발주" in result.recommendation
     assert "그대로" in result.recommendation
+    # Recommendation should read as prose, not a telegraphic metric dump.
+    assert " · " not in result.recommendation
+    assert "권" in result.recommendation or "넣으면" in result.recommendation
+    tech = result.recommendation_technical
+    assert "ROP" in tech and "SS" in tech
+    assert "권고" in tech or "유지" in tech
 
 
 def test_mismatch_guidance_prefers_size_and_ticket() -> None:
