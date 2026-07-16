@@ -163,12 +163,17 @@ function mountField(spec, container) {
   title.className = "field-title";
   title.textContent = spec.label + (spec.required ? "" : " (선택)");
   label.appendChild(title);
+  // Always reserve a hint row so select controls align across the grid
+  // (store_type has no description; store_size/avg_ticket do).
+  const hint = document.createElement("small");
+  hint.className = "field-hint";
   if (spec.description) {
-    const hint = document.createElement("small");
-    hint.className = "field-hint";
     hint.textContent = spec.description;
-    label.appendChild(hint);
+  } else {
+    hint.classList.add("is-empty");
+    hint.textContent = "\u00a0";
   }
+  label.appendChild(hint);
   label.appendChild(fieldControl(spec));
   container.appendChild(label);
 }
@@ -240,8 +245,13 @@ function showStep(index) {
   const isLast = index === STEPS.length - 1;
   btnBack.hidden = isWelcome;
   btnBack.disabled = false;
+  // Only last step (inventory) shows submit; earlier steps use Next only.
   btnNext.hidden = isLast || isWelcome;
-  submitBtn.hidden = !isLast;
+  submitBtn.hidden = !isLast || isWelcome;
+  if (submitBtn) {
+    submitBtn.disabled = !isLast || isWelcome;
+    submitBtn.setAttribute("aria-hidden", isLast && !isWelcome ? "false" : "true");
+  }
 
   if (!isWelcome) {
     const panel = STEPS[index].el?.();
@@ -561,6 +571,12 @@ function applyEvaluateErrorUi(message) {
 
 form?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  // Guard: only inventory step may run evaluate (button can be forced via Enter).
+  if (stepIndex !== STEPS.length - 1) {
+    if (!validateCurrentStep()) return;
+    if (stepIndex < STEPS.length - 1) showStep(stepIndex + 1);
+    return;
+  }
   if (!validateCurrentStep()) return;
 
   formError.hidden = true;
@@ -586,6 +602,7 @@ form?.addEventListener("submit", async (event) => {
     }
     const wait = Math.max(0, 280 - (performance.now() - started));
     await new Promise((r) => setTimeout(r, wait));
+    loadingPanel.hidden = true;
     if (!response.ok) {
       applyEvaluateErrorUi(
         formatApiError(
@@ -595,9 +612,9 @@ form?.addEventListener("submit", async (event) => {
       );
       return;
     }
-    loadingPanel.hidden = true;
     renderResult(payload);
   } catch (error) {
+    loadingPanel.hidden = true;
     applyEvaluateErrorUi(
       error instanceof TypeError
         ? "네트워크 오류로 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요."
