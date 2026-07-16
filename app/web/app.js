@@ -550,14 +550,20 @@ function renderResult(payload, expertOverride) {
     setExpertMode(on);
     if (lastPayload) renderResult(lastPayload, on);
   });
-  bindExportMenu(expert);
+  // Export menu is bound once (not on every renderResult) to avoid stacking
+  // document click/keydown listeners when expert mode is toggled.
 }
 
-function bindExportMenu(expert) {
+/** @type {boolean} */
+let exportMenuBound = false;
+
+function bindExportMenu() {
+  if (exportMenuBound) return;
   const menu = document.getElementById("export-menu");
   const btn = document.getElementById("export-btn");
   const dropdown = document.getElementById("export-dropdown");
   if (!menu || !btn || !dropdown) return;
+  exportMenuBound = true;
 
   const close = () => {
     dropdown.hidden = true;
@@ -584,7 +590,7 @@ function bindExportMenu(expert) {
         return;
       }
       // Call export while still in the user-gesture stack (before close/DOM churn).
-      const expertOn = document.getElementById("expert-mode")?.checked ?? expert;
+      const expertOn = document.getElementById("expert-mode")?.checked ?? readExpertMode();
       try {
         exportReport(format, lastPayload, { expert: expertOn });
       } catch (err) {
@@ -595,24 +601,18 @@ function bindExportMenu(expert) {
     });
   });
 
-  // Close on outside click / Escape (one-shot listeners per render)
-  const onDocClick = (ev) => {
-    if (!menu.contains(ev.target)) {
-      close();
-      document.removeEventListener("click", onDocClick);
-    }
-  };
-  const onKey = (ev) => {
-    if (ev.key === "Escape") {
-      close();
-      document.removeEventListener("keydown", onKey);
-    }
-  };
-  setTimeout(() => {
-    document.addEventListener("click", onDocClick);
-    document.addEventListener("keydown", onKey);
-  }, 0);
+  // Permanent outside-click / Escape handlers (single bind for page lifetime).
+  document.addEventListener("click", (ev) => {
+    if (dropdown.hidden) return;
+    if (!menu.contains(ev.target)) close();
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && !dropdown.hidden) close();
+  });
 }
+
+// Export controls live in the result panel chrome; bind once at load.
+bindExportMenu();
 
 document.getElementById("welcome-start")?.addEventListener("click", () => {
   showStep(1);

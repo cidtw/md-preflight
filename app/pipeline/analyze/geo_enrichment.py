@@ -438,8 +438,11 @@ def enrich_from_address(
             )
             return jobs
 
-        with ThreadPoolExecutor(max_workers=_POI_MAX_WORKERS) as pool:
-            futures = [pool.submit(job) for job in _jobs()]
+        # Do not use `with ThreadPoolExecutor` — its default shutdown(wait=True)
+        # would block past the collect budget while straggler HTTP calls finish.
+        pool = ThreadPoolExecutor(max_workers=_POI_MAX_WORKERS)
+        futures = [pool.submit(job) for job in _jobs()]
+        try:
             try:
                 for fut in as_completed(futures, timeout=_POI_TOTAL_BUDGET_S):
                     try:
@@ -464,6 +467,8 @@ def enrich_from_address(
                             merged.extend(fut.result(timeout=0))
                     else:
                         _ = fut.cancel()
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
     except (urllib.error.URLError, TimeoutError, TypeError, ValueError) as exc:
         logger.exception("kakao nearby failed for %s", cleaned)
         return GeoEnrichment(

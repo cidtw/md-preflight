@@ -346,6 +346,51 @@ def test_capa_clamps_order_qty_to_max_rop_cap() -> None:
     )
 
 
+def test_capa_q_clamp_at_low_demand_never_exceeds_max_cap() -> None:
+    """max(1.0, round(max_cap)) floor must not leave Q > MaxCap when max_cap < 1."""
+    params: dict[str, ParameterValue] = {
+        **BASE,
+        "store_size": "cv_xs",  # capa 1
+        "daily_demand": 0.1,
+        "standard_lead_time_days": 1,
+        "standard_rop": 1,
+        "accessibility": "main_road",
+        "order_day_pattern": "weekly_mon",  # uncapped Q floors at 1.0
+    }
+    result = run(params)
+    assert result.calc.max_rop_cap is not None
+    assert result.calc.max_rop_cap < 1.0
+    assert result.calc.suggested_order_qty <= result.calc.max_rop_cap + 1e-9
+    assert result.calc.multi_order_suggestion is not None
+
+
+def test_capa_q_only_multi_order_evidence_not_ok_copy() -> None:
+    """When only Q is clamped (ROP still ≤ MaxCap), CAPA evidence must not say '무리 없이'."""
+    # Short LT + roomy enough SS path + weekly cycle: D*7 > MaxCap but raw ROP ≤ MaxCap.
+    params: dict[str, ParameterValue] = {
+        **BASE,
+        "store_size": "cv_xs",
+        "daily_demand": 10,
+        "standard_lead_time_days": 1,
+        "standard_rop": 12,
+        "accessibility": "main_road",
+        "trade_area": "office",
+        "order_day_pattern": "weekly_mon",
+    }
+    result = run(params)
+    assert result.calc.max_rop_cap is not None
+    assert result.calc.suggested_order_qty <= result.calc.max_rop_cap + 1e-9
+    assert result.calc.multi_order_suggestion is not None
+    # Prefer Q-only path when reachable; if full ROP cap also fires, still check copy.
+    plain_capa = next(b for b in result.evidence if b.id == "capa_filter")
+    joined = " ".join(plain_capa.points)
+    assert "무리 없이" not in joined
+    assert "자주" in joined or "발주량" in joined or "1회" in joined
+    tech_capa = next(b for b in result.evidence_technical if b.id == "capa_filter")
+    tech_joined = " ".join(tech_capa.points)
+    assert "다회" in tech_joined or "Q=" in tech_joined
+
+
 def test_store_safety_stock_edge_cases() -> None:
     from app.pipeline.analyze.knowledge_base import store_safety_stock
 

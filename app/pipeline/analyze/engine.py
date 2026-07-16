@@ -185,8 +185,10 @@ def analyze(
                 2,
             )
         # Physical stock ceiling also bounds per-receipt order qty (cycle may exceed cover).
+        # Do not floor at 1.0 — low demand can yield max_cap < 1 and that floor would
+        # leave Q above MaxCap (review: CAPA Q clamp invariant).
         if order_qty > max_cap:
-            order_qty = max(1.0, round(max_cap, 1))
+            order_qty = max_cap
         if capa_capped or order_qty < order_qty_raw:
             if capa_capped:
                 rop_part = (

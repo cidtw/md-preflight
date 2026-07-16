@@ -500,12 +500,14 @@ def _evidence_plain(validated: ValidatedInput, calc: CalcBreakdown) -> list[Evid
         ],
     )
 
-    if calc.capa_capped and calc.multi_order_suggestion:
+    # Q-only clamp also sets multi_order_suggestion (ROP may still fit MaxCap).
+    if calc.multi_order_suggestion:
         capa_points = [
             calc.multi_order_suggestion,
             (
                 f"발주 기준 재고 {calc.recommended_rop:.0f}개, "
-                f"여유 재고 약 {calc.store_safety_stock:.0f}개로 맞춰 두었습니다."
+                f"여유 재고 약 {calc.store_safety_stock:.0f}개, "
+                f"1회 발주 약 {calc.suggested_order_qty:g}개로 맞춰 두었습니다."
             ),
         ]
         capa_summary = "핵심: 창고가 좁아 자주·조금씩 넣는 방식이 맞습니다"
@@ -607,22 +609,38 @@ def _evidence_technical(
         ],
     )
 
-    if calc.capa_capped:
-        capa_points = [
-            (
-                f"CAPA 점수 {scores.capa_score}/5(협소): raw ROP "
-                f"{calc.recommended_rop_raw:.1f} → MaxCap "
-                f"{calc.max_rop_cap} 고정. "
-                f"effective SS={calc.store_safety_stock:.1f} "
-                f"(항등 ROP=D*LT+SS 유지)."
-            ),
-            (
-                f"Q={calc.suggested_order_qty:g} "
-                f"(cycle={calc.order_cycle_days:g}d · {calc.order_days_label}). "
-                f"다회 소량 발주 경로 활성."
-            ),
-        ]
-        capa_summary = "수용 한도 초과 → 다회 소량 발주 전환"
+    if calc.multi_order_suggestion:
+        if calc.capa_capped:
+            capa_points = [
+                (
+                    f"CAPA 점수 {scores.capa_score}/5(협소): raw ROP "
+                    f"{calc.recommended_rop_raw:.1f} → MaxCap "
+                    f"{calc.max_rop_cap} 고정. "
+                    f"effective SS={calc.store_safety_stock:.1f} "
+                    f"(항등 ROP=D*LT+SS 유지)."
+                ),
+                (
+                    f"Q={calc.suggested_order_qty:g} "
+                    f"(cycle={calc.order_cycle_days:g}d · {calc.order_days_label}). "
+                    f"다회 소량 발주 경로 활성."
+                ),
+            ]
+            capa_summary = "수용 한도 초과 → 다회 소량 발주 전환"
+        else:
+            # ROP fits MaxCap but Q was reduced to the stock ceiling.
+            capa_points = [
+                (
+                    f"CAPA 점수 {scores.capa_score}/5: ROP "
+                    f"{calc.recommended_rop:.1f} ≤ MaxCap {calc.max_rop_cap} "
+                    f"(ROP 캡 없음). 1회 발주량만 MaxCap으로 축소 → "
+                    f"Q={calc.suggested_order_qty:g}."
+                ),
+                (
+                    f"cycle={calc.order_cycle_days:g}d · {calc.order_days_label}. "
+                    f"다회 소량 발주 경로 활성 (Q-only clamp)."
+                ),
+            ]
+            capa_summary = "1회 발주량 상한 → 다회 소량 발주 전환"
     else:
         capa_points = [
             (

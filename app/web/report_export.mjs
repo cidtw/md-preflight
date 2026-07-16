@@ -328,29 +328,38 @@ export function openPrintablePdf(payload, { expert = false } = {}) {
     }, 1500);
   };
 
+  const fallbackHtml = () => {
+    downloadText(
+      `${reportBasename(payload)}.html`,
+      printHtml,
+      "text/html;charset=utf-8",
+    );
+    // User-visible notice: deferred print can no-op when gesture is lost.
+    window.alert(
+      "인쇄 창을 열 수 없어 HTML 파일로 저장했습니다. 받은 파일을 연 뒤 인쇄(PDF 저장)해 주세요.",
+    );
+  };
+
   const triggerPrint = () => {
     try {
       win.focus();
       win.print();
     } catch {
-      // Fallback: download HTML if print API is unavailable.
-      downloadText(
-        `${reportBasename(payload)}.html`,
-        printHtml,
-        "text/html;charset=utf-8",
-      );
+      fallbackHtml();
     } finally {
       cleanup();
     }
   };
 
-  // Prefer onload; also schedule a short delay for engines that skip onload after doc.write.
+  // Immediate print first (best chance to keep the user-gesture stack).
+  // load + short timeout remain for engines that are not ready right after doc.write.
   let printed = false;
   const once = () => {
     if (printed) return;
     printed = true;
     triggerPrint();
   };
+  once();
   iframe.addEventListener("load", once, { once: true });
   setTimeout(once, 250);
 }

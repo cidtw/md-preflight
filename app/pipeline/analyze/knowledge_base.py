@@ -122,10 +122,13 @@ def match_knowledge(
     )
     if stockout_risk_index >= 70:
         stockout_plain = "바쁠 때 품절 위험이 큰 편"
+        stock_action = "여유 재고를 넉넉히 잡습니다"
     elif stockout_risk_index >= 50:
         stockout_plain = "바쁠 때 품절 위험이 있는 편"
+        stock_action = "여유 재고를 보통 수준으로 잡습니다"
     else:
         stockout_plain = "품절 위험이 상대적으로 낮은 편"
+        stock_action = "여유 재고를 가볍게 잡습니다"
     if peak_intensity_index >= 70:
         peak_plain = "손님이 몰리는 시간대가 뚜렷합니다"
     elif peak_intensity_index >= 55:
@@ -134,7 +137,7 @@ def match_knowledge(
         peak_plain = "수요가 비교적 고른 편입니다"
     demand_risk = (
         f"'{trade_label}'의 '{product_name}'은 {peak}. {peak_plain}. "
-        f"{sl_label} 기준으로는 {stockout_plain}이라 여유 재고를 넉넉히 잡습니다."
+        f"{sl_label} 기준으로는 {stockout_plain}이라 {stock_action}."
     )
     if fti > 0:
         foot_note = (
