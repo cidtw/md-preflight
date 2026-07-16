@@ -51,6 +51,7 @@ const STEPS = [
       "location_dong",
       "use_precise_location",
       "store_address",
+      "consider_temp_foot_traffic",
       "trade_area",
       "accessibility",
     ],
@@ -82,6 +83,7 @@ const DEFAULTS = {
   location_dong: "서울시 마포구 서교동",
   use_precise_location: false,
   store_address: "",
+  consider_temp_foot_traffic: false,
   trade_area: "office",
   accessibility: "indoor",
   daily_demand: 12,
@@ -184,11 +186,21 @@ function syncPreciseLocationUI() {
   const checkbox = form?.elements.namedItem("use_precise_location");
   const addressLabel = form?.querySelector('label[data-field-key="store_address"]');
   const addressInput = form?.elements.namedItem("store_address");
+  const eventLabel = form?.querySelector(
+    'label[data-field-key="consider_temp_foot_traffic"]',
+  );
+  const eventInput = form?.elements.namedItem("consider_temp_foot_traffic");
   const on = Boolean(checkbox && "checked" in checkbox && checkbox.checked);
   if (addressLabel) addressLabel.hidden = !on;
   if (addressInput && "required" in addressInput) {
     addressInput.required = on;
     if (!on && "value" in addressInput) addressInput.value = "";
+  }
+  // Temporary foot-traffic option is only available with a precise address.
+  if (eventLabel) eventLabel.hidden = !on;
+  if (eventInput && "checked" in eventInput) {
+    eventInput.disabled = !on;
+    if (!on) eventInput.checked = false;
   }
 }
 
@@ -278,6 +290,7 @@ function validateCurrentStep() {
 
   for (const key of step.keys) {
     if (key === "store_address" && !preciseOn) continue;
+    if (key === "consider_temp_foot_traffic" && !preciseOn) continue;
     const spec = specsByKey[key];
     if (!spec) continue;
     const el = form.elements.namedItem(key);
@@ -321,10 +334,19 @@ function readParameters(formEl) {
   parameters.use_precise_location = Boolean(
     precise && "checked" in precise && precise.checked,
   );
+  const eventOpt = formEl.elements.namedItem("consider_temp_foot_traffic");
+  parameters.consider_temp_foot_traffic = Boolean(
+    parameters.use_precise_location &&
+      eventOpt &&
+      "checked" in eventOpt &&
+      eventOpt.checked,
+  );
 
   const data = new FormData(formEl);
   for (const [key, raw] of data.entries()) {
-    if (key === "use_precise_location") continue;
+    if (key === "use_precise_location" || key === "consider_temp_foot_traffic") {
+      continue;
+    }
     if (raw === "" || raw == null) continue;
     const input = formEl.elements.namedItem(key);
     if (input && input.type === "number") {
@@ -410,6 +432,9 @@ function renderResult(payload, expertOverride) {
     s.use_precise_location && s.store_address
       ? `<dt>상세 주소</dt><dd>${escapeHtml(s.store_address)}</dd>`
       : "";
+  const eventRow = s.consider_temp_foot_traffic
+    ? `<dt>일시 유동 증분</dt><dd>반영 (반경 200m 행사·유동 시설)</dd>`
+    : "";
 
   const colStd = expert ? "표준" : "일반 기준";
   const colRec = expert ? "매장 맞춤" : "이 매장 추천";
@@ -505,6 +530,7 @@ function renderResult(payload, expertOverride) {
           <dt>객단가</dt><dd>${escapeHtml(s.avg_ticket_label)}</dd>
           <dt>입지 / 접근성</dt><dd>${escapeHtml(s.location_dong)} / ${escapeHtml(s.accessibility_label)}</dd>
           ${addressRow}
+          ${eventRow}
           <dt>상권</dt><dd>${escapeHtml(s.trade_area_label)}</dd>
           <dt>서비스 레벨</dt><dd>${escapeHtml(s.service_level_label || "-")}</dd>
           <dt>발주 패턴</dt><dd>${escapeHtml(s.order_day_pattern_label || "-")}</dd>

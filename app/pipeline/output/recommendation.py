@@ -76,6 +76,7 @@ def _summary(validated: ValidatedInput, calc: CalcBreakdown) -> StoreSummary:
         order_day_pattern_label=pattern_label,
         use_precise_location=use_precise,
         store_address=str(address) if address is not None else None,
+        consider_temp_foot_traffic=bool(p.get("consider_temp_foot_traffic", False)),
     )
 
 
@@ -280,6 +281,58 @@ def _comparison_technical(calc: CalcBreakdown) -> ComparisonDashboard:
     return ComparisonDashboard(rows=rows, rop_guidance=guide)
 
 
+def _event_plain_points(calc: CalcBreakdown) -> list[str]:
+    geo = calc.geo
+    if not geo.event_scan_enabled:
+        return []
+    if geo.event_venues:
+        top = geo.event_venues[:3]
+        names = ", ".join(f"{v.name}({v.distance_m:.0f}m)" for v in top)
+        pct = calc.event_demand_uplift_frac * 100
+        return [
+            (
+                f"반경 {geo.event_radius_m}m 안 행사·대형 유동 가능 시설을 반영해 "
+                f"잠재 수요를 약 {pct:.0f}% 올려 잡았습니다. (예: {names})"
+            ),
+            (
+                f"일평균 소진 {calc.daily_demand:g}개 → 행사 반영 "
+                f"{calc.effective_daily_demand:g}개로 재고·발주량을 계산했습니다."
+            ),
+        ]
+    return [
+        (
+            f"일시 유동 옵션을 켰지만 반경 {geo.event_radius_m}m 안 "
+            "대형 행사·유동 시설이 검색되지 않아 수요 증분은 0입니다."
+        ),
+    ]
+
+
+def _event_technical_points(calc: CalcBreakdown) -> list[str]:
+    geo = calc.geo
+    if not geo.event_scan_enabled:
+        return []
+    if geo.event_venues:
+        top = ", ".join(
+            f"{v.name}[{v.kind}] {v.distance_m:.0f}m w={v.weight:.3f}"
+            for v in geo.event_venues[:5]
+        )
+        return [
+            (
+                f"event_scan r={geo.event_radius_m}m · venues={len(geo.event_venues)} · "
+                f"uplift={geo.event_foot_traffic_uplift:.3f} · "
+                f"demand_mult={geo.event_demand_multiplier:.3f} · "
+                f"D {calc.daily_demand:g}→{calc.effective_daily_demand:g}."
+            ),
+            f"상위 행사 시설: {top}",
+        ]
+    return [
+        (
+            f"event_scan r={geo.event_radius_m}m · venues=0 · uplift=0 · "
+            f"demand_mult=1.0 (no temporary demand add-on)."
+        ),
+    ]
+
+
 def _geo_plain(calc: CalcBreakdown) -> EvidenceBlock:
     geo = calc.geo
     if not geo.enabled:
@@ -293,15 +346,17 @@ def _geo_plain(calc: CalcBreakdown) -> EvidenceBlock:
             ],
         )
     if geo.used_fallback:
+        points = [
+            "입력하신 주소를 지도에서 찾지 못했거나, 지도 연결이 원활하지 않았습니다.",
+            "이 경우에도 행정동·상권 정보로 여유 재고를 계산해 두었습니다.",
+            "가능하면 도로명 주소(번지 포함)로 다시 시도해 주세요.",
+            *_event_plain_points(calc),
+        ]
         return EvidenceBlock(
             id="geo_poi",
             title="매장 위치·주변 손님 흐름",
             calc_summary="핵심: 주소 검색이 되지 않아 행정동 기준으로 계산했습니다",
-            points=[
-                "입력하신 주소를 지도에서 찾지 못했거나, 지도 연결이 원활하지 않았습니다.",
-                "이 경우에도 행정동·상권 정보로 여유 재고를 계산해 두었습니다.",
-                "가능하면 도로명 주소(번지 포함)로 다시 시도해 주세요.",
-            ],
+            points=points,
         )
     top = geo.pois[:5]
     poi_lines = [
@@ -323,15 +378,19 @@ def _geo_plain(calc: CalcBreakdown) -> EvidenceBlock:
     points.append(
         "유동이 클수록 바쁠 때 품절을 막기 위해 여유 재고를 조금 더 잡습니다.",
     )
+    points.extend(_event_plain_points(calc))
     if geo.address_queried:
         points.append(f"조회한 주소: {geo.address_queried}")
+    summary = (
+        f"핵심: 주변 시설 {len(geo.pois)}곳 반영 · "
+        f"손님 흐름 지수 {geo.foot_traffic_index:.2f}"
+    )
+    if geo.event_scan_enabled and calc.event_demand_uplift_frac > 0:
+        summary += f" · 일시 유동 수요 +{calc.event_demand_uplift_frac * 100:.0f}%"
     return EvidenceBlock(
         id="geo_poi",
         title="매장 위치·주변 손님 흐름",
-        calc_summary=(
-            f"핵심: 주변 시설 {len(geo.pois)}곳 반영 · "
-            f"손님 흐름 지수 {geo.foot_traffic_index:.2f}"
-        ),
+        calc_summary=summary,
         points=points,
     )
 
@@ -357,6 +416,7 @@ def _geo_technical(calc: CalcBreakdown) -> EvidenceBlock:
             points=[
                 *geo.notes,
                 "지도 API 보강에 실패하거나 키가 없어 행정동 경로로 안전재고를 계산했습니다.",
+                *_event_technical_points(calc),
             ],
         )
     top = geo.pois[:5]
@@ -378,15 +438,22 @@ def _geo_technical(calc: CalcBreakdown) -> EvidenceBlock:
         + f"정책 Z {kb.service_level_z:.2f} + 맥락(수요·품목·시드·유동) → "
         + f"최종 {kb.safety_z_factor:.2f}.",
     )
+    points.extend(_event_technical_points(calc))
     if geo.address_queried:
         points.append(f"조회 주소: {geo.address_queried}")
+    summary = (
+        f"반경 {geo.radius_m}m · POI {len(geo.pois)}곳 · "
+        f"유동지수 {geo.foot_traffic_index:.3f}"
+    )
+    if geo.event_scan_enabled:
+        summary += (
+            f" · event_uplift {geo.event_foot_traffic_uplift:.3f} · "
+            f"D*{geo.event_demand_multiplier:.3f}"
+        )
     return EvidenceBlock(
         id="geo_poi",
         title="정확한 위치 · 주변 유동 유발 요소 (Kakao Local)",
-        calc_summary=(
-            f"반경 {geo.radius_m}m · POI {len(geo.pois)}곳 · "
-            f"유동지수 {geo.foot_traffic_index:.3f}"
-        ),
+        calc_summary=summary,
         points=points,
     )
 

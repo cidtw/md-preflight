@@ -25,7 +25,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from typing import cast
 
-from app.pipeline.types import GeoEnrichment, NearbyPoi, PoiCategory
+from app.pipeline.analyze.event_foot_traffic import (
+    EVENT_KEYWORD_QUERIES,
+    EVENT_SCAN_RADIUS_M,
+    classify_event_venue,
+    score_event_venues,
+)
+from app.pipeline.types import EventVenueSignal, GeoEnrichment, NearbyPoi, PoiCategory
 
 logger = logging.getLogger(__name__)
 
@@ -372,12 +378,152 @@ def _search_keyword_bus(
     )
 
 
+def _search_keyword_places(
+    *,
+    lat: float,
+    lng: float,
+    radius_m: int,
+    keyword: str,
+    api_key: str,
+    fetch: JsonFetch,
+) -> list[tuple[str, float, str]]:
+    """Return (name, distance_m, query) hits for event-venue keyword scan."""
+    query = urllib.parse.urlencode(
+        {
+            "query": keyword,
+            "x": f"{lng}",
+            "y": f"{lat}",
+            "radius": str(radius_m),
+            "size": "10",
+            "sort": "distance",
+        },
+    )
+    url = f"https://dapi.kakao.com/v2/local/search/keyword.json?{query}"
+    data = fetch(url, _auth_headers(api_key))
+    documents = _as_sequence(data.get("documents"))
+    if documents is None:
+        return []
+    out: list[tuple[str, float, str]] = []
+    for item in documents:
+        doc = _as_mapping(item)
+        if doc is None:
+            continue
+        name_raw = doc.get("place_name")
+        name = str(name_raw).strip() if name_raw is not None else ""
+        distance = _as_float(doc.get("distance"))
+        if not name or distance is None:
+            continue
+        out.append((name, float(distance), keyword))
+    return out
+
+
+def _scan_event_venues(
+    *,
+    lat: float,
+    lng: float,
+    api_key: str,
+    fetch: JsonFetch,
+    radius_m: int = EVENT_SCAN_RADIUS_M,
+) -> tuple[list[EventVenueSignal], float, float, list[str]]:
+    """Search event-crowd venues within radius; return venues, uplift, multiplier, notes."""
+    notes: list[str] = []
+    raw_hits: list[EventVenueSignal] = []
+    pool = ThreadPoolExecutor(max_workers=min(4, len(EVENT_KEYWORD_QUERIES)))
+    futures = [
+        pool.submit(
+            _search_keyword_places,
+            lat=lat,
+            lng=lng,
+            radius_m=radius_m,
+            keyword=kw,
+            api_key=api_key,
+            fetch=fetch,
+        )
+        for kw in EVENT_KEYWORD_QUERIES
+    ]
+    try:
+        try:
+            for fut in as_completed(futures, timeout=_POI_TOTAL_BUDGET_S):
+                try:
+                    for name, distance, kw in fut.result():
+                        kind = classify_event_venue(name, query_hint=kw)
+                        if kind is None:
+                            continue
+                        if distance > radius_m * 1.05:
+                            continue
+                        raw_hits.append(
+                            EventVenueSignal(
+                                name=name,
+                                kind=kind,
+                                distance_m=round(distance, 1),
+                            ),
+                        )
+                except (
+                    urllib.error.URLError,
+                    TimeoutError,
+                    TypeError,
+                    ValueError,
+                    RuntimeError,
+                ) as sub_exc:
+                    logger.warning("kakao event keyword failed: %s", sub_exc)
+        except FuturesTimeoutError:
+            notes.append(
+                f"행사·유동 시설 검색 예산({_POI_TOTAL_BUDGET_S:.0f}s) 초과 — 부분 결과 사용",
+            )
+            for fut in futures:
+                if fut.done() and not fut.cancelled():
+                    with contextlib.suppress(Exception):
+                        for name, distance, kw in fut.result(timeout=0):
+                            kind = classify_event_venue(name, query_hint=kw)
+                            if kind is None or distance > radius_m * 1.05:
+                                continue
+                            raw_hits.append(
+                                EventVenueSignal(
+                                    name=name,
+                                    kind=kind,
+                                    distance_m=round(distance, 1),
+                                ),
+                            )
+                else:
+                    _ = fut.cancel()
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+
+    # Dedupe by name, keep nearest.
+    by_name: dict[str, EventVenueSignal] = {}
+    for hit in sorted(raw_hits, key=lambda v: v.distance_m):
+        if hit.name not in by_name:
+            by_name[hit.name] = hit
+
+    uplift, multiplier, scored = score_event_venues(
+        list(by_name.values()),
+        radius_m=radius_m,
+    )
+    if scored:
+        top_names = ", ".join(f"{v.name}({v.kind}/{v.distance_m:.0f}m)" for v in scored[:3])
+        notes.append(
+            (
+                f"반경 {radius_m}m 내 임시 유동 가능 시설 {len(scored)}곳 · "
+                + f"증분지수 {uplift:.3f} · 수요배수 {multiplier:.3f} · 상위: {top_names}"
+            ),
+        )
+    else:
+        notes.append(
+            (
+                f"반경 {radius_m}m 내 대형 행사·유동 유발 시설이 검색되지 않아 "
+                + "일시 유동 증분을 0으로 둡니다."
+            ),
+        )
+    return scored, uplift, multiplier, notes
+
+
 def enrich_from_address(
     address: str,
     *,
     api_key: str | None,
     radius_m: int = 500,
     fetch: JsonFetch | None = None,
+    scan_events: bool = False,
 ) -> GeoEnrichment:
     """Geocode address and collect nearby foot-traffic POIs via Kakao Local."""
     cleaned = address.strip()
@@ -497,6 +643,24 @@ def enrich_from_address(
         f"Kakao Local 반경 {radius_m}m · 주소 '{resolved}' · "
         + f"POI {len(top)}곳 · foot_traffic_index={index:.3f}"
     )
+    notes = [note]
+    event_venues: list[EventVenueSignal] = []
+    event_uplift = 0.0
+    event_mult = 1.0
+    if scan_events:
+        try:
+            event_venues, event_uplift, event_mult, event_notes = _scan_event_venues(
+                lat=lat,
+                lng=lng,
+                api_key=api_key,
+                fetch=do_fetch,
+                radius_m=EVENT_SCAN_RADIUS_M,
+            )
+            notes.extend(event_notes)
+        except (urllib.error.URLError, TimeoutError, TypeError, ValueError) as event_exc:
+            logger.warning("event venue scan failed: %s", event_exc)
+            notes.append(f"일시 유동 시설 검색 실패 — 증분 0 처리: {event_exc}")
+
     return GeoEnrichment(
         enabled=True,
         lat=lat,
@@ -505,7 +669,12 @@ def enrich_from_address(
         foot_traffic_index=index,
         provider=_PROVIDER,
         used_fallback=False,
-        notes=[note],
+        notes=notes,
         address_queried=cleaned,
         radius_m=radius_m,
+        event_scan_enabled=scan_events,
+        event_radius_m=EVENT_SCAN_RADIUS_M,
+        event_venues=event_venues,
+        event_foot_traffic_uplift=event_uplift,
+        event_demand_multiplier=event_mult,
     )

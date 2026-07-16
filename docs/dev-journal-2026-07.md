@@ -31,6 +31,8 @@
 [7/14 late] 운영 레버   지도 POI · LT 입력 유지 · SS/Q/요일/SL (국면 VII+)
     ↓
 [7/15]     정확도 수정  SS∝수요 · 비교표·geo 귀속 · size 기본값 (국면 VIII)
+    ↓
+[7/16]     안정화·기능  CAPA/Q · 추천 윤문 · export · 일시 유동 옵션 (국면 IX)
 ```
 
 | 국면 | 기간 | 한 줄 목표 | 대표 산출 |
@@ -44,13 +46,14 @@
 | **VII. ROP 서비스** | 7/14 저녁 | 매장 특화 발주 기준 재조정 MVP | scoring · KB · report UI |
 | **VII+ 운영 레버** | 7/14 심야~ | 현실적 조정 대상 정합 | Kakao POI · LT 고정 출력 · SL·요일 |
 | **VIII. 정확도 패치** | 7/15 | 리뷰 P0 정확도·UX 회귀 수정 | SS∝D · Z/geo 표시 · size 기본값 |
+| **IX. 안정화·일시 유동** | 7/16 | CAPA/UX 픽스 · 추천 윤문 · 행사 수요 증분 | Q clamp · export 위임 · event 200m |
 
 **불변 원칙**
 
 | 구간 | 원칙 |
 |------|------|
 | **국면 I–V (v1, D3 / `main`)** | 판정 = 결정론 룰 · 서술 = LLM(실패 시 fallback) · 검수 비로그인 200 · 이력은 격리·append-only |
-| **국면 VI+ (재설계 / `pivot/project-direction`)** | 판정 = 결정론 **가중치 점수** · 입력 = 파라미터 템플릿 · 출력 = **한 줄 recommendation** · **LT는 품목 입력(유지)** · 조정 레버 = ROP·SS·Q·발주 요일·서비스 레벨 · **SS 통계항∝일평균 소진** (VIII) · 미입력 기본값=규모 밴드 |
+| **국면 VI+ (재설계 / `pivot/project-direction`)** | 판정 = 결정론 **가중치 점수** · 입력 = 파라미터 템플릿 · 출력 = **한 줄 recommendation** · **LT는 품목 입력(유지)** · 조정 레버 = ROP·SS·Q·발주 요일·서비스 레벨 · **SS 통계항∝일평균 소진** (VIII) · 미입력 기본값=규모 밴드 · **일시 유동 옵션 시 D_eff** (IX) · **main은 아카이브(변경 금지)** |
 
 **v1 복원 키**: 태그 `archive/v1-md-preflight` @ `b444be0` · 문서 `archive/v1-md-preflight/`
 
@@ -678,18 +681,100 @@ uv run pytest                   # 32 passed
 
 ---
 
+### 2026-07-16 (수) — 안정화 픽스 · 추천 윤문 · 일시 유동 옵션 (국면 IX) **DONE**
+
+| 필드 | 내용 |
+|------|------|
+| **테마** | pivot tip 리뷰 후속 버그픽스 · UX 윤문 · 일시 유동인구 증분 기능 · 프로덕션 배포 |
+| **브랜치** | `pivot/project-direction` (워크스페이스 `cidtw/auto-run-4-*`에서 tip 동기 후 푸시) |
+| **배포** | Vercel production `https://md-preflight.vercel.app` (main 미변경 — 아카이브) |
+| **검증** | `ruff` · `basedpyright app` 0 · **pytest 46 passed** · wizard/export node smoke |
+| **핸드오프** | `handoff/2026-07-16-summary.md` (gitignore · 로컬) |
+
+#### 배경
+
+- 푸시된 pivot tip(`6940c3a` 이후) 코드 리뷰에서 **CAPA Q clamp 저수요 버그**, **Q-only multi-order 문구 불일치**, geo shutdown soft budget, export 리스너 스택 위험 등이 지적됨.
+- 이어서 **추천 결과 한 줄이 기계적**이라는 UX 피드백, **리포트 내보내기 무반응** 회귀, **일시 유동인구 옵션** 제품 요구가 들어옴.
+
+#### 작업 묶음
+
+| ID | 유형 | 내용 | 핵심 산출 |
+|----|------|------|-----------|
+| **R9a** | bug | CAPA Q: `max(1.0, round(max_cap))` 제거 → `order_qty = max_cap` | `engine.py` · 저수요 fixture |
+| **R9b** | bug | Q-only multi-order 시 plain/tech CAPA가 「무리 없이」를 쓰지 않음 | `recommendation.py` · `multi_order_suggestion` 게이트 |
+| **R9c** | UX | demand 카피 stockout index 분기 (넉넉히/보통/가볍게) | `knowledge_base.py` |
+| **R9d** | 안정 | Kakao POI pool `shutdown(wait=False, cancel_futures=True)` | `geo_enrichment.py` |
+| **R9e** | bug | export: 로드 시점 1회 bind 실패 → **result-panel 이벤트 위임** | `app/web/app.js` |
+| **R9f** | UX | 추천 한 줄 plain/technical **문장형 윤문** (· 나열 제거) | `recommendation.py` |
+| **R9g** | feat | **일시적인 유동인구 증가분 변수 고려** (세부 주소 전용) | 아래 R9g 상세 |
+| **R9h** | docs | redesign pipeline SSOT · 본 일지 국면 IX | `docs/redesign/pipeline.md` · 본 파일 |
+
+#### R9g — 일시 유동 옵션 (세션 2 매장 세부 정보)
+
+| 항목 | 계약 |
+|------|------|
+| 파라미터 | `consider_temp_foot_traffic` (boolean, 선택) |
+| 활성 조건 | `use_precise_location` + `store_address` 일 때만 UI 노출·서버 적용 |
+| 검색 | 주소 지오코딩 후 **반경 200m** Kakao 키워드: 경기장·공연장·전시장·컨벤션 |
+| 점수 | 시설 kind 가중 × `exp(-d/100)` × kind rank 감쇠 → soft-sat uplift ∈ [0,1] |
+| 수요 | `D_eff = D × (1 + 0.35 × uplift)` (최대 약 +35%) |
+| Z | `FTI_kb = min(1, FTI + 0.20 × uplift)` |
+| 반영 | SS·버퍼·ROP·Q·CAPA에 `D_eff` · **표준 비교 기준은 행사 미반영 D** |
+| 한계 | 실시간 행사 캘린더 없음 → **대형 유동 가능 시설 근접** 프록시 (근거 블록에 명시) |
+
+주요 파일: `event_foot_traffic.py` · `geo_enrichment.py` · `engine.py` · `template.py` · `app/web/*` · `tests/test_event_foot_traffic.py`
+
+#### 제품 공식 추가분 (현행 · 7/16 이후, VIII 위에 적층)
+
+```
+(옵션) event_uplift = soft_sat(Σ kind_w * exp(-d/100) * 0.5^rank)   # r=200m
+(옵션) D_eff = D * (1 + 0.35 * event_uplift)   # 미옵션·시설 0이면 D_eff = D
+buffer   = D_eff * risk_days
+SS_stat  = Z * D_eff * sqrt(LT * vol/5) * turnover
+ROP      = D_eff * LT + SS
+Q        ≈ D_eff × cycle
+CAPA     MaxCap·표시 SS도 D_eff 기준 항등
+표준 비교 ROP/SS = 행사 미반영 D 기준
+```
+
+#### 커밋 계열 (pivot tip, 7/16)
+
+| SHA (대표) | 메시지 요지 |
+|------------|-------------|
+| `ebe68f0` | CAPA Q clamp · multi-order evidence · export/geo polish |
+| `b9ffe14` | 추천 plain/technical 문장형 윤문 |
+| `aa8f9b2` | 리포트 내보내기 event delegation 복구 |
+| (본 일지 커밋) | 일시 유동 옵션 + 국면 IX 일지 |
+
+#### 검증 기록
+
+```
+uv run ruff check app tests     # pass
+uv run basedpyright app         # 0 errors
+uv run pytest                   # 46 passed
+node scripts/verify_wizard_logic.mjs
+node scripts/verify_report_export.mjs
+vercel deploy --prod            # md-preflight.vercel.app
+```
+
+#### 한 줄
+> **틀어지지 않는 숫자**에 **읽히는 추천 문장**과 **깨지지 않는 내보내기**, 그리고 주소 기반 **일시 유동 수요 증분**까지 pivot 프로덕션에 올렸다.
+
+---
+
 ### 이후 — ROP 고도화 (백로그)
 
 | 항목 | 상태 | 비고 |
 |------|------|------|
-| R8 배포·환경 패리티 | TODO | Vercel · Kakao 키 시크릿 |
-| R9 실측 KB / 공공 데이터 | TODO | 현재 결정론 KB |
+| R8 배포·환경 패리티 | **DONE (부분)** | Vercel prod 반복 배포 · Kakao 시크릿은 운영 문서 기준 |
+| R9 실측 KB / 공공 데이터 | TODO | 현재 결정론 KB · 행사 스캔은 시설 프록시 |
+| R9+ 실시간 행사 캘린더 | TODO | 공공/티켓 API 연동 시 event 프록시 교체 |
 | R10 실 Agent AI 교체 | TODO | `knowledge_base.py` 포트 |
 | R11 품목 마스터 연동 | TODO | |
 | R12 발주 스케줄 캘린더 UX | TODO | 요일 패턴 시각화 |
 | R13 클라이언트 타임아웃·취소 UX | TODO | AbortController |
-| R14 stockout% 서술 캘리브 문구 | TODO | seed 기반 추정임을 명시 |
-| (구) T54/T55 v1 freeze | **SUPERSEDED** | v1 아카이브 |
+| R14 stockout% 서술 캘리브 문구 | **DONE (부분)** | 상대 위험·인덱스 카피 (VIII/IX) · 잔여 폴리시는 선택 |
+| (구) T54/T55 v1 freeze | **SUPERSEDED** | v1 아카이브 · **main 변경 금지** |
 
 ---
 
@@ -706,7 +791,8 @@ uv run pytest                   # 32 passed
 3. **피드백(v1)** — 별칭·4화면·어댑터(T48–T59).  
 4. **피벗** — `archive/v1-md-preflight` · 3단 파이프라인.  
 5. **ROP 제품** — 파라미터 → 점수·KB·Kakao 유동 → 근거 리포트 · 운영 레버.  
-6. **정확도 패치(7/15)** — SS∝수요 · 비교표 Z/주기 · size 기본값 · CAPA/geo 테스트.
+6. **정확도 패치(7/15)** — SS∝수요 · 비교표 Z/주기 · size 기본값 · CAPA/geo 테스트.  
+7. **안정화·일시 유동(7/16)** — CAPA/Q · 추천 윤문 · export 복구 · 200m 행사 수요 증분 · Vercel.
 
 ### 5.3 5분
 위 + CAPA 상한 · 불일치 guidance · foot_traffic 탈포화 · `POST /api/evaluate` 데모 · 실 KB/Agent 로드맵.  
@@ -753,4 +839,5 @@ uv run pytest                   # 32 passed
 *국면 VI 재설계 준비 반영: 2026-07-14*  
 *국면 VII ROP 서비스 빌드 반영: 2026-07-14*  
 *국면 VII+ 운영 레버·일지/발표 아웃라인 갱신: 2026-07-14*  
-*국면 VIII 정확도 패치(리뷰 권장 수정) 반영: 2026-07-15*
+*국면 VIII 정확도 패치(리뷰 권장 수정) 반영: 2026-07-15*  
+*국면 IX 안정화·일시 유동·배포 반영: 2026-07-16*

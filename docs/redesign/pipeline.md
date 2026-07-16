@@ -23,6 +23,7 @@
 | `location_dong` | 행정동 |
 | `use_precise_location` | (선택) 정확한 위치 사용 체크 |
 | `store_address` | 정확한 매장 주소 — 체크 시에만 필수 |
+| `consider_temp_foot_traffic` | (선택) 일시 유동인구 증분 — **정확한 주소 사용 시에만**. 주소 반경 200m 행사·유동 시설 검색 → 수요 배수 |
 | `trade_area` | 상권 유형 |
 | `accessibility` | 대로변 / 이면 / 건물 내 |
 | `daily_demand` | 일평균 소진량 |
@@ -40,7 +41,8 @@
 
 1. **스코어링 테이블** (`scoring.py`) — CAPA, 수요집중, 회전가중, 공급난이도, 수요변동, 접근성 리스크(일)  
 2. **(선택) Kakao Local 보강** (`geo_enrichment.py`) — 주소 검색 + 카테고리/키워드 POI → `foot_traffic_index`  
-3. **KB 매칭** (`knowledge_base.py`) — 행정동+품목+상권 시드 + 유동지수 기반 물류지연·Z계수·서술  
+   - **(선택) 일시 유동 스캔** (`event_foot_traffic.py`) — `consider_temp_foot_traffic` + 정확한 주소 시, 반경 **200m** 내 경기장·공연장·전시장·컨벤션 등 키워드 검색 → `event_foot_traffic_uplift` · `event_demand_multiplier`  
+3. **KB 매칭** (`knowledge_base.py`) — 행정동+품목+상권 시드 + (구조 FTI + 행사 블렌드) 기반 물류지연·Z계수·서술  
 4. **공식** (`engine.py`) — SSOT; 상세는 `docs/architecture.md` 와 동기화
 
 ```
@@ -48,20 +50,26 @@ foot_traffic_index = soft_sat(
   Σ_{cat, rank≤N_cat} w(cat) * exp(-d/250) * 0.5^rank
 )  where soft_sat(raw) = raw / (raw + 2.4) → (0,1)
   N_cat: rail/bus/anchor/… 최근접 1~2곳, CS2=convenience 저가중
+# Optional temporary event-crowd (precise address only, r=200m):
+event_uplift = soft_sat(Σ kind_w * exp(-d/100) * 0.5^rank_kind)
+event_demand_multiplier = 1 + 0.35 * event_uplift   # max +35% demand
+D_eff = D * event_demand_multiplier                 # 미옵션 시 D_eff=D
+FTI_kb = min(1, FTI + 0.20 * event_uplift)
 # LT is product input (kept as-is). Output never recommends changing LT.
 LT = 입력 품목 표준 LT   # 고정 — 조정 레버 아님
-Z = 서비스레벨 정책 Z(90/95/99) + 맥락(변동성·품목·유동지수)
+Z = 서비스레벨 정책 Z(90/95/99) + 맥락(변동성·품목·FTI_kb)
 물류 리스크일 = max(0, 접근성 성분 + KB 상권·행정동 리스크)
-물류 버퍼개 = 일평균소진(D) * 물류 리스크일
-통계 안전재고 = Z * D * sqrt(LT * vol/5) * 회전가중치   # demand-proportional
+물류 버퍼개 = D_eff * 물류 리스크일
+통계 안전재고 = Z * D_eff * sqrt(LT * vol/5) * 회전가중치
 총 안전재고 = 통계 안전재고 + 물류 버퍼개
-추천 ROP = D * LT + 총 안전재고
+추천 ROP = D_eff * LT + 총 안전재고
 발주 요일·주기·Q = 선택 패턴 또는 CAPA 자동 추천
-  Q ≈ D × cycle_days
+  Q ≈ D_eff × cycle_days
 CAPA 1~2 이고 상한 초과 시:
-  ROP = MaxCap, 표시 SS = max(0, MaxCap − D×LT)   # 항등 유지
-  Q = min(Q, MaxCap)                              # 1회 발주량도 천장 적용
+  ROP = MaxCap, 표시 SS = max(0, MaxCap − D_eff×LT)   # 항등 유지
+  Q = min(Q, MaxCap)
   → 다회 소량 발주 강화
+# 표준(비교 기준) ROP/SS는 행사 미반영 D 기준 — 임시 유동은 추천 측에만 반영
 ```
 
 비교 표 기준선:

@@ -8,6 +8,7 @@ a new "recommended LT".
 from __future__ import annotations
 
 from app.core.config import Settings, get_settings
+from app.pipeline.analyze.event_foot_traffic import blend_fti_with_event
 from app.pipeline.analyze.geo_enrichment import (
     JsonFetch,
     disabled_enrichment,
@@ -58,11 +59,13 @@ def _resolve_geo(
     if not use_precise:
         return disabled_enrichment()
     address = _as_str(p.get("store_address", "")).strip()
+    scan_events = _as_bool(p.get("consider_temp_foot_traffic"), False)
     return enrich_from_address(
         address,
         api_key=settings.kakao_rest_api_key,
         radius_m=settings.geo_radius_m,
         fetch=fetch,
+        scan_events=scan_events,
     )
 
 
@@ -101,13 +104,18 @@ def analyze(
         if geo_override is not None
         else _resolve_geo(validated, settings=cfg, fetch=geo_fetch)
     )
+    # Temporary event-crowd uplift blends into FTI for Z context and scales demand.
+    fti_for_kb = blend_fti_with_event(
+        geo.foot_traffic_index,
+        geo.event_foot_traffic_uplift,
+    )
     knowledge = match_knowledge(
         location_dong=location_dong,
         product_name=product_name,
         trade_area=trade_area,
         accessibility=accessibility,
         scores=scores,
-        foot_traffic_index=geo.foot_traffic_index,
+        foot_traffic_index=fti_for_kb,
         service_level=service_level,
     )
 
@@ -121,11 +129,16 @@ def analyze(
         standard_lt = DEFAULT_STANDARD_LT.get(channel_key, 2.0)
 
     fixed_lt = standard_lt
+    mult = max(1.0, float(geo.event_demand_multiplier or 1.0))
+    effective_demand = round(daily_demand * mult, 4)
+    event_uplift_frac = round(max(0.0, mult - 1.0), 4)
+
     logistics_risk_days = round(
         max(0.0, scores.accessibility_lt_delta_days + knowledge.logistics_delay_days),
         2,
     )
-    logistics_buffer = round(daily_demand * logistics_risk_days, 2)
+    # Logistics buffer and SS scale with event-adjusted demand when uplift is on.
+    logistics_buffer = round(effective_demand * logistics_risk_days, 2)
 
     base_frac = DEFAULT_BASE_SAFETY_FRAC.get(channel_key, 0.35)
     base_safety = round(daily_demand * fixed_lt * base_frac, 2)
@@ -133,6 +146,7 @@ def analyze(
     if "standard_rop" in p:
         standard_rop = max(0.0, _as_float(p["standard_rop"], 0.0))
     else:
+        # Baseline standard stays on unadjusted demand (no temporary event).
         standard_rop = round(daily_demand * fixed_lt + base_safety, 2)
 
     statistical_ss = store_safety_stock(
@@ -140,11 +154,11 @@ def analyze(
         lead_time_days=fixed_lt,
         demand_volatility=scores.demand_volatility,
         turnover_weight=scores.turnover_weight,
-        daily_demand=daily_demand,
+        daily_demand=effective_demand,
     )
     # Total safety stock = statistical SS + logistics risk buffer (units).
     store_safety = round(statistical_ss + logistics_buffer, 2)
-    raw_rop = round(daily_demand * fixed_lt + store_safety, 2)
+    raw_rop = round(effective_demand * fixed_lt + store_safety, 2)
 
     (
         order_cycle,
@@ -156,7 +170,7 @@ def analyze(
     ) = suggest_order_policy(
         capa_score=scores.capa_score,
         demand_concentration=scores.demand_concentration,
-        daily_demand=daily_demand,
+        daily_demand=effective_demand,
         lead_time_days=fixed_lt,
         order_day_pattern=order_pattern_in,
     )
@@ -170,7 +184,7 @@ def analyze(
     if scores.capa_score <= 2:
         max_cap = round(
             max_rop_for_capa(
-                daily_demand=daily_demand,
+                daily_demand=effective_demand,
                 recommended_lt=fixed_lt,
                 capa_score=scores.capa_score,
             ),
@@ -179,9 +193,9 @@ def analyze(
         if raw_rop > max_cap:
             capa_capped = True
             recommended_rop = max_cap
-            # Keep ROP = D*LT + SS identity after cap: display effective SS.
+            # Keep ROP = D_eff*LT + SS identity after cap: display effective SS.
             store_safety = round(
-                max(0.0, recommended_rop - daily_demand * fixed_lt),
+                max(0.0, recommended_rop - effective_demand * fixed_lt),
                 2,
             )
         # Physical stock ceiling also bounds per-receipt order qty (cycle may exceed cover).
@@ -229,6 +243,8 @@ def analyze(
         recommended_rop=recommended_rop,
         rop_delta=round(recommended_rop - standard_rop, 2),
         daily_demand=daily_demand,
+        effective_daily_demand=effective_demand,
+        event_demand_uplift_frac=event_uplift_frac,
         base_safety_stock=base_safety,
         store_safety_stock=store_safety,
         order_cycle_days=order_cycle,

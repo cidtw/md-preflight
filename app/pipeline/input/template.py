@@ -96,6 +96,17 @@ def get_template() -> InputTemplate:
                 description="정확한 위치 사용 시에만 필수. 예: 서울시 마포구 양화로 45",
             ),
             ParameterSpec(
+                key="consider_temp_foot_traffic",
+                label="일시적인 유동인구 증가분 변수 고려",
+                type="boolean",
+                required=False,
+                description=(
+                    "정확한 매장 주소를 켠 경우에만 사용. 주소 반경 200m 안 "
+                    "대형 행사·유동 유발 시설(경기장·공연장·전시장 등)을 검색해 "
+                    "예상 임시 유동에 따른 잠재 수요 증분을 ROP·안전재고·발주량에 반영합니다."
+                ),
+            ),
+            ParameterSpec(
                 key="trade_area",
                 label="핵심 타겟 상권 유형",
                 type="string",
@@ -273,12 +284,26 @@ def validate_parameters(
     if not use_precise:
         normalized["use_precise_location"] = False
         _ = normalized.pop("store_address", None)
+        # Event-crowd scan requires a precise geocoded address.
+        if bool(normalized.get("consider_temp_foot_traffic", False)):
+            normalized["consider_temp_foot_traffic"] = False
+            guidance_extra = (
+                "일시 유동인구 증분 옵션은 정확한 매장 주소 사용 시에만 적용됩니다. "
+                "해당 옵션을 끄고 행정동 경로로 계산합니다."
+            )
+        else:
+            guidance_extra = None
+            normalized["consider_temp_foot_traffic"] = False
     else:
         normalized["use_precise_location"] = True
         if "store_address" not in normalized:
             raise InputValidationError(
                 "정확한 위치 사용 시 'store_address'(정확한 매장 주소)가 필요합니다.",
             )
+        normalized["consider_temp_foot_traffic"] = bool(
+            normalized.get("consider_temp_foot_traffic", False),
+        )
+        guidance_extra = None
 
     # Optional policy levers — defaults when omitted.
     if "service_level" not in normalized:
@@ -290,6 +315,8 @@ def validate_parameters(
     store_size = str(normalized["store_size"])
     avg_ticket = str(normalized["avg_ticket"])
     guidance = _build_guidance(store_type, store_size, avg_ticket)
+    if guidance_extra:
+        guidance.append(guidance_extra)
 
     return ValidatedInput(
         template_id=spec.id,

@@ -44,6 +44,10 @@ export function sanitizeEvaluateParameters(parameters) {
   out.use_precise_location = Boolean(out.use_precise_location);
   if (!out.use_precise_location) {
     delete out.store_address;
+    // Temporary foot-traffic option requires a geocoded precise address.
+    out.consider_temp_foot_traffic = false;
+  } else {
+    out.consider_temp_foot_traffic = Boolean(out.consider_temp_foot_traffic);
   }
   return out;
 }

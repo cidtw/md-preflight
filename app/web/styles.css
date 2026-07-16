@@ -337,11 +337,13 @@ body > .container {
   }
   .field-mount-cols label[data-field-key="use_precise_location"],
   .field-mount-cols label[data-field-key="store_address"],
+  .field-mount-cols label[data-field-key="consider_temp_foot_traffic"],
   .field-mount-cols label[data-field-key="location_dong"],
   .field-mount-cols label[data-field-key="product_name"] {
     grid-column: 1 / -1;
   }
 }
+
 
 label {
   display: grid;
@@ -392,7 +394,8 @@ label {
 .checkbox-label .field-hint {
   grid-column: 2;
 }
-label[data-field-key="store_address"][hidden] {
+label[data-field-key="store_address"][hidden],
+label[data-field-key="consider_temp_foot_traffic"][hidden] {
   display: none !important;
 }
 

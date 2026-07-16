@@ -46,17 +46,21 @@ assert(validateStoreAddress(true, "서울시 마포구 양화로 123").ok, "real
 const stripped = sanitizeEvaluateParameters({
   use_precise_location: false,
   store_address: "should-drop",
+  consider_temp_foot_traffic: true,
   product_name: "X",
 });
 assert(stripped.use_precise_location === false, "precise flag false");
 assert(!("store_address" in stripped), "strip store_address when precise off");
+assert(stripped.consider_temp_foot_traffic === false, "clear event opt when precise off");
 assert(stripped.product_name === "X", "other fields kept");
 
 const kept = sanitizeEvaluateParameters({
   use_precise_location: true,
   store_address: "서울 마포",
+  consider_temp_foot_traffic: true,
 });
 assert(kept.store_address === "서울 마포", "keep address when precise on");
+assert(kept.consider_temp_foot_traffic === true, "keep event opt when precise on");
 
 // --- loading → error restore last step ---
 // STEPS = welcome, basic, detail, inventory → length 4, last index 3

@@ -69,6 +69,15 @@ class NearbyPoi(BaseModel):
     distance_m: float
 
 
+class EventVenueSignal(BaseModel):
+    """Nearby venue that can host temporary large foot traffic (event proxy)."""
+
+    name: str
+    kind: str
+    distance_m: float
+    weight: float = 0.0
+
+
 class GeoEnrichment(BaseModel):
     """Map-API enrichment for precise store address (Kakao Local)."""
 
@@ -82,6 +91,12 @@ class GeoEnrichment(BaseModel):
     notes: list[str] = Field(default_factory=list)
     address_queried: str | None = None
     radius_m: int = 500
+    # Optional temporary event-crowd scan (only when user opts in + precise address).
+    event_scan_enabled: bool = False
+    event_radius_m: int = 200
+    event_venues: list[EventVenueSignal] = Field(default_factory=list)
+    event_foot_traffic_uplift: float = Field(default=0.0, ge=0.0, le=1.0)
+    event_demand_multiplier: float = Field(default=1.0, ge=1.0)
 
 
 class KnowledgeSignals(BaseModel):
@@ -122,6 +137,9 @@ class CalcBreakdown(BaseModel):
     recommended_rop: float
     rop_delta: float
     daily_demand: float
+    # After optional temporary event-crowd demand uplift (else == daily_demand).
+    effective_daily_demand: float = 0.0
+    event_demand_uplift_frac: float = 0.0
     base_safety_stock: float
     store_safety_stock: float
     order_cycle_days: float = 0.0
@@ -148,6 +166,7 @@ class StoreSummary(BaseModel):
     order_day_pattern_label: str = ""
     use_precise_location: bool = False
     store_address: str | None = None
+    consider_temp_foot_traffic: bool = False
 
 
 class ComparisonRow(BaseModel):
