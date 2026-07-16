@@ -241,6 +241,12 @@ def test_evidence_is_input_specific_not_fixed_doc_example() -> None:
     assert "역삼1동" not in blob
     assert "240%" not in blob
     assert any(b.id == "geo_poi" for b in result.evidence)
+    # Dual narrative: technical path present and distinct.
+    assert result.recommendation_technical
+    assert result.evidence_technical
+    assert result.comparison_technical is not None
+    tech_blob = " ".join(p for b in result.evidence_technical for p in b.points)
+    assert "Z" in tech_blob or "CAPA" in tech_blob or "sqrt" in tech_blob
 
 
 def test_analyze_formula_rop_identity() -> None:

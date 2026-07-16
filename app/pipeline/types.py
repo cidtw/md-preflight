@@ -172,13 +172,20 @@ class EvidenceBlock(BaseModel):
 
 
 class RecommendationResult(BaseModel):
-    """Full output-stage payload for the ROP redesign service."""
+    """Full output-stage payload for the ROP redesign service.
+
+    Default fields are plain-language (store-owner). ``*_technical`` fields keep
+    the specialist narrative for optional UI toggle.
+    """
 
     recommendation: str
+    recommendation_technical: str = ""
     template_id: str
     template_version: str
     guidance: list[str] = Field(default_factory=list)
     summary: StoreSummary
     comparison: ComparisonDashboard
+    comparison_technical: ComparisonDashboard | None = None
     evidence: list[EvidenceBlock]
+    evidence_technical: list[EvidenceBlock] = Field(default_factory=list)
     calc: CalcBreakdown

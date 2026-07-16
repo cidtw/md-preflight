@@ -6,6 +6,34 @@ import {
   validateStoreAddress,
 } from "./wizard_logic.mjs";
 
+const THEME_KEY = "rop-theme-mode";
+const EXPERT_KEY = "rop-expert-mode";
+
+/** @type {"system"|"light"|"dark"} */
+function readThemeMode() {
+  const raw = localStorage.getItem(THEME_KEY);
+  if (raw === "light" || raw === "dark" || raw === "system") return raw;
+  return "system";
+}
+
+function applyThemeMode(mode) {
+  const m = mode === "light" || mode === "dark" || mode === "system" ? mode : "system";
+  document.documentElement.dataset.theme = m;
+  localStorage.setItem(THEME_KEY, m);
+  const sel = document.getElementById("theme-select");
+  if (sel && "value" in sel) sel.value = m;
+}
+
+function initTheme() {
+  applyThemeMode(readThemeMode());
+  document.getElementById("theme-select")?.addEventListener("change", (ev) => {
+    const t = ev.target;
+    if (t && "value" in t) applyThemeMode(String(t.value));
+  });
+}
+
+initTheme();
+
 const form = document.getElementById("eval-form");
 const inputPanel = document.getElementById("input-panel");
 const loadingPanel = document.getElementById("loading-panel");
@@ -18,6 +46,9 @@ const wizardNav = document.getElementById("wizard-nav");
 const stepProgress = document.getElementById("step-progress");
 const stepProgressList = document.getElementById("step-progress-list");
 const welcomeStep = document.getElementById("step-welcome");
+
+/** @type {object | null} */
+let lastPayload = null;
 
 /** @type {Record<string, object>} */
 let specsByKey = {};
@@ -334,7 +365,36 @@ function escapeHtml(text) {
     .replaceAll('"', "&quot;");
 }
 
-function renderResult(payload) {
+function readExpertMode() {
+  return localStorage.getItem(EXPERT_KEY) === "1";
+}
+
+function setExpertMode(on) {
+  localStorage.setItem(EXPERT_KEY, on ? "1" : "0");
+}
+
+function pickNarrative(payload, expert) {
+  const comparison =
+    expert && payload.comparison_technical
+      ? payload.comparison_technical
+      : payload.comparison;
+  const evidence =
+    expert && payload.evidence_technical?.length
+      ? payload.evidence_technical
+      : payload.evidence;
+  const recommendation =
+    expert && payload.recommendation_technical
+      ? payload.recommendation_technical
+      : payload.recommendation;
+  return { comparison, evidence, recommendation };
+}
+
+function renderResult(payload, expertOverride) {
+  lastPayload = payload;
+  const expert =
+    expertOverride !== undefined ? Boolean(expertOverride) : readExpertMode();
+  const { comparison, evidence, recommendation } = pickNarrative(payload, expert);
+
   const guideHtml =
     payload.guidance && payload.guidance.length
       ? `<div class="guidance"><strong>입력 안내</strong><ul>${payload.guidance
@@ -348,7 +408,15 @@ function renderResult(payload) {
       ? `<dt>상세 주소</dt><dd>${escapeHtml(s.store_address)}</dd>`
       : "";
 
-  const rows = payload.comparison.rows
+  const colStd = expert ? "표준" : "일반 기준";
+  const colRec = expert ? "매장 맞춤" : "이 매장 추천";
+  const colDelta = expert ? "Δ / 메모" : "어떻게 달라졌나";
+  const evidenceTitle = expert
+    ? "계산 근거 · 지식 베이스 (전문)"
+    : "왜 이렇게 나왔나요? (쉬운 설명)";
+  const cmpTitle = expert ? "ROP 비교 대시보드" : "한눈에 보는 발주 기준";
+
+  const rows = comparison.rows
     .map((r) => {
       const cls = r.delta > 0 ? "delta-up" : r.delta < 0 ? "delta-down" : "";
       return `<tr>
@@ -360,7 +428,7 @@ function renderResult(payload) {
     })
     .join("");
 
-  const evidence = payload.evidence
+  const evidenceHtml = evidence
     .map(
       (block) => `<article class="card evidence">
         <h3>${escapeHtml(block.title)}</h3>
@@ -371,38 +439,56 @@ function renderResult(payload) {
     .join("");
 
   resultPanel.innerHTML = `
-    <section class="card">
-      <h2>추천 결과</h2>
-      <p class="hero-rec">${escapeHtml(payload.recommendation)}</p>
-      ${guideHtml}
-      <h3>매장·품목 요약</h3>
-      <dl class="summary-grid">
-        <dt>분석 품목</dt><dd>${escapeHtml(s.product_name)}</dd>
-        <dt>유형 / 규모</dt><dd>${escapeHtml(s.store_type_label)} / ${escapeHtml(s.store_size_label)}</dd>
-        <dt>객단가</dt><dd>${escapeHtml(s.avg_ticket_label)}</dd>
-        <dt>입지 / 접근성</dt><dd>${escapeHtml(s.location_dong)} / ${escapeHtml(s.accessibility_label)}</dd>
-        ${addressRow}
-        <dt>상권</dt><dd>${escapeHtml(s.trade_area_label)}</dd>
-        <dt>서비스 레벨</dt><dd>${escapeHtml(s.service_level_label || "-")}</dd>
-        <dt>발주 요일 패턴</dt><dd>${escapeHtml(s.order_day_pattern_label || "-")}</dd>
-      </dl>
-    </section>
-    <section class="card">
-      <h2>한눈에 보는 발주 기준</h2>
-      <table class="cmp">
-        <thead>
-          <tr><th>구분</th><th>일반(업계·사내) 기준</th><th>이 매장 추천</th><th>어떻게 달라졌나</th></tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <p class="rop-guide">${escapeHtml(payload.comparison.rop_guidance)}</p>
-    </section>
-    <section>
-      <h2 class="section-heading">왜 이렇게 나왔나요? (쉬운 설명)</h2>
-      ${evidence}
-    </section>
-    <div class="actions">
-      <button type="button" class="btn-secondary" id="again-btn">처음부터 다시</button>
+    <div class="result-toolbar card">
+      <label class="expert-toggle">
+        <input type="checkbox" id="expert-mode" ${expert ? "checked" : ""} />
+        <span>
+          <strong>전문적인 해설 버전</strong>
+          <small>전공·실무자용 공식·점수 표기 (Z, CAPA, FTI 등)</small>
+        </span>
+      </label>
+      <button type="button" class="btn-secondary btn-inline" id="again-btn">처음부터 다시</button>
+    </div>
+    <div class="result-layout">
+      <div class="result-main">
+        <section class="card">
+          <h2>추천 결과</h2>
+          <p class="hero-rec">${escapeHtml(recommendation)}</p>
+          ${guideHtml}
+          <h3>매장·품목 요약</h3>
+          <dl class="summary-grid">
+            <dt>분석 품목</dt><dd>${escapeHtml(s.product_name)}</dd>
+            <dt>유형 / 규모</dt><dd>${escapeHtml(s.store_type_label)} / ${escapeHtml(s.store_size_label)}</dd>
+            <dt>객단가</dt><dd>${escapeHtml(s.avg_ticket_label)}</dd>
+            <dt>입지 / 접근성</dt><dd>${escapeHtml(s.location_dong)} / ${escapeHtml(s.accessibility_label)}</dd>
+            ${addressRow}
+            <dt>상권</dt><dd>${escapeHtml(s.trade_area_label)}</dd>
+            <dt>서비스 레벨</dt><dd>${escapeHtml(s.service_level_label || "-")}</dd>
+            <dt>발주 요일 패턴</dt><dd>${escapeHtml(s.order_day_pattern_label || "-")}</dd>
+          </dl>
+        </section>
+        <section class="card">
+          <h2>${escapeHtml(cmpTitle)}</h2>
+          <div class="table-wrap">
+            <table class="cmp">
+              <thead>
+                <tr>
+                  <th>구분</th>
+                  <th>${escapeHtml(colStd)}</th>
+                  <th>${escapeHtml(colRec)}</th>
+                  <th>${escapeHtml(colDelta)}</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+          <p class="rop-guide">${escapeHtml(comparison.rop_guidance)}</p>
+        </section>
+      </div>
+      <aside class="result-aside">
+        <h2 class="section-heading">${escapeHtml(evidenceTitle)}</h2>
+        <div class="evidence-grid">${evidenceHtml}</div>
+      </aside>
     </div>
   `;
   resultPanel.hidden = false;
@@ -410,6 +496,11 @@ function renderResult(payload) {
     resultPanel.hidden = true;
     inputPanel.hidden = false;
     showStep(0);
+  });
+  document.getElementById("expert-mode")?.addEventListener("change", (ev) => {
+    const on = Boolean(ev.target?.checked);
+    setExpertMode(on);
+    if (lastPayload) renderResult(lastPayload, on);
   });
 }
 

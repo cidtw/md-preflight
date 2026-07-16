@@ -1,17 +1,41 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="system">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>매장 특화 ROP 재조정</title>
     <link rel="stylesheet" href="/static/styles.css" />
+    <script>
+      /* Prevent flash: apply stored theme before paint */
+      (function () {
+        try {
+          var m = localStorage.getItem("rop-theme-mode") || "system";
+          if (m !== "light" && m !== "dark" && m !== "system") m = "system";
+          document.documentElement.dataset.theme = m;
+        } catch (e) {
+          document.documentElement.dataset.theme = "system";
+        }
+      })();
+    </script>
   </head>
   <body>
     <main class="shell">
       <header class="site-header">
-        <p class="eyebrow">MD Preflight · ROP</p>
-        <h1>매장 특화 ROP · 발주 운영 재조정</h1>
-        <p class="meta">version __APP_VERSION__</p>
+        <div class="header-row">
+          <div class="header-text">
+            <p class="eyebrow">MD Preflight · ROP</p>
+            <h1>매장 특화 ROP · 발주 운영 재조정</h1>
+            <p class="meta">version __APP_VERSION__</p>
+          </div>
+          <label class="theme-control">
+            <span class="theme-label">테마</span>
+            <select id="theme-select" aria-label="화면 테마">
+              <option value="system">시스템</option>
+              <option value="light">라이트</option>
+              <option value="dark">다크</option>
+            </select>
+          </label>
+        </div>
       </header>
 
       <!-- Progress (hidden on welcome / loading / result) -->
@@ -22,19 +46,25 @@
       <!-- Wizard card -->
       <section id="input-panel" class="card wizard">
         <div id="step-welcome" class="wizard-step" data-step="welcome">
-          <p class="welcome-kicker">환영합니다</p>
-          <h2 class="welcome-title">매장에 맞는 발주 기준을 다시 잡아 드릴게요</h2>
-          <p class="lede">
-            리드타임은 계약·표준값으로 고정하고, 업계·사내 평균 ROP만으로는 부족한
-            부분을 <strong>매장 유형·규모·상권·접근성</strong>으로 반영해
-            <strong>ROP·안전재고·1회 발주량·발주 주기</strong>와 근거를 제시합니다.
-          </p>
-          <ul class="welcome-points">
-            <li>입력은 짧은 세션으로 나뉩니다 (기본 정보 → 세부 정보 → 품목).</li>
-            <li>계산은 서버에서 결정론적으로 처리되며, 결과는 표준 대비 비교표로 보여 줍니다.</li>
-            <li>유형과 규모·객단가가 어긋나면 규모·객단가 선택을 기준으로 안내합니다.</li>
-          </ul>
-          <button type="button" class="btn-primary" id="welcome-start">시작하기</button>
+          <div class="welcome-grid">
+            <div>
+              <p class="welcome-kicker">환영합니다</p>
+              <h2 class="welcome-title">매장에 맞는 발주 기준을 다시 잡아 드릴게요</h2>
+              <p class="lede">
+                리드타임은 계약·표준값으로 고정하고, 업계·사내 평균 ROP만으로는 부족한
+                부분을 <strong>매장 유형·규모·상권·접근성</strong>으로 반영해
+                <strong>ROP·안전재고·1회 발주량·발주 주기</strong>와 근거를 제시합니다.
+              </p>
+              <button type="button" class="btn-primary btn-inline" id="welcome-start">
+                시작하기
+              </button>
+            </div>
+            <ul class="welcome-points">
+              <li>입력은 짧은 세션으로 나뉩니다 (기본 정보 → 세부 정보 → 품목).</li>
+              <li>결과는 쉬운 설명으로 보여 주고, 필요하면 전문 해설로 전환할 수 있습니다.</li>
+              <li>유형과 규모·객단가가 어긋나면 규모·객단가 선택을 기준으로 안내합니다.</li>
+            </ul>
+          </div>
         </div>
 
         <form id="eval-form" hidden>
@@ -42,7 +72,7 @@
             <p class="step-eyebrow">세션 1 / 3</p>
             <h2>매장 기본 정보</h2>
             <p class="step-lede">채널 체급을 정하는 핵심 값입니다. 유형·규모·객단가를 선택해 주세요.</p>
-            <div class="field-mount" data-keys="store_type,store_size,avg_ticket"></div>
+            <div class="field-mount field-mount-cols" data-keys="store_type,store_size,avg_ticket"></div>
           </div>
 
           <div id="step-detail" class="wizard-step" data-step="detail" hidden>
@@ -50,7 +80,7 @@
             <h2>매장 세부 정보</h2>
             <p class="step-lede">입지·상권·접근성은 물류 리스크 버퍼와 수요 변동 반영에 쓰입니다. (LT는 고정)</p>
             <div
-              class="field-mount"
+              class="field-mount field-mount-cols"
               data-keys="location_dong,use_precise_location,store_address,trade_area,accessibility"
             ></div>
           </div>
@@ -64,7 +94,7 @@
               비워 두면 채널 기본값으로 계산합니다.
             </p>
             <div
-              class="field-mount"
+              class="field-mount field-mount-cols"
               data-keys="product_name,daily_demand,standard_lead_time_days,service_level,order_day_pattern,standard_rop"
             ></div>
           </div>
@@ -84,7 +114,7 @@
         <p>매장 특화 점수를 연산하고 지식 베이스를 매칭하는 중…</p>
       </section>
 
-      <section id="result-panel" hidden></section>
+      <section id="result-panel" class="result-panel" hidden></section>
     </main>
     <script src="/static/app.js" type="module"></script>
   </body>

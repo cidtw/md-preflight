@@ -56,10 +56,19 @@ def test_evaluate_ok(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert "recommendation" in body
+    assert body["recommendation_technical"]
     assert body["comparison"]["rows"]
+    assert body["comparison_technical"]["rows"]
     assert len(body["evidence"]) == 4
+    assert len(body["evidence_technical"]) == 4
     assert body["summary"]["product_name"] == "냉장 간편식"
     assert any(b["id"] == "geo_poi" for b in body["evidence"])
+    assert any(b["id"] == "geo_poi" for b in body["evidence_technical"])
+    # Technical narrative keeps specialist terms; plain stays owner-friendly.
+    tech_blob = " ".join(
+        p for b in body["evidence_technical"] for p in b["points"]
+    ) + body["recommendation_technical"]
+    assert "Z" in tech_blob or "CAPA" in tech_blob or "SS" in tech_blob
 
 
 def test_evaluate_validation_error(client: TestClient) -> None:
@@ -129,3 +138,5 @@ def test_index_page(client: TestClient) -> None:
     assert "매장 기본 정보" in response.text
     assert "매장 세부 정보" in response.text
     assert "품목 · 운영 기준" in response.text
+    assert 'id="theme-select"' in response.text
+    assert "시스템" in response.text
