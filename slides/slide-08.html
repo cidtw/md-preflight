@@ -85,7 +85,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  font-size: 10.5pt; line-height: 1.45; background: #E8E8E3;
   border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
@@ -104,33 +104,26 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 <body>
 
   <div>
-    <div class="eyebrow">Pivot</div>
-    <h1>피드백은 “더 많은 룰”이 아니라 문제 정의 재정렬</h1>
+    <div class="eyebrow">Formula</div>
+    <h1 style="font-size:20pt;">LT는 상수, 조정은 재고·발주 정책 · SS∝수요</h1>
     
   </div>
 
-  <div class="main grid-2">
-    <div class="card">
-      <div class="col-title">유지</div>
-      <ul>
-        <li>결정론 코어</li>
-        <li>근거 제시</li>
-        <li>degrade 가능한 주변부</li>
-      </ul>
+  <div class="main" style="display:flex;flex-direction:column;gap:10pt;justify-content:flex-start;">
+    <div class="formula" style="font-size:10.5pt;line-height:1.5;">
+LT = 품목 입력 (delta=0) · 미입력 시 규모→채널 기본값<br>
+Z = Z_policy(90/95/99) + 맥락(변동성·품목·FTI_kb)<br>
+SS_stat = Z × D_eff × √(LT × vol/5) × turnover<br>
+buffer = D_eff × risk_days &nbsp;·&nbsp; SS = SS_stat + buffer<br>
+ROP = D_eff × LT + SS &nbsp;·&nbsp; Q ≈ D_eff × cycle<br>
+CAPA 시 Q ≤ MaxCap · 표시 SS 항등 (ROP = D_eff×LT+SS)
     </div>
-    <div class="card">
-      <div class="col-title">전환</div>
-      <ul>
-        <li>고정 스키마 파일 검수 UI ↓</li>
-        <li>매장 파라미터 → 점수·KB → 발주 기준 추천</li>
-        <li>pivot/project-direction 3단 재구축</li>
-      </ul>
-    </div>
+    <p class="key" style="margin-top:4pt;font-size:12pt;">비교 표 표준 SS/Q = 행사 미반영 D · 추천 측 = D_eff</p>
   </div>
 
   <div class="footer">
     <span>MD Preflight · pivot/project-direction</span>
-    <span>05 / 14</span>
+    <span>08 / 14</span>
   </div>
 </body>
 </html>

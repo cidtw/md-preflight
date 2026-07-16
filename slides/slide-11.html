@@ -104,33 +104,53 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 <body>
 
   <div>
-    <div class="eyebrow">Pivot</div>
-    <h1>피드백은 “더 많은 룰”이 아니라 문제 정의 재정렬</h1>
+    <div class="eyebrow">Quality</div>
+    <h1>제품이 바뀌어도 측정 가능한 품질 습관은 유지</h1>
     
   </div>
 
-  <div class="main grid-2">
-    <div class="card">
-      <div class="col-title">유지</div>
-      <ul>
-        <li>결정론 코어</li>
-        <li>근거 제시</li>
-        <li>degrade 가능한 주변부</li>
-      </ul>
+  <div class="main" style="display:grid;grid-template-columns:1.1fr 1fr;gap:16pt;">
+    <div>
+      <canvas id="pytestChart" style="width:100%;height:200pt;"></canvas>
     </div>
-    <div class="card">
-      <div class="col-title">전환</div>
-      <ul>
-        <li>고정 스키마 파일 검수 UI ↓</li>
-        <li>매장 파라미터 → 점수·KB → 발주 기준 추천</li>
-        <li>pivot/project-direction 3단 재구축</li>
-      </ul>
+    <div class="card" style="justify-content:center;">
+      <p><strong>현행 tip</strong> pytest <strong>46</strong></p>
+      <p style="margin-top:8pt;">ruff · basedpyright 0</p>
+      <p style="margin-top:8pt;">wizard / export smoke</p>
+      <p style="margin-top:8pt;">계약: 결정론 · LT 미조정 · ROP=D_eff×LT+SS</p>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    const ctx = document.getElementById('pytestChart');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['v1 peak', 'pivot skeleton', 'ROP 7/14', 'VIII 7/15', 'IX 7/16'],
+        datasets: [{
+          label: 'pytest',
+          data: [150, 12, 30, 32, 46],
+          backgroundColor: '#1A1A1A',
+          borderRadius: 4,
+          barPercentage: 0.6
+        }]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#666', font: { size: 10 } }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#D4D4D0' } }
+        }
+      }
+    });
+  </script>
 
   <div class="footer">
     <span>MD Preflight · pivot/project-direction</span>
-    <span>05 / 14</span>
+    <span>11 / 14</span>
   </div>
 </body>
 </html>

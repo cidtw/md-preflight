@@ -1,0 +1,4154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slide Viewer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #111;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .viewer-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .nav-bar {
+      height: 48px;
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .nav-bar button {
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .nav-bar button:hover {
+      background: #555;
+    }
+
+    .nav-bar button:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+
+    .slide-counter {
+      color: #aaa;
+      font-size: 14px;
+      font-weight: 500;
+      min-width: 60px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .btn-fullscreen {
+      position: absolute;
+      right: 16px;
+      background: transparent !important;
+      font-size: 18px;
+      padding: 6px 10px !important;
+    }
+
+    .slide-viewport {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .slide-scaler {
+      width: 720pt;
+      height: 405pt;
+      position: relative;
+      transform-origin: center center;
+    }
+
+    .slide-frame {
+      position: absolute;
+      inset: 0;
+      width: 720pt;
+      height: 405pt;
+      border: none;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .slide-frame.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="viewer-container">
+    <div class="nav-bar">
+      <button id="btn-prev" title="Previous (\u2190)">Prev</button>
+      <span class="slide-counter" id="counter">1 / 14</span>
+      <button id="btn-next" title="Next (\u2192)">Next</button>
+      <button class="btn-fullscreen" id="btn-fs" title="Fullscreen (F)">&#x26F6;</button>
+    </div>
+
+    <div class="slide-viewport" id="viewport">
+      <div class="slide-scaler" id="scaler">
+        <iframe class="slide-frame active" data-slide="1" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-01.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+
+  <div style=&quot;flex:1;display:flex;flex-direction:column;justify-content:center;&quot;>
+    <div class=&quot;eyebrow&quot;>2026.07.01–16 · Final Briefing</div>
+    <h1 style=&quot;font-size:30pt;margin-top:16pt;&quot;>매장 특화 발주 기준 재조정</h1>
+    <p class=&quot;key&quot; style=&quot;font-size:14pt;margin-top:12pt;max-width:520pt;&quot;>
+      MD Preflight — v1 사전검수에서 ROP 운영 레버 제품까지
+    </p>
+    <div class=&quot;chip-row&quot; style=&quot;margin-top:20pt;&quot;>
+      <span class=&quot;chip&quot;>LT 입력 유지</span>
+      <span class=&quot;chip ghost&quot;>ROP · SS · Q · 요일 · SL</span>
+      <span class=&quot;chip ghost&quot;>일시 유동 (선택)</span>
+    </div>
+  </div>
+  <div style=&quot;display:flex;justify-content:space-between;font-size:11pt;color:#666;margin-bottom:8pt;&quot;>
+    <span>권태원 · SaaS Platformer</span>
+    <span>main 아카이브 → pivot · 라이브</span>
+  </div>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>01 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="2" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-02.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class=&quot;eyebrow&quot;>Agenda</div>
+    <h1>오늘 이야기</h1>
+    <p class=&quot;key&quot;>피벗 이유 → 동작하는 제품 → 정확도·안정화 → 데모</p>
+  </div>
+
+  <div class=&quot;main&quot;>
+    <ol class=&quot;list&quot; style=&quot;counter-reset: a; list-style: none;&quot;>
+      <li><strong>01</strong> &amp;nbsp; 문제와 v1 해법 (main 아카이브)</li>
+      <li><strong>02</strong> &amp;nbsp; 중간발표 성과와 한계 → 피벗</li>
+      <li><strong>03</strong> &amp;nbsp; 새 제품: 매장 특화 ROP</li>
+      <li><strong>04</strong> &amp;nbsp; 아키텍처 · 공식 · 지도·일시 유동</li>
+      <li><strong>05</strong> &amp;nbsp; 정확도·안정화 패치 (7/15–16)</li>
+      <li><strong>06</strong> &amp;nbsp; 검증 수치 · 데모 · 로드맵</li>
+    </ol>
+  </div>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>02 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="3" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-03.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class=&quot;eyebrow&quot;>Problem</div>
+    <h1>평균 표준 발주로는 매장마다 품절·과잉이 갈린다.</h1>
+    
+  </div>
+
+  <div class=&quot;main grid-2&quot;>
+    <div class=&quot;card&quot;>
+      <h3>v1 문제 · 프로모션 사전검수</h3>
+      <p>등록 전 가격·기간·마진·재고 교차 오류 → 점포 혼선·마진 악화</p>
+      <p style=&quot;margin-top:8pt;&quot;>해법: 10룰 결정론 판정 + LLM 서술 (라이브까지)</p>
+    </div>
+    <div class=&quot;card&quot;>
+      <h3>피벗 후 문제 · 발주 기준</h3>
+      <p>업계·사내 평균 LT/ROP는 채널 평균에 가깝고 입지·상권·CAPA·피크·임시 유동을 반영하지 못함</p>
+      <p style=&quot;margin-top:8pt;&quot;><strong>제약:</strong> LT는 계약·품목 일정 → 「LT를 올려라」는 운영 레버가 아님</p>
+    </div>
+  </div>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>03 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="4" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-04.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class=&quot;eyebrow&quot;>v1 on main</div>
+    <h1>7/1–7/13, 결정론 검수 엔진을 라이브까지</h1>
+    <p class=&quot;key&quot;>이후 main은 아카이브 — 변경하지 않음</p>
+  </div>
+
+  <div class=&quot;main&quot;>
+    <div class=&quot;stat-row&quot;>
+      <div class=&quot;stat&quot;><div class=&quot;n&quot;>10</div><div class=&quot;l&quot;>결정론 룰<br>LLM은 서술만</div></div>
+      <div class=&quot;stat&quot;><div class=&quot;n&quot;>150</div><div class=&quot;l&quot;>pytest peak<br>(T59)</div></div>
+      <div class=&quot;stat&quot;><div class=&quot;n&quot;>SPA</div><div class=&quot;l&quot;>업로드→이슈<br>CSV 수정→재검수</div></div>
+      <div class=&quot;stat&quot;><div class=&quot;n&quot;>Live</div><div class=&quot;l&quot;>Vercel · Clerk<br>Neon · LLM degrade</div></div>
+    </div>
+    <p class=&quot;key&quot; style=&quot;margin-top:18pt;&quot;>태그 <strong>archive/v1-md-preflight</strong> @ b444be0 · 브랜치 정책: main 동결</p>
+  </div>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>04 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="5" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-05.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class=&quot;eyebrow&quot;>Pivot</div>
+    <h1>피드백은 “더 많은 룰”이 아니라 문제 정의 재정렬</h1>
+    
+  </div>
+
+  <div class=&quot;main grid-2&quot;>
+    <div class=&quot;card&quot;>
+      <div class=&quot;col-title&quot;>유지</div>
+      <ul>
+        <li>결정론 코어</li>
+        <li>근거 제시</li>
+        <li>degrade 가능한 주변부</li>
+      </ul>
+    </div>
+    <div class=&quot;card&quot;>
+      <div class=&quot;col-title&quot;>전환</div>
+      <ul>
+        <li>고정 스키마 파일 검수 UI ↓</li>
+        <li>매장 파라미터 → 점수·KB → 발주 기준 추천</li>
+        <li>pivot/project-direction 3단 재구축</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>05 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="6" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-06.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class=&quot;eyebrow&quot;>Product</div>
+    <h1>3세션 입력 → 내부 연산 → 비교·근거·내보내기</h1>
+    
+  </div>
+
+  <div class=&quot;main&quot;>
+    <div class=&quot;flow&quot; style=&quot;height:auto;&quot;>
+      <div class=&quot;flow-step&quot;>
+        <div class=&quot;num&quot;>INPUT</div>
+        <h3>3세션 위저드</h3>
+        <p>유형·규모 · 주소·상권 · 품목·D·LT·SL·요일 · (선택) 일시 유동</p>
+      </div>
+      <div class=&quot;arrow&quot;>→</div>
+      <div class=&quot;flow-step&quot;>
+        <div class=&quot;num&quot;>ANALYZE</div>
+        <h3>내부 전용</h3>
+        <p>scoring · Kakao · event · KB · engine</p>
+      </div>
+      <div class=&quot;arrow&quot;>→</div>
+      <div class=&quot;flow-step&quot;>
+        <div class=&quot;num&quot;>OUTPUT</div>
+        <h3>운영 레버</h3>
+        <p>ROP · SS · Q · 요일 · SL · plain/tech · export</p>
+      </div>
+    </div>
+    <div class=&quot;chip-row&quot; style=&quot;margin-top:14pt;&quot;>
+      <span class=&quot;chip&quot;>비레버: LT 입력 유지</span>
+      <span class=&quot;chip ghost&quot;>md-preflight.vercel.app</span>
+    </div>
+  </div>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>06 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="7" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-07.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class=&quot;eyebrow&quot;>Architecture</div>
+    <h1>스테이지를 늘려 확장하고, 판정은 결정론으로</h1>
+    
+  </div>
+
+  <div class=&quot;main grid-3&quot;>
+    <div class=&quot;card&quot;>
+      <h3>input/</h3>
+      <p>템플릿·검증</p>
+      <p>규모·객단가 우선 + guidance</p>
+    </div>
+    <div class=&quot;card&quot;>
+      <h3>analyze/</h3>
+      <p>scoring · geo · event 200m</p>
+      <p>KB · engine</p>
+    </div>
+    <div class=&quot;card&quot;>
+      <h3>output/</h3>
+      <p>recommendation plain/tech</p>
+      <p>비교표 · 근거 4블록 · guidance</p>
+    </div>
+  </div>
+  <p class=&quot;key&quot; style=&quot;margin-top:10pt;margin-bottom:0;&quot;>API · GET /template · POST /evaluate · GET /health</p>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>07 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="8" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-08.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class=&quot;eyebrow&quot;>Formula</div>
+    <h1>LT는 상수, 조정은 재고·발주 정책 · SS∝수요</h1>
+    
+  </div>
+
+  <div class=&quot;main&quot;>
+    <div class=&quot;formula&quot;>
+LT = 품목 입력 (delta=0) · 미입력 시 규모→채널 기본값<br>
+Z = Z_policy(90/95/99) + 맥락(변동성·품목·FTI_kb)<br>
+SS_stat = Z × D_eff × √(LT × vol/5) × turnover<br>
+buffer = D_eff × risk_days · SS = SS_stat + buffer<br>
+ROP = D_eff × LT + SS · Q ≈ D_eff × cycle · CAPA 시 Q ≤ MaxCap · 표시 SS 항등
+    </div>
+    <p class=&quot;key&quot; style=&quot;margin-top:12pt;&quot;>비교 표 표준 SS/Q = 행사 미반영 D · 추천 측 = D_eff</p>
+  </div>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>08 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="9" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-09.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class=&quot;eyebrow&quot;>Location signals</div>
+    <h1>구조 유동(POI)과 임시 유동(행사 시설)을 나눈다</h1>
+    
+  </div>
+
+  <div class=&quot;main grid-2&quot;>
+    <div class=&quot;card&quot;>
+      <h3>구조 FTI · 주소 시</h3>
+      <ul>
+        <li>반경 ~500m POI · soft_sat</li>
+        <li>카테고리 N캡 · CS2 저가중</li>
+        <li>실패 시 행정동 fallback</li>
+      </ul>
+    </div>
+    <div class=&quot;card&quot;>
+      <h3>일시 유동 · 옵션</h3>
+      <ul>
+        <li>정확한 주소 필수 · 반경 200m</li>
+        <li>경기장·공연장·전시장·컨벤션</li>
+        <li>D_eff = D×(1+0.35×uplift)</li>
+        <li>캘린더 없음 → 시설 근접 프록시</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>09 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="10" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-10.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class=&quot;eyebrow&quot;>Hardening</div>
+    <h1>틀린 숫자와 안 열리는 버튼부터 막았다</h1>
+    
+  </div>
+
+  <div class=&quot;main grid-2&quot;>
+    <div class=&quot;card&quot;>
+      <div class=&quot;col-title&quot;>VIII · 7/15 정확도</div>
+      <ul>
+        <li>SS∝D · 비교표 Z/주기</li>
+        <li>size 기본값 · FTI 귀속</li>
+        <li>CAPA 표시 SS 항등</li>
+      </ul>
+    </div>
+    <div class=&quot;card&quot;>
+      <div class=&quot;col-title&quot;>IX · 7/16 안정화·기능</div>
+      <ul>
+        <li>Q ≤ MaxCap · multi-order 문구</li>
+        <li>추천 문장 윤문 · export 복구</li>
+        <li>일시 유동 옵션</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>10 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="11" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-11.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class=&quot;eyebrow&quot;>Quality</div>
+    <h1>제품이 바뀌어도 측정 가능한 품질 습관은 유지</h1>
+    
+  </div>
+
+  <div class=&quot;main&quot; style=&quot;display:grid;grid-template-columns:1.1fr 1fr;gap:16pt;&quot;>
+    <div>
+      <canvas id=&quot;pytestChart&quot; style=&quot;width:100%;height:200pt;&quot;></canvas>
+    </div>
+    <div class=&quot;card&quot; style=&quot;justify-content:center;&quot;>
+      <p><strong>현행 tip</strong> pytest <strong>46</strong></p>
+      <p style=&quot;margin-top:8pt;&quot;>ruff · basedpyright 0</p>
+      <p style=&quot;margin-top:8pt;&quot;>wizard / export smoke</p>
+      <p style=&quot;margin-top:8pt;&quot;>계약: 결정론 · LT 미조정 · ROP=D_eff×LT+SS</p>
+    </div>
+  </div>
+  <script src=&quot;https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js&quot;></script>
+  <script>
+    const ctx = document.getElementById('pytestChart');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['v1 peak', 'pivot skeleton', 'ROP 7/14', 'VIII 7/15', 'IX 7/16'],
+        datasets: [{
+          label: 'pytest',
+          data: [150, 12, 30, 32, 46],
+          backgroundColor: '#1A1A1A',
+          borderRadius: 4,
+          barPercentage: 0.6
+        }]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#666', font: { size: 10 } }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#D4D4D0' } }
+        }
+      }
+    });
+  </script>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>11 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="12" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-12.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class=&quot;eyebrow&quot;>Demo</div>
+    <h1>3–4분: 입력 → 레버 → 근거 → 내보내기</h1>
+    
+  </div>
+
+  <div class=&quot;main steps&quot;>
+    <div class=&quot;step&quot;><div class=&quot;i&quot;>1</div><p>세션 입력 · 편의점 소형 · D=12 · LT=2 · SL=95% · 요일 자동</p></div>
+    <div class=&quot;step&quot;><div class=&quot;i&quot;>2</div><p>문장형 추천 · ROP·SS·요일 · 「배송 일정 그대로」</p></div>
+    <div class=&quot;step&quot;><div class=&quot;i&quot;>3</div><p>전문 해설 토글 → Z·CAPA·공식 톤</p></div>
+    <div class=&quot;step&quot;><div class=&quot;i&quot;>4</div><p>(선택) 상세 주소 + 일시 유동 → geo/행사 · D_eff</p></div>
+    <div class=&quot;step&quot;><div class=&quot;i&quot;>5</div><p>리포트 내보내기 PDF/MD</p></div>
+  </div>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>12 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="13" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-13.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+  <div>
+    <div class=&quot;eyebrow&quot;>Roadmap</div>
+    <h1>다음은 더 예쁜 UI보다 실측 데이터와 운영 연동</h1>
+    
+  </div>
+
+  <div class=&quot;main grid-3&quot;>
+    <div class=&quot;card&quot;>
+      <div class=&quot;col-title&quot;>Now</div>
+      <ul>
+        <li>Vercel prod</li>
+        <li>export · 윤문</li>
+        <li>일시 유동 프록시</li>
+      </ul>
+    </div>
+    <div class=&quot;card&quot;>
+      <div class=&quot;col-title&quot;>Next</div>
+      <ul>
+        <li>행사 캘린더 API</li>
+        <li>실측 KB · Agent</li>
+        <li>품목 마스터</li>
+      </ul>
+    </div>
+    <div class=&quot;card&quot;>
+      <div class=&quot;col-title&quot;>Not</div>
+      <ul>
+        <li>main 부활</li>
+        <li>v1 검수 UI 복원</li>
+        <li>(태그만 유지)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>13 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+        <iframe class="slide-frame" data-slide="14" srcdoc="<!DOCTYPE html>
+<html lang=&quot;ko&quot;>
+<head>
+<base href=&quot;./&quot;>
+<script>
+(() => {
+  const slideFile = &quot;slide-14.html&quot;;
+  const localAssetPrefix = &quot;./assets/&quot;;
+  const absolutePathRe = /^(file:\/\/|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/|\/Volumes\/|[A-Za-z]:[\\/]|\\\\)/i;
+  const schemeRe = /^[a-z][a-z0-9+\-.]*:/i;
+  const prefix = '[slides-grab:image]';
+
+  function describeElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
+    if (element === document.body) return 'body';
+
+    const parts = [];
+    let current = element;
+    while (current &amp;&amp; current.nodeType === Node.ELEMENT_NODE &amp;&amp; current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      if (current.id) {
+        part += '#' + current.id;
+        parts.unshift(part);
+        break;
+      }
+      if (current.classList.length > 0) {
+        part += '.' + Array.from(current.classList).slice(0, 2).join('.');
+      }
+      parts.unshift(part);
+      current = current.parentElement;
+    }
+    return 'body > ' + parts.join(' > ');
+  }
+
+  function warn(message, detail) {
+    console.warn(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function fail(message, detail) {
+    console.error(prefix + ' ' + slideFile + ': ' + message, detail);
+  }
+
+  function validateAssetSource(kind, source, { allowEmpty = true, onNoncanonical = 'warn' } = {}) {
+    const value = (source || '').trim();
+    if (!value) {
+      return allowEmpty;
+    }
+    if (value.startsWith('data:')) {
+      return true;
+    }
+    if (value.startsWith('https://')) {
+      fail('remote ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (value.startsWith('http://')) {
+      fail('remote http:// ' + kind + ' URL is unsupported in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (absolutePathRe.test(value) || value.startsWith('/')) {
+      fail('non-portable ' + kind + ' path is unsupported', { src: value });
+      return false;
+    }
+    if (schemeRe.test(value)) {
+      fail('unsupported ' + kind + ' URL scheme in saved slides; download it into ./assets/<file>', { src: value });
+      return false;
+    }
+    if (!value.startsWith(localAssetPrefix)) {
+      const report = onNoncanonical === 'fail' ? fail : warn;
+      report('noncanonical local ' + kind + ' path should use ./assets/<file>', { src: value });
+    }
+    return true;
+  }
+
+  function getVideoSources(video) {
+    const sources = [];
+    const directSrc = (video.getAttribute('src') || '').trim();
+    if (directSrc) {
+      sources.push(directSrc);
+    }
+    for (const source of video.querySelectorAll('source[src]')) {
+      const src = (source.getAttribute('src') || '').trim();
+      if (src) {
+        sources.push(src);
+      }
+    }
+    return sources;
+  }
+
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLImageElement) {
+      const src = (target.getAttribute('src') || target.currentSrc || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local asset', { src });
+        return;
+      }
+      fail('image failed to load', { src });
+      return;
+    }
+
+    if (target instanceof HTMLVideoElement) {
+      const sources = getVideoSources(target);
+      if (sources.some((src) => src.startsWith(localAssetPrefix))) {
+        fail('missing local video asset', { sources });
+        return;
+      }
+      fail('video failed to load', { sources });
+      return;
+    }
+
+    if (target instanceof HTMLSourceElement &amp;&amp; target.parentElement instanceof HTMLVideoElement) {
+      const src = (target.getAttribute('src') || '').trim();
+      if (!src) return;
+      if (src.startsWith(localAssetPrefix)) {
+        fail('missing local video asset', { src });
+        return;
+      }
+      fail('video source failed to load', { src });
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    for (const image of document.querySelectorAll('img[src]')) {
+      const src = (image.getAttribute('src') || '').trim();
+      validateAssetSource('image', src);
+    }
+
+    for (const video of document.querySelectorAll('video')) {
+      for (const src of getVideoSources(video)) {
+        validateAssetSource('video', src);
+      }
+
+      const poster = (video.getAttribute('poster') || '').trim();
+      if (poster) {
+        validateAssetSource('image', poster);
+      }
+    }
+
+    for (const element of document.body.querySelectorAll('*')) {
+      if (element === document.body) continue;
+      const backgroundImage = window.getComputedStyle(element).backgroundImage;
+      if (!backgroundImage || backgroundImage === 'none' || !backgroundImage.includes('url(')) continue;
+      fail('non-body background-image is not supported for slide content', {
+        element: describeElement(element),
+        backgroundImage,
+      });
+    }
+  });
+})();
+</script>
+  <meta charset=&quot;utf-8&quot;>
+  <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+  <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
+</head>
+<body>
+
+
+  <div style=&quot;flex:1;display:flex;flex-direction:column;justify-content:center;&quot;>
+    <div class=&quot;eyebrow&quot;>Closing</div>
+    <h1 style=&quot;font-size:22pt;margin-top:14pt;max-width:560pt;line-height:1.35;&quot;>
+      결정론 제품 습관을 만들었고,<br>
+      매장이 움직이는 발주 레버로 옮겼습니다.
+    </h1>
+    <p class=&quot;key&quot; style=&quot;margin-top:14pt;&quot;>7/16 · 정확도 · 문장 · 내보내기 · 일시 유동까지 프로덕션</p>
+    <div class=&quot;chip-row&quot; style=&quot;margin-top:22pt;&quot;>
+      <span class=&quot;chip&quot;>github.com/cidtw/md-preflight</span>
+      <span class=&quot;chip ghost&quot;>pivot/project-direction</span>
+      <span class=&quot;chip ghost&quot;>md-preflight.vercel.app</span>
+    </div>
+  </div>
+
+  <div class=&quot;footer&quot;>
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>14 / 14</span>
+  </div>
+</body>
+</html>
+" sandbox="allow-scripts"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TOTAL = 14;
+    let current = 1;
+
+    const frames = document.querySelectorAll('.slide-frame');
+    const counter = document.getElementById('counter');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+    const scaler = document.getElementById('scaler');
+    const viewport = document.getElementById('viewport');
+
+    function goTo(n) {
+      n = Math.max(1, Math.min(TOTAL, n));
+      if (n === current) return;
+      frames[current - 1].classList.remove('active');
+      current = n;
+      frames[current - 1].classList.add('active');
+      counter.textContent = current + ' / ' + TOTAL;
+      btnPrev.disabled = current === 1;
+      btnNext.disabled = current === TOTAL;
+    }
+
+    function next() { goTo(current + 1); }
+    function prev() { goTo(current - 1); }
+
+    btnPrev.addEventListener('click', prev);
+    btnNext.addEventListener('click', next);
+    btnPrev.disabled = true;
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+      else if (e.key === 'Home') { e.preventDefault(); goTo(1); }
+      else if (e.key === 'End') { e.preventDefault(); goTo(TOTAL); }
+      else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    });
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen();
+      }
+    }
+    document.getElementById('btn-fs').addEventListener('click', toggleFullscreen);
+
+    function rescale() {
+      const vw = viewport.clientWidth;
+      const vh = viewport.clientHeight;
+      const slideW = scaler.offsetWidth;
+      const slideH = scaler.offsetHeight;
+      const scale = Math.min(vw / slideW, vh / slideH) * 0.95;
+      scaler.style.transform = 'scale(' + scale + ')';
+    }
+
+    window.addEventListener('resize', rescale);
+    document.addEventListener('fullscreenchange', () => setTimeout(rescale, 100));
+    rescale();
+  </script>
+</body>
+</html>

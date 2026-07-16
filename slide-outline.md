@@ -17,8 +17,7 @@
   - 이전 중간발표 참고: `ppt-samsung-ir-restrained` (구 7장)
 - **Branch policy**: **`main` = v1 아카이브 (변경 금지)** · 활성 개발·배포 = `pivot/project-direction`
 - **Prod**: https://md-preflight.vercel.app
-- **Status**: **STAGE 1 REVISED (2026-07-16)** — 내용 정본 갱신 완료 · Stage 2 HTML 재생성 **승인 대기**  
-  (기존 `slides/slide-01..07.html` 은 구 아웃라인 잔존 — **재생성 대상**)
+- **Status**: **STAGE 2 REGENERATED (2026-07-16)** — 14장 HTML `slides/slide-01..14.html` · style `executive-minimal` · `slides-grab validate` pass
 
 ## Narrative Arc (한 줄)
 

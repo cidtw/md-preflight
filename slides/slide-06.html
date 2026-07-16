@@ -2,147 +2,142 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      width: 720pt;
-      height: 405pt;
-      font-family: 'Manrope', 'Pretendard', sans-serif;
-      background: #FFFFFF;
-      color: #010821;
-      padding: 40pt 48pt;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      overflow: hidden;
-      position: relative;
-    }
-    .top-hairline {
-      position: absolute;
-      top: 14pt;
-      left: 48pt;
-      right: 48pt;
-      height: 1.3pt;
-      background: #D8DBE2;
-    }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-top: 10pt;
-    }
-    .header h2 {
-      font-size: 16pt;
-      font-weight: 700;
-      color: #010821;
-      word-break: keep-all;
-    }
-    .header .wordmark {
-      font-size: 10pt;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      color: #0028A8;
-    }
-    .key-message {
-      font-size: 14pt;
-      font-weight: 700;
-      color: #0028A8;
-      margin-top: 24pt;
-      line-height: 1.4;
-      word-break: keep-all;
-    }
-    .layout-split {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 32pt;
-      margin-top: 24pt;
-      flex: 1;
-    }
-    .col {
-      display: flex;
-      flex-direction: column;
-      gap: 16pt;
-    }
-    .col-title {
-      font-size: 12pt;
-      font-weight: 700;
-      color: #010821;
-      border-left: 3px solid #0028A8;
-      padding-left: 8pt;
-      word-break: keep-all;
-    }
-    .item-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10pt;
-    }
-    .item {
-      display: flex;
-      flex-direction: column;
-      gap: 2pt;
-    }
-    .item-title {
-      font-size: 10pt;
-      font-weight: 600;
-      color: #010821;
-      word-break: keep-all;
-    }
-    .item-desc {
-      font-size: 11.5pt;
-      color: #5C6B90;
-      line-height: 1.5;
-      word-break: keep-all;
-      text-wrap: balance;
-    }
-    .highlight-link {
-      color: #0028A8;
-      font-weight: 600;
-    }
-  </style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: ""; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
 </head>
 <body>
-  <div class="top-hairline"></div>
-  
-  <div class="header">
-    <h2>04. 실배포 및 대시보드 라이브 시연</h2>
-    <span class="wordmark">MD PREFLIGHT</span>
+
+  <div>
+    <div class="eyebrow">Product</div>
+    <h1>3세션 입력 → 내부 연산 → 비교·근거·내보내기</h1>
+    
   </div>
 
-  <div class="key-message">
-    클라우드 실배포를 완료하고, 사용자별 검수 이력 통계를 실시간으로 관리합니다.
-  </div>
-
-  <div class="layout-split">
-    <div class="col">
-      <h3 class="col-title">Vercel & Neon 클라우드 배포</h3>
-      <div class="item-list">
-        <div class="item">
-          <h4 class="item-title">실환경 Vercel 배포 완료</h4>
-          <p class="item-desc">서비스 주소: <span class="highlight-link">https://md-preflight.vercel.app</span></p>
-        </div>
-        <div class="item">
-          <h4 class="item-title">Neon Postgres 클라우드 연동</h4>
-          <p class="item-desc">런타임용 pooled 연결 및 DDL용 unpooled 연결을 완벽 격리하여 안정적이고 유연한 DB 트랜잭션 처리 보장</p>
-        </div>
+  <div class="main">
+    <div class="flow" style="height:auto;">
+      <div class="flow-step">
+        <div class="num">INPUT</div>
+        <h3>3세션 위저드</h3>
+        <p>유형·규모 · 주소·상권 · 품목·D·LT·SL·요일 · (선택) 일시 유동</p>
+      </div>
+      <div class="arrow">→</div>
+      <div class="flow-step">
+        <div class="num">ANALYZE</div>
+        <h3>내부 전용</h3>
+        <p>scoring · Kakao · event · KB · engine</p>
+      </div>
+      <div class="arrow">→</div>
+      <div class="flow-step">
+        <div class="num">OUTPUT</div>
+        <h3>운영 레버</h3>
+        <p>ROP · SS · Q · 요일 · SL · plain/tech · export</p>
       </div>
     </div>
-
-    <div class="col">
-      <h3 class="col-title">Clerk 인증 및 이력 대시보드</h3>
-      <div class="item-list">
-        <div class="item">
-          <h4 class="item-title">선택적 로그인 및 Clerk 세션 검증</h4>
-          <p class="item-desc">JWT 토큰의 azp, iss 기반 실 세션 서명 유효성 검증을 통해 보안 게이팅 및 사용자별 데이터 격리 실현</p>
-        </div>
-        <div class="item">
-          <h4 class="item-title">시드 적재 및 추이 대시보드 시연</h4>
-          <p class="item-desc">지난 30일 간의 20개 테스트 런 이력을 적재하여, 유통 대시보드 화면상에서 일/월별 룰 적출 추이 실시간 차트 시연</p>
-        </div>
-      </div>
+    <div class="chip-row" style="margin-top:14pt;">
+      <span class="chip">비레버: LT 입력 유지</span>
+      <span class="chip ghost">md-preflight.vercel.app</span>
     </div>
   </div>
 
+  <div class="footer">
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>06 / 14</span>
+  </div>
 </body>
 </html>

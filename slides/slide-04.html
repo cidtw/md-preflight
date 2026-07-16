@@ -2,166 +2,126 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      width: 720pt;
-      height: 405pt;
-      font-family: 'Manrope', 'Pretendard', sans-serif;
-      background: #FFFFFF;
-      color: #010821;
-      padding: 40pt 48pt;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      overflow: hidden;
-      position: relative;
-    }
-    .top-hairline {
-      position: absolute;
-      top: 14pt;
-      left: 48pt;
-      right: 48pt;
-      height: 1.3pt;
-      background: #D8DBE2;
-    }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-top: 10pt;
-    }
-    .header h2 {
-      font-size: 16pt;
-      font-weight: 700;
-      color: #010821;
-      word-break: keep-all;
-    }
-    .header .wordmark {
-      font-size: 10pt;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      color: #0028A8;
-    }
-    .key-message {
-      font-size: 14pt;
-      font-weight: 700;
-      color: #0028A8;
-      margin-top: 24pt;
-      line-height: 1.4;
-      word-break: keep-all;
-    }
-    .layout-split {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 32pt;
-      margin-top: 20pt;
-      flex: 1;
-    }
-    .diagram-container {
-      background: #F6F8FA;
-      border: 1px solid #D8DBE2;
-      border-radius: 4pt;
-      padding: 16pt;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 12pt;
-    }
-    .diagram-box {
-      border: 1.5pt solid #0028A8;
-      background: #FFFFFF;
-      padding: 8pt;
-      text-align: center;
-      border-radius: 4pt;
-      font-size: 11pt;
-      font-weight: 700;
-      color: #010821;
-      word-break: keep-all;
-    }
-    .diagram-box-sub {
-      border: 1px dashed #A5B3C6;
-      background: #F6F8FA;
-      padding: 6pt;
-      text-align: center;
-      border-radius: 4pt;
-      font-size: 10pt;
-      color: #5C6B90;
-      word-break: keep-all;
-    }
-    .bullet-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12pt;
-      justify-content: center;
-    }
-    .bullet-item {
-      display: flex;
-      flex-direction: column;
-      gap: 4pt;
-    }
-    .bullet-title {
-      font-size: 11pt;
-      font-weight: 700;
-      color: #010821;
-      word-break: keep-all;
-    }
-    .bullet-text {
-      font-size: 11.5pt;
-      color: #5C6B90;
-      line-height: 1.45;
-      word-break: keep-all;
-      text-wrap: balance;
-    }
-    .arrow {
-      text-align: center;
-      color: #A5B3C6;
-      font-size: 10pt;
-    }
-  </style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 720pt; height: 405pt;
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: #F5F5F0; color: #1A1A1A;
+  padding: 34pt 42pt 28pt;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.dark { background: #1A1A1A; color: #F5F5F0; }
+.eyebrow {
+  font-size: 10pt; font-weight: 600; color: #666666;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+body.dark .eyebrow { color: #999999; }
+h1 {
+  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+}
+body.dark h1 { color: #F5F5F0; }
+.key {
+  font-size: 13.5pt; font-weight: 500; color: #666666;
+  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+}
+body.dark .key { color: #B0B0B0; }
+.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
+  font-size: 10pt; color: #999999;
+}
+body.dark .footer { border-top-color: #333; color: #888; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.card {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
+  display: flex; flex-direction: column; gap: 6pt;
+}
+body.dark .card { background: #2A2A2A; }
+.card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
+.card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
+body.dark .card p, body.dark .card li { color: #B0B0B0; }
+.card ul { margin-left: 12pt; }
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.stat {
+  background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
+  display: flex; flex-direction: column; gap: 4pt;
+}
+.stat .n { font-size: 22pt; font-weight: 700; letter-spacing: -0.02em; }
+.stat .l { font-size: 10pt; color: #666666; line-height: 1.3; word-break: keep-all; }
+.list { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+.list li {
+  font-size: 12.5pt; line-height: 1.4; word-break: keep-all;
+  padding-left: 14pt; position: relative;
+}
+.list li::before {
+  content: ""; position: absolute; left: 0; top: 7pt;
+  width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
+}
+.flow {
+  display: flex; align-items: stretch; gap: 8pt; height: 100%;
+}
+.flow-step {
+  flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
+  display: flex; flex-direction: column; gap: 8pt;
+}
+.flow-step .num {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+}
+.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip {
+  font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
+  border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
+}
+.chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+}
+.steps { display: flex; flex-direction: column; gap: 7pt; }
+.step {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
+}
+.step .i {
+  width: 24pt; height: 24pt; border-radius: 50%; background: #1A1A1A; color: #F5F5F0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11pt; font-weight: 700;
+}
+.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+</style>
 </head>
 <body>
-  <div class="top-hairline"></div>
-  
-  <div class="header">
-    <h2>02. 핵심 아키텍처 (Stateless vs Isolated Path)</h2>
-    <span class="wordmark">MD PREFLIGHT</span>
+
+  <div>
+    <div class="eyebrow">v1 on main</div>
+    <h1>7/1–7/13, 결정론 검수 엔진을 라이브까지</h1>
+    <p class="key">이후 main은 아카이브 — 변경하지 않음</p>
   </div>
 
-  <div class="key-message">
-    판정은 100% 결정론 규칙 엔진이, 서술과 이력 관리는 격리된 주변부가 수행합니다.
-  </div>
-
-  <div class="layout-split">
-    <div class="diagram-container">
-      <div class="diagram-box">
-        무상태 판정 경로 (Stateless Validation Path)
-        <div style="font-weight: 400; font-size: 10pt; margin-top: 4pt; color: #5C6B90; word-break: keep-all;">3개 파일 업로드 ─> Ingest ─> 결정론 규칙 엔진 ─> 결과 확정</div>
-      </div>
-      <div class="arrow">▼ (비동기 결과 전달 / 격리 저장)</div>
-      <div class="diagram-box-sub">
-        격리된 이력 & 인증 경로 (Isolated Path)
-        <div style="font-size: 10pt; margin-top: 4pt; color: #A5B3C6; word-break: keep-all;">Neon Postgres 이력 적재 & Clerk 사용자 세션 인증</div>
-      </div>
+  <div class="main">
+    <div class="stat-row">
+      <div class="stat"><div class="n">10</div><div class="l">결정론 룰<br>LLM은 서술만</div></div>
+      <div class="stat"><div class="n">150</div><div class="l">pytest peak<br>(T59)</div></div>
+      <div class="stat"><div class="n">SPA</div><div class="l">업로드→이슈<br>CSV 수정→재검수</div></div>
+      <div class="stat"><div class="n">Live</div><div class="l">Vercel · Clerk<br>Neon · LLM degrade</div></div>
     </div>
-
-    <div class="bullet-list">
-      <div class="bullet-item">
-        <h3 class="bullet-title" style="color: #0028A8;">결정론적 무상태 판정</h3>
-        <p class="bullet-text">동일 입력 시 동일 결과 보장. LLM은 판정선 밖에 존재하여 프롬프트 주입 등으로 인한 오판을 원천 차단합니다.</p>
-      </div>
-      <div class="bullet-item">
-        <h3 class="bullet-title">교체 가능한 서술 엔진</h3>
-        <p class="bullet-text">OpenAI Structured Outputs와 Anthropic SDK를 결합하여 최적의 서사 생성 및 로컬 Fallback 체인을 완비했습니다.</p>
-      </div>
-      <div class="bullet-item">
-        <h3 class="bullet-title">성능 및 장애 격리</h3>
-        <p class="bullet-text">Neon DB 장애 시에도 인메모리 대체 장치를 통해 비로그인 핵심 검수 기능은 100% 무장애 가동을 유지합니다.</p>
-      </div>
-    </div>
+    <p class="key" style="margin-top:18pt;">태그 <strong>archive/v1-md-preflight</strong> @ b444be0 · 브랜치 정책: main 동결</p>
   </div>
 
+  <div class="footer">
+    <span>MD Preflight · pivot/project-direction</span>
+    <span>04 / 14</span>
+  </div>
 </body>
 </html>
