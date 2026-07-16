@@ -550,68 +550,78 @@ function renderResult(payload, expertOverride) {
     setExpertMode(on);
     if (lastPayload) renderResult(lastPayload, on);
   });
-  // Export menu is bound once (not on every renderResult) to avoid stacking
-  // document click/keydown listeners when expert mode is toggled.
+  // Export uses delegated listeners on #result-panel (see bindExportMenu).
+  // Do not attach per-render — innerHTML replaces #export-btn each time.
 }
 
+/**
+ * Export menu markup is injected by renderResult via resultPanel.innerHTML.
+ * Bind once on the stable #result-panel with event delegation so clicks still
+ * work after re-render (expert toggle) without stacking document listeners.
+ */
 /** @type {boolean} */
 let exportMenuBound = false;
 
-function bindExportMenu() {
-  if (exportMenuBound) return;
-  const menu = document.getElementById("export-menu");
-  const btn = document.getElementById("export-btn");
+function closeExportMenu() {
   const dropdown = document.getElementById("export-dropdown");
-  if (!menu || !btn || !dropdown) return;
+  const btn = document.getElementById("export-btn");
+  if (dropdown) dropdown.hidden = true;
+  btn?.setAttribute("aria-expanded", "false");
+}
+
+function bindExportMenu() {
+  if (exportMenuBound || !resultPanel) return;
   exportMenuBound = true;
 
-  const close = () => {
-    dropdown.hidden = true;
-    btn.setAttribute("aria-expanded", "false");
-  };
-  const open = () => {
-    dropdown.hidden = false;
-    btn.setAttribute("aria-expanded", "true");
-  };
+  resultPanel.addEventListener("click", (ev) => {
+    const target = ev.target;
+    if (!(target instanceof Element)) return;
 
-  btn.addEventListener("click", (ev) => {
-    ev.stopPropagation();
-    if (dropdown.hidden) open();
-    else close();
-  });
-
-  dropdown.querySelectorAll("[data-export]").forEach((item) => {
-    item.addEventListener("click", (ev) => {
+    const exportItem = target.closest("[data-export]");
+    if (exportItem && resultPanel.contains(exportItem)) {
       ev.preventDefault();
       ev.stopPropagation();
-      const format = item.getAttribute("data-export");
+      const format = exportItem.getAttribute("data-export");
       if (!lastPayload || !format) {
-        close();
+        closeExportMenu();
         return;
       }
-      // Call export while still in the user-gesture stack (before close/DOM churn).
-      const expertOn = document.getElementById("expert-mode")?.checked ?? readExpertMode();
+      const expertOn =
+        document.getElementById("expert-mode")?.checked ?? readExpertMode();
       try {
         exportReport(format, lastPayload, { expert: expertOn });
       } catch (err) {
         window.alert(err instanceof Error ? err.message : String(err));
       } finally {
-        close();
+        closeExportMenu();
       }
-    });
+      return;
+    }
+
+    const exportBtn = target.closest("#export-btn");
+    if (exportBtn && resultPanel.contains(exportBtn)) {
+      ev.stopPropagation();
+      const dropdown = document.getElementById("export-dropdown");
+      if (!dropdown) return;
+      const willOpen = dropdown.hidden;
+      dropdown.hidden = !willOpen;
+      exportBtn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    }
   });
 
-  // Permanent outside-click / Escape handlers (single bind for page lifetime).
   document.addEventListener("click", (ev) => {
-    if (dropdown.hidden) return;
-    if (!menu.contains(ev.target)) close();
+    const menu = document.getElementById("export-menu");
+    const dropdown = document.getElementById("export-dropdown");
+    if (!menu || !dropdown || dropdown.hidden) return;
+    const t = ev.target;
+    if (t instanceof Node && !menu.contains(t)) closeExportMenu();
   });
+
   document.addEventListener("keydown", (ev) => {
-    if (ev.key === "Escape" && !dropdown.hidden) close();
+    if (ev.key === "Escape") closeExportMenu();
   });
 }
 
-// Export controls live in the result panel chrome; bind once at load.
 bindExportMenu();
 
 document.getElementById("welcome-start")?.addEventListener("click", () => {
