@@ -76,7 +76,10 @@ def get_template() -> InputTemplate:
                 key="location_dong",
                 label="입지 주소 (행정동)",
                 type="string",
-                description="상세 번지 불필요. 예: 서울시 강남구 역삼1동",
+                description=(
+                    "상세 번지 불필요. 예: 서울시 강남구 역삼1동. "
+                    "정확한 위치를 쓰면 지역·점포 선택으로 자동 채워지며 이 칸은 숨깁니다."
+                ),
             ),
             ParameterSpec(
                 key="use_precise_location",

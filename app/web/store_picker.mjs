@@ -1,5 +1,5 @@
 /**
- * Precise-location store picker: sido → sigungu → dong + Kakao place autocomplete.
+ * Precise-location store picker: sido → sigungu → dong combobox + Kakao place search.
  */
 
 /**
@@ -21,15 +21,40 @@ export function mountStorePicker(host, options) {
   const regionRow = document.createElement("div");
   regionRow.className = "store-picker-regions";
 
-  const sidoSel = makeSelect("region-sido", "시·도");
-  const sigunguSel = makeSelect("region-sigungu", "시·군·구");
-  const dongSel = makeSelect("region-dong", "읍·면·동·리");
+  const sidoSel = makeSelect("region-sido", "시·도 선택");
+  const sigunguSel = makeSelect("region-sigungu", "시·군·구 선택");
   sigunguSel.disabled = true;
-  dongSel.disabled = true;
+
+  // Dong: combobox (input + listbox) — native <select> was empty/hard to use.
+  const dongField = document.createElement("div");
+  dongField.className = "store-picker-region-field store-picker-dong-field";
+  const dongTitle = document.createElement("span");
+  dongTitle.className = "field-title";
+  dongTitle.textContent = "읍·면·동·리";
+  const dongCombo = document.createElement("div");
+  dongCombo.className = "store-picker-dong-combo";
+  const dongInput = document.createElement("input");
+  dongInput.type = "text";
+  dongInput.className = "store-picker-select store-picker-dong-input";
+  dongInput.id = "region-dong";
+  dongInput.placeholder = "시·군·구 선택 후 검색·선택";
+  dongInput.autocomplete = "off";
+  dongInput.disabled = true;
+  dongInput.setAttribute("aria-autocomplete", "list");
+  dongInput.setAttribute("aria-controls", "dong-picker-listbox");
+  const dongList = document.createElement("ul");
+  dongList.id = "dong-picker-listbox";
+  dongList.className = "store-picker-listbox store-picker-dong-listbox";
+  dongList.hidden = true;
+  dongList.setAttribute("role", "listbox");
+  dongCombo.appendChild(dongInput);
+  dongCombo.appendChild(dongList);
+  dongField.appendChild(dongTitle);
+  dongField.appendChild(dongCombo);
 
   regionRow.appendChild(wrapField("시·도", sidoSel));
   regionRow.appendChild(wrapField("시·군·구", sigunguSel));
-  regionRow.appendChild(wrapField("읍·면·동·리", dongSel));
+  regionRow.appendChild(dongField);
 
   const searchWrap = document.createElement("div");
   searchWrap.className = "store-picker-search";
@@ -79,8 +104,14 @@ export function mountStorePicker(host, options) {
 
   /** @type {Array<object>} */
   let currentResults = [];
+  /** @type {string[]} */
+  let dongResults = [];
   let debounceTimer = 0;
+  let dongDebounce = 0;
   let activeIndex = -1;
+  let dongActive = -1;
+  /** last resolved admin label for location_dong when precise */
+  let lastDongLabel = "";
 
   async function loadSido() {
     try {
@@ -95,9 +126,12 @@ export function mountStorePicker(host, options) {
   async function loadSigungu() {
     const sido = sidoSel.value;
     fillSelect(sigunguSel, [], "시·군·구 선택");
-    fillSelect(dongSel, [], "읍·면·동 선택");
+    dongInput.value = "";
+    dongResults = [];
+    hideDongList();
+    dongInput.disabled = true;
     sigunguSel.disabled = !sido;
-    dongSel.disabled = true;
+    lastDongLabel = "";
     if (!sido) return;
     try {
       const res = await fetch(
@@ -114,30 +148,73 @@ export function mountStorePicker(host, options) {
   async function loadDong(q = "") {
     const sido = sidoSel.value;
     const sigungu = sigunguSel.value;
-    fillSelect(dongSel, [], "읍·면·동 선택 (선택)");
-    dongSel.disabled = !(sido && sigungu);
-    if (!sido || !sigungu) return;
+    dongInput.disabled = !(sido && sigungu);
+    if (!sido || !sigungu) {
+      dongResults = [];
+      hideDongList();
+      return;
+    }
     try {
       const params = new URLSearchParams({ sido, sigungu, q });
       const res = await fetch(`/api/regions/dong?${params}`);
       const data = await res.json();
-      const names = (data.results || []).map((r) => r.name);
-      fillSelect(dongSel, names, "읍·면·동 선택 (선택)");
-      dongSel.disabled = false;
-      if (data.used_fallback) {
-        status.textContent = (data.notes && data.notes[0]) || "동 검색 제한";
+      dongResults = (data.results || []).map((r) => r.name).filter(Boolean);
+      renderDongList(dongResults);
+      if (!dongResults.length) {
+        status.textContent =
+          (data.notes && data.notes[0]) ||
+          "읍·면·동 후보가 없습니다. 직접 입력하거나 점포 검색을 이용하세요.";
+      } else {
+        status.textContent = `읍·면·동 ${dongResults.length}건 · 목록에서 고르거나 직접 입력`;
       }
     } catch {
-      // Dong is optional — free-text search still works with sido/sigungu.
-      dongSel.disabled = false;
+      dongResults = [];
+      hideDongList();
+      status.textContent =
+        "읍·면·동 검색에 실패했습니다. 직접 입력하거나 점포 검색을 이용하세요.";
     }
+  }
+
+  function renderDongList(items) {
+    dongList.innerHTML = "";
+    dongActive = -1;
+    if (!items.length) {
+      dongList.hidden = true;
+      return;
+    }
+    for (let i = 0; i < items.length; i++) {
+      const name = items[i];
+      const li = document.createElement("li");
+      li.className = "store-picker-option";
+      li.setAttribute("role", "option");
+      li.innerHTML = `<span class="sp-name">${escapeHtml(name)}</span>`;
+      li.addEventListener("mousedown", (ev) => {
+        ev.preventDefault();
+        selectDong(name);
+      });
+      dongList.appendChild(li);
+    }
+    dongList.hidden = false;
+  }
+
+  function selectDong(name) {
+    dongInput.value = name;
+    lastDongLabel = [sidoSel.value, sigunguSel.value, name].filter(Boolean).join(" ");
+    hideDongList();
+    status.textContent = `지역: ${lastDongLabel}`;
+    scheduleSearch();
+  }
+
+  function hideDongList() {
+    dongList.hidden = true;
+    dongActive = -1;
   }
 
   async function runSearch() {
     const q = input.value.trim();
     const sido = sidoSel.value;
     const sigungu = sigunguSel.value;
-    const dong = dongSel.value;
+    const dong = dongInput.value.trim();
     if (q.length < 1 && !sido) {
       hideList();
       status.textContent = "지역을 고르거나 검색어를 입력하세요.";
@@ -208,13 +285,22 @@ export function mountStorePicker(host, options) {
     `;
     hideList();
     status.textContent = "점포가 선택되었습니다. 이 주소로 분석을 진행합니다.";
-    // Best-effort dong label for location_dong field.
-    let dongLabel = dongSel.value
-      ? `${sidoSel.value} ${sigunguSel.value} ${dongSel.value}`.trim()
+    let dongLabel = dongInput.value.trim()
+      ? [sidoSel.value, sigunguSel.value, dongInput.value.trim()].filter(Boolean).join(" ")
       : "";
     if (!dongLabel && item.jibun_address) {
       const parts = String(item.jibun_address).split(/\s+/);
       if (parts.length >= 3) dongLabel = parts.slice(0, 3).join(" ");
+    }
+    if (!dongLabel) {
+      dongLabel = [sidoSel.value, sigunguSel.value].filter(Boolean).join(" ");
+    }
+    lastDongLabel = dongLabel;
+    // Sync dong input from jibun if empty
+    if (!dongInput.value.trim() && item.jibun_address) {
+      const parts = String(item.jibun_address).split(/\s+/);
+      const maybeDong = parts.find((t) => /(동|읍|면|리|가)$/.test(t));
+      if (maybeDong) dongInput.value = maybeDong;
     }
     options.onAddressSelected({
       address,
@@ -235,15 +321,52 @@ export function mountStorePicker(host, options) {
     }, 280);
   }
 
+  function scheduleDongLoad() {
+    window.clearTimeout(dongDebounce);
+    dongDebounce = window.setTimeout(() => {
+      void loadDong(dongInput.value.trim());
+    }, 220);
+  }
+
   sidoSel.addEventListener("change", () => {
     void loadSigungu();
-    scheduleSearch();
   });
   sigunguSel.addEventListener("change", () => {
-    void loadDong();
+    dongInput.value = "";
+    lastDongLabel = "";
+    void loadDong("");
     scheduleSearch();
   });
-  dongSel.addEventListener("change", scheduleSearch);
+  dongInput.addEventListener("focus", () => {
+    if (sidoSel.value && sigunguSel.value) {
+      if (!dongResults.length) void loadDong(dongInput.value.trim());
+      else renderDongList(dongResults);
+    }
+  });
+  dongInput.addEventListener("input", () => {
+    lastDongLabel = [sidoSel.value, sigunguSel.value, dongInput.value.trim()]
+      .filter(Boolean)
+      .join(" ");
+    scheduleDongLoad();
+  });
+  dongInput.addEventListener("keydown", (ev) => {
+    if (dongList.hidden || !dongResults.length) return;
+    if (ev.key === "ArrowDown") {
+      ev.preventDefault();
+      dongActive = Math.min(dongResults.length - 1, dongActive + 1);
+      highlightDong();
+    } else if (ev.key === "ArrowUp") {
+      ev.preventDefault();
+      dongActive = Math.max(0, dongActive - 1);
+      highlightDong();
+    } else if (ev.key === "Enter" && dongActive >= 0) {
+      ev.preventDefault();
+      selectDong(dongResults[dongActive]);
+    } else if (ev.key === "Escape") {
+      hideDongList();
+    }
+  });
+
   input.addEventListener("input", scheduleSearch);
   input.addEventListener("focus", () => {
     if (currentResults.length) listbox.hidden = false;
@@ -266,13 +389,20 @@ export function mountStorePicker(host, options) {
     }
   });
   document.addEventListener("click", (ev) => {
-    if (!host.contains(ev.target)) hideList();
+    if (!host.contains(ev.target)) {
+      hideList();
+      hideDongList();
+    }
   });
 
   function highlightActive() {
-    const nodes = listbox.querySelectorAll(".store-picker-option");
-    nodes.forEach((n, idx) => {
+    listbox.querySelectorAll(".store-picker-option").forEach((n, idx) => {
       n.classList.toggle("is-active", idx === activeIndex);
+    });
+  }
+  function highlightDong() {
+    dongList.querySelectorAll(".store-picker-option").forEach((n, idx) => {
+      n.classList.toggle("is-active", idx === dongActive);
     });
   }
 
@@ -288,7 +418,9 @@ export function mountStorePicker(host, options) {
         input.value = "";
         selected.hidden = true;
         hideList();
+        hideDongList();
         status.textContent = "";
+        lastDongLabel = "";
       }
     },
     getAddress() {
@@ -296,6 +428,14 @@ export function mountStorePicker(host, options) {
     },
     setAddress(value) {
       input.value = value || "";
+    },
+    /** Admin label for location_dong when precise location is on. */
+    getDongLabel() {
+      if (lastDongLabel) return lastDongLabel;
+      const parts = [sidoSel.value, sigunguSel.value, dongInput.value.trim()].filter(
+        Boolean,
+      );
+      return parts.join(" ");
     },
   };
 }

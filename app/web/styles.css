@@ -986,7 +986,8 @@ table.cmp td strong {
   margin: 0;
 }
 .store-picker-select,
-.store-picker-input {
+.store-picker-input,
+.store-picker-dong-input {
   width: 100%;
   height: 40px;
   padding: 0 10px;
@@ -996,6 +997,7 @@ table.cmp td strong {
   color: var(--ink);
   font: inherit;
 }
+.store-picker-dong-combo,
 .store-picker-search {
   position: relative;
   display: flex;
@@ -1006,17 +1008,20 @@ table.cmp td strong {
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(100% - 28px);
-  z-index: 20;
+  top: 100%;
+  z-index: 30;
   max-height: 260px;
   overflow: auto;
-  margin: 0;
+  margin: 2px 0 0;
   padding: 4px 0;
   list-style: none;
   border: 1px solid var(--hairline);
   border-radius: var(--r-sm);
   background: var(--canvas);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.store-picker-dong-listbox {
+  z-index: 35;
 }
 .store-picker-option {
   display: grid;
@@ -1110,6 +1115,22 @@ table.cmp td strong {
   font-style: normal;
   color: var(--primary);
   font-weight: 600;
+}
+.sim-intensity-help {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--body);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sim-intensity-help .sim-help-main {
+  color: var(--ink);
+  font-weight: 500;
+}
+.sim-intensity-help .sim-help-side {
+  color: var(--mute);
 }
 .sim-result {
   margin-top: var(--s-md);

@@ -138,3 +138,73 @@ def test_place_suggestion_model() -> None:
         score=1.2,
     )
     assert p.source == "keyword"
+
+
+def test_search_dong_with_mock_returns_names() -> None:
+    from app.pipeline.analyze.store_search import search_dong
+
+    def fetch(url: str, _headers: object) -> dict[str, object]:
+        if "address.json" in url:
+            return {
+                "documents": [
+                    {
+                        "address_name": "서울 마포구 신수동 1-1",
+                        "address": {
+                            "region_3depth_name": "신수동",
+                            "address_name": "서울 마포구 신수동 1-1",
+                        },
+                        "road_address": {
+                            "region_3depth_name": "신수동",
+                            "address_name": "서울 마포구 백범로 35",
+                        },
+                    },
+                    {
+                        "address_name": "서울 마포구 대흥동 2",
+                        "address": {"region_3depth_name": "대흥동"},
+                    },
+                ],
+            }
+        return {
+            "documents": [
+                {
+                    "place_name": "카페",
+                    "address_name": "서울 마포구 노고산동 10",
+                    "road_address_name": "서울 마포구 백범로 1",
+                },
+            ],
+        }
+
+    res = search_dong(
+        api_key="test",
+        sido="서울특별시",
+        sigungu="마포구",
+        q="",
+        fetch=fetch,
+    )
+    names = {r.name for r in res.results}
+    assert "신수동" in names
+    assert "대흥동" in names
+
+
+def test_simulation_technical_summary_is_prose() -> None:
+    params: dict[str, ParameterValue] = {
+        "product_name": "생수",
+        "store_type": "convenience",
+        "store_size": "cv_s",
+        "avg_ticket": "t_le_8k",
+        "location_dong": "서울시 마포구 신수동",
+        "trade_area": "campus",
+        "accessibility": "main_road",
+        "daily_demand": 40,
+        "standard_lead_time_days": 2,
+    }
+    out = run_simulation(
+        SimulationRequest(
+            parameters=params,
+            scenario="own_service_up",
+            intensity=0.5,
+        ),
+    )
+    assert "scenario=" not in out.technical_summary
+    assert "D_eff" in out.technical_summary or "유효" in out.technical_summary
+    assert "재발주점" in out.technical_summary or "ROP" in out.technical_summary

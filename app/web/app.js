@@ -9,7 +9,7 @@ import { initTheme } from "./theme.mjs";
 import { exportReport } from "./report_export.mjs";
 import { DEMO_SCENARIOS, getDemoScenario } from "./demo_scenarios.mjs";
 import { mountStorePicker } from "./store_picker.mjs";
-import { mountCompetitionSim } from "./competition_sim.mjs";
+import { clearCompetitionSimCache, mountCompetitionSim } from "./competition_sim.mjs";
 
 const EXPERT_KEY = "rop-expert-mode";
 
@@ -223,6 +223,8 @@ function syncPreciseLocationUI() {
   const addressHost = form?.querySelector('[data-field-key="store_address"]');
   const addressInput =
     storePicker?.input || form?.elements.namedItem("store_address");
+  const dongLabel = form?.querySelector('label[data-field-key="location_dong"]');
+  const dongInput = form?.elements.namedItem("location_dong");
   const eventLabel = form?.querySelector(
     'label[data-field-key="consider_temp_foot_traffic"]',
   );
@@ -240,6 +242,11 @@ function syncPreciseLocationUI() {
   if (addressInput && "required" in addressInput) {
     addressInput.required = on;
     if (!on && "value" in addressInput) addressInput.value = "";
+  }
+  // Precise path uses region cascade + place picker; hide manual 행정동 field.
+  if (dongLabel) dongLabel.hidden = on;
+  if (dongInput && "required" in dongInput) {
+    dongInput.required = !on;
   }
   // Temporary foot-traffic / competition options only with a precise address.
   if (eventLabel) eventLabel.hidden = !on;
@@ -420,6 +427,7 @@ function validateCurrentStep() {
 
   for (const key of step.keys) {
     if (key === "store_address" && !preciseOn) continue;
+    if (key === "location_dong" && preciseOn) continue; // filled from region/place picker
     if (key === "consider_temp_foot_traffic" && !preciseOn) continue;
     if (key === "consider_competition_saturation" && !preciseOn) continue;
     const spec = specsByKey[key];
@@ -500,6 +508,18 @@ function readParameters(formEl) {
     }
     if (input && input.type === "checkbox") continue;
     parameters[key] = String(raw);
+  }
+
+  // Precise path: admin dong comes from region cascade / selected place.
+  if (parameters.use_precise_location && storePicker) {
+    const fromPicker = storePicker.getDongLabel?.() || "";
+    if (fromPicker) {
+      parameters.location_dong = fromPicker;
+    } else if (!parameters.location_dong) {
+      parameters.location_dong = "상세주소 기반";
+    }
+    const addr = storePicker.getAddress?.();
+    if (addr) parameters.store_address = addr;
   }
 
   return sanitizeEvaluateParameters(parameters);
@@ -860,6 +880,8 @@ async function runEvaluate(opts = {}) {
   const started = performance.now();
   const parameters = readParameters(form);
   lastParameters = parameters;
+  // New evaluate → drop previous what-if cache (expert toggle still keeps mid-session).
+  clearCompetitionSimCache();
 
   try {
     const response = await fetch("/api/evaluate", {

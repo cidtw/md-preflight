@@ -324,6 +324,61 @@ def search_places(
     )
 
 
+def _collect_dongs_from_docs(
+    docs: Sequence[object],
+    *,
+    sido: str,
+    sigungu: str,
+    q_strip: str,
+    seen: set[str],
+    out: list[DongSuggestion],
+) -> None:
+    for item in docs:
+        mapped = _as_mapping(item)
+        if mapped is None:
+            continue
+        candidates: list[str] = []
+        for key in ("address", "road_address"):
+            block = _as_mapping(mapped.get(key))
+            if block is None:
+                continue
+            dong = str(block.get("region_3depth_name") or "").strip()
+            if dong:
+                candidates.append(dong)
+        # Keyword/place docs expose address_name like "서울 마포구 신수동 12-3".
+        for addr_key in ("address_name", "road_address_name"):
+            addr = str(mapped.get(addr_key) or "").strip()
+            if not addr:
+                continue
+            parts = addr.split()
+            # Find token after sigungu (or 3rd token) that looks like dong/eup/myeon/ri.
+            for i, tok in enumerate(parts):
+                if re.search(r"(동|읍|면|리|가)$", tok) and (
+                    tok in sigungu or i >= 2
+                ):
+                    candidates.append(tok)
+            if len(parts) >= 3 and re.search(r"(동|읍|면|리|가)$", parts[2]):
+                candidates.append(parts[2])
+        for dong in candidates:
+            dong = dong.strip()
+            if not dong or dong in seen:
+                continue
+            if q_strip and q_strip not in dong and not dong.startswith(q_strip):
+                continue
+            # Drop pure numbers / road names.
+            if re.fullmatch(r"\d+.*", dong) or (
+                "로" in dong and not dong.endswith(("동", "읍", "면", "리", "가"))
+            ):
+                continue
+            seen.add(dong)
+            out.append(
+                DongSuggestion(
+                    name=dong,
+                    full_label=f"{sido} {sigungu} {dong}".strip(),
+                ),
+            )
+
+
 def search_dong(
     *,
     api_key: str | None,
@@ -332,7 +387,7 @@ def search_dong(
     q: str = "",
     fetch: JsonFetch | None = None,
 ) -> DongSearchResponse:
-    """Suggest eup/myeon/dong/ri labels under a selected sigungu via Kakao address API."""
+    """Suggest eup/myeon/dong/ri under a selected sigungu via Kakao (multi-query)."""
     if not sido.strip() or not sigungu.strip():
         return DongSearchResponse(notes=["시·도와 시·군·구를 먼저 선택해 주세요."])
     if not api_key:
@@ -345,46 +400,69 @@ def search_dong(
         return _http_get_json(url, headers)
 
     do_fetch: JsonFetch = fetch or default_fetch
-    query = " ".join(p for p in (sido.strip(), sigungu.strip(), q.strip()) if p)
-    params = urllib.parse.urlencode({"query": query, "size": "15"})
-    url = f"https://dapi.kakao.com/v2/local/search/address.json?{params}"
-    try:
-        data = do_fetch(url, _auth_headers(api_key))
-    except (urllib.error.URLError, TimeoutError, TypeError, ValueError) as exc:
-        return DongSearchResponse(used_fallback=True, notes=[f"동 검색 실패: {exc}"])
-
-    docs = _as_sequence(data.get("documents")) or []
+    q_strip = q.strip()
+    sido_s = sido.strip()
+    sigungu_s = sigungu.strip()
     seen: set[str] = set()
     out: list[DongSuggestion] = []
-    q_strip = q.strip()
-    for item in docs:
-        mapped = _as_mapping(item)
-        if mapped is None:
-            continue
-        for key in ("address", "road_address"):
-            block = _as_mapping(mapped.get(key))
-            if block is None:
-                continue
-            dong = str(block.get("region_3depth_name") or "").strip()
-            if not dong or dong in seen:
-                continue
-            if q_strip and q_strip not in dong and not dong.startswith(q_strip):
-                continue
-            seen.add(dong)
-            full = f"{sido} {sigungu} {dong}".strip()
-            out.append(DongSuggestion(name=dong, full_label=full))
-        addr = str(mapped.get("address_name") or "")
-        parts = addr.split()
-        if len(parts) >= 3:
-            dong = parts[2]
-            if dong not in seen and (
-                not q_strip or q_strip in dong or dong.startswith(q_strip)
-            ):
-                seen.add(dong)
-                out.append(
-                    DongSuggestion(
-                        name=dong,
-                        full_label=f"{sido} {sigungu} {dong}".strip(),
-                    ),
-                )
-    return DongSearchResponse(results=out[:20], notes=[f"읍·면·동 후보 {len(out)}건"])
+
+    # Multiple query shapes: plain region, with user fragment, keyword "동".
+    queries = [
+        f"{sido_s} {sigungu_s} {q_strip}".strip(),
+        f"{sigungu_s} {q_strip}".strip() if q_strip else f"{sigungu_s}",
+        f"{sido_s} {sigungu_s} 동",
+    ]
+    # Deduplicate while preserving order.
+    seen_q: set[str] = set()
+    uniq_queries = [x for x in queries if x and not (x in seen_q or seen_q.add(x))]
+
+    try:
+        for query in uniq_queries:
+            # Address search
+            params = urllib.parse.urlencode({"query": query, "size": "15"})
+            url = f"https://dapi.kakao.com/v2/local/search/address.json?{params}"
+            data = do_fetch(url, _auth_headers(api_key))
+            docs = _as_sequence(data.get("documents")) or []
+            _collect_dongs_from_docs(
+                docs,
+                sido=sido_s,
+                sigungu=sigungu_s,
+                q_strip=q_strip,
+                seen=seen,
+                out=out,
+            )
+            # Keyword search (places carry address_name with dong tokens)
+            kparams = urllib.parse.urlencode(
+                {"query": query, "size": "15", "page": "1"},
+            )
+            kurl = f"https://dapi.kakao.com/v2/local/search/keyword.json?{kparams}"
+            kdata = do_fetch(kurl, _auth_headers(api_key))
+            kdocs = _as_sequence(kdata.get("documents")) or []
+            _collect_dongs_from_docs(
+                kdocs,
+                sido=sido_s,
+                sigungu=sigungu_s,
+                q_strip=q_strip,
+                seen=seen,
+                out=out,
+            )
+            if len(out) >= 20:
+                break
+    except (urllib.error.URLError, TimeoutError, TypeError, ValueError) as exc:
+        if out:
+            return DongSearchResponse(
+                results=out[:25],
+                notes=[f"읍·면·동 후보 {len(out)}건 (부분 결과 · {exc})"],
+            )
+        return DongSearchResponse(used_fallback=True, notes=[f"동 검색 실패: {exc}"])
+
+    if not out:
+        return DongSearchResponse(
+            results=[],
+            notes=[
+                "읍·면·동 후보를 찾지 못했습니다. 직접 입력하거나 "
+                + "아래 점포 검색으로 주소를 고르면 자동 반영됩니다.",
+            ],
+        )
+    out.sort(key=lambda d: d.name)
+    return DongSearchResponse(results=out[:25], notes=[f"읍·면·동 후보 {len(out)}건"])

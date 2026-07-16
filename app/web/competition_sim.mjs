@@ -1,5 +1,6 @@
 /**
  * Competition what-if simulation UI (calls POST /api/simulate).
+ * Last successful result is cached so expert/plain toggle does not require re-run.
  */
 
 const SCENARIOS = [
@@ -7,23 +8,47 @@ const SCENARIOS = [
     id: "own_service_up",
     title: "내 매장 서비스·ROP 강화",
     blurb: "품절 방어를 올려 수요를 되찾는 경우",
+    intensityHelp: {
+      low: "약함: 서비스 레벨·재고를 조금 올립니다.",
+      high: "강함: 서비스 99%·수요 회복을 크게 가정합니다.",
+      meaning:
+        "슬라이더↑ → 내 매장 방어력·유효 수요↑, ROP·SS·Q도 함께 올라가는 경향",
+    },
   },
   {
     id: "competitor_pressure",
     title: "경쟁 매장 공세",
     blurb: "경쟁이 재고·판촉을 강화해 수요가 이탈",
+    intensityHelp: {
+      low: "약함: 경쟁 영향이 작아 수요 이탈이 적습니다.",
+      high: "강함: 경쟁이 세져 내 매장 유효 수요가 크게 줄 수 있습니다.",
+      meaning: "슬라이더↑ → 내 매장 유효 수요↓ (최대 약 −28%), 발주량·ROP 재조정 필요",
+    },
   },
   {
     id: "own_lt_stress",
     title: "내 매장 LT 스트레스",
     blurb: "공급 리드타임이 늘어 부담·이탈 증가",
+    intensityHelp: {
+      low: "약함: 리드타임이 조금 늘어납니다.",
+      high: "강함: LT가 크게 늘고 품절 리스크로 수요도 일부 이탈합니다.",
+      meaning: "슬라이더↑ → LT·여유재고(SS)·ROP↑, 유효 수요는 소폭↓",
+    },
   },
   {
     id: "own_demand_rebound",
     title: "수요 반등",
     blurb: "입지·운영 개선으로 소진량이 늘어날 때",
+    intensityHelp: {
+      low: "약함: 일 소진량이 소폭 증가합니다.",
+      high: "강함: 소진량이 크게 늘어 ROP·발주량도 커집니다.",
+      meaning: "슬라이더↑ → 일 소진·ROP·Q↑ (낙관 시나리오)",
+    },
   },
 ];
+
+/** @type {{ data: object, scenario: string, intensityPct: number } | null} */
+let lastSimState = null;
 
 /**
  * @param {HTMLElement} container
@@ -31,6 +56,7 @@ const SCENARIOS = [
  * @param {{ expert?: boolean }} [opts]
  */
 export function mountCompetitionSim(container, baseParameters, opts = {}) {
+  const expert = Boolean(opts.expert);
   container.innerHTML = "";
   container.className = "sim-panel";
 
@@ -58,11 +84,15 @@ export function mountCompetitionSim(container, baseParameters, opts = {}) {
     scenarioWrap.appendChild(btn);
   }
 
+  const initialPct = lastSimState?.intensityPct ?? 50;
+  const initialScenario = lastSimState?.scenario ?? "own_service_up";
+
   const intensityLabel = document.createElement("label");
   intensityLabel.className = "sim-intensity";
   intensityLabel.innerHTML = `
-    <span class="field-title">충격 강도 <em id="sim-intensity-val">50%</em></span>
-    <input type="range" id="sim-intensity" min="0" max="100" value="50" />
+    <span class="field-title">충격 강도 <em id="sim-intensity-val">${initialPct}%</em></span>
+    <input type="range" id="sim-intensity" min="0" max="100" value="${initialPct}" />
+    <p class="sim-intensity-help" id="sim-intensity-help"></p>
   `;
 
   const runBtn = document.createElement("button");
@@ -82,33 +112,59 @@ export function mountCompetitionSim(container, baseParameters, opts = {}) {
   container.appendChild(controls);
   container.appendChild(result);
 
-  let selected = "own_service_up";
+  let selected = initialScenario;
   const range = intensityLabel.querySelector("#sim-intensity");
   const rangeVal = intensityLabel.querySelector("#sim-intensity-val");
+  const helpEl = intensityLabel.querySelector("#sim-intensity-help");
 
   const markSelected = () => {
     for (const btn of scenarioWrap.querySelectorAll(".sim-scenario-btn")) {
       btn.classList.toggle("is-active", btn.dataset.scenario === selected);
     }
   };
+
+  const updateIntensityHelp = () => {
+    const meta = SCENARIOS.find((s) => s.id === selected);
+    const pct = Number(range?.value || 50);
+    if (!helpEl || !meta) return;
+    const side =
+      pct < 35 ? meta.intensityHelp.low : pct > 65 ? meta.intensityHelp.high : null;
+    const mid =
+      "중간: 보통 수준의 충격입니다. 좌(약함) ↔ 우(강함)로 세기를 조절하세요.";
+    helpEl.innerHTML = `
+      <span class="sim-help-main">${escapeHtml(meta.intensityHelp.meaning)}</span>
+      <span class="sim-help-side">${escapeHtml(side || mid)}</span>
+    `;
+  };
+
   markSelected();
+  updateIntensityHelp();
+
+  // Restore previous result when expert toggle re-mounts this panel.
+  if (lastSimState?.data) {
+    result.hidden = false;
+    result.innerHTML = renderSimResult(lastSimState.data, expert);
+  }
 
   scenarioWrap.addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-scenario]");
     if (!btn) return;
     selected = btn.getAttribute("data-scenario") || selected;
     markSelected();
+    updateIntensityHelp();
   });
 
   range?.addEventListener("input", () => {
     if (rangeVal && range) rangeVal.textContent = `${range.value}%`;
+    updateIntensityHelp();
   });
 
   runBtn.addEventListener("click", async () => {
     runBtn.disabled = true;
     result.hidden = false;
     result.innerHTML = `<p class="mute">시뮬레이션 계산 중…</p>`;
-    const intensity = Number(range?.value || 50) / 100;
+    const intensityPct = Number(range?.value || 50);
+    const intensity = intensityPct / 100;
     try {
       const res = await fetch("/api/simulate", {
         method: "POST",
@@ -122,11 +178,14 @@ export function mountCompetitionSim(container, baseParameters, opts = {}) {
       const data = await res.json();
       if (!res.ok) {
         result.innerHTML = `<p class="form-error">${escapeHtml(
-          data.detail || `HTTP ${res.status}`,
+          typeof data.detail === "string"
+            ? data.detail
+            : `요청 실패 (HTTP ${res.status})`,
         )}</p>`;
         return;
       }
-      result.innerHTML = renderSimResult(data, Boolean(opts.expert));
+      lastSimState = { data, scenario: selected, intensityPct };
+      result.innerHTML = renderSimResult(data, expert);
     } catch (err) {
       result.innerHTML = `<p class="form-error">${escapeHtml(String(err))}</p>`;
     } finally {
@@ -135,12 +194,88 @@ export function mountCompetitionSim(container, baseParameters, opts = {}) {
   });
 }
 
+/** Clear cached sim when starting a new evaluate run. */
+export function clearCompetitionSimCache() {
+  lastSimState = null;
+}
+
 function renderSimResult(data, expert) {
   const b = data.baseline;
   const s = data.shocked;
   const delta = data.own_sales_index_delta_pct;
   const deltaCls = delta > 0 ? "delta-up" : delta < 0 ? "delta-down" : "";
-  const summary = expert ? data.technical_summary : data.plain_summary;
+  const summary = expert
+    ? data.technical_summary || data.plain_summary
+    : data.plain_summary;
+  const tableRows = expert
+    ? `
+          <tr>
+            <td>유효 일 소진 D<sub>eff</sub> (개)</td>
+            <td>${fmt(b.effective_daily_demand)}</td>
+            <td><strong>${fmt(s.effective_daily_demand)}</strong></td>
+          </tr>
+          <tr>
+            <td>재발주점 ROP (개)</td>
+            <td>${fmt(b.recommended_rop, 0)}</td>
+            <td><strong>${fmt(s.recommended_rop, 0)}</strong></td>
+          </tr>
+          <tr>
+            <td>안전재고 SS (개)</td>
+            <td>${fmt(b.store_safety_stock)}</td>
+            <td><strong>${fmt(s.store_safety_stock)}</strong></td>
+          </tr>
+          <tr>
+            <td>1회 발주량 Q (개)</td>
+            <td>${fmt(b.suggested_order_qty)}</td>
+            <td><strong>${fmt(s.suggested_order_qty)}</strong></td>
+          </tr>
+          <tr>
+            <td>리드타임 LT (일)</td>
+            <td>${fmt(b.standard_lead_time_days)}</td>
+            <td><strong>${fmt(s.standard_lead_time_days)}</strong></td>
+          </tr>
+          <tr>
+            <td>경쟁 수요 계수 (1=무분산)</td>
+            <td>${fmt(b.competition_demand_factor, 3)}</td>
+            <td><strong>${fmt(s.competition_demand_factor, 3)}</strong></td>
+          </tr>
+          <tr>
+            <td>경쟁 강도 지수</td>
+            <td>${fmt(b.competition_intensity, 3)}</td>
+            <td><strong>${fmt(s.competition_intensity, 3)}</strong></td>
+          </tr>`
+    : `
+          <tr>
+            <td>유효 일 소진 (개)</td>
+            <td>${fmt(b.effective_daily_demand)}</td>
+            <td><strong>${fmt(s.effective_daily_demand)}</strong></td>
+          </tr>
+          <tr>
+            <td>추천 ROP (개)</td>
+            <td>${fmt(b.recommended_rop, 0)}</td>
+            <td><strong>${fmt(s.recommended_rop, 0)}</strong></td>
+          </tr>
+          <tr>
+            <td>여유 재고 (개)</td>
+            <td>${fmt(b.store_safety_stock)}</td>
+            <td><strong>${fmt(s.store_safety_stock)}</strong></td>
+          </tr>
+          <tr>
+            <td>1회 발주량 (개)</td>
+            <td>${fmt(b.suggested_order_qty)}</td>
+            <td><strong>${fmt(s.suggested_order_qty)}</strong></td>
+          </tr>
+          <tr>
+            <td>배송 리드타임 (일)</td>
+            <td>${fmt(b.standard_lead_time_days)}</td>
+            <td><strong>${fmt(s.standard_lead_time_days)}</strong></td>
+          </tr>
+          <tr>
+            <td>경쟁으로 줄어든 수요 비율 보정</td>
+            <td>${fmt(b.competition_demand_factor, 3)}</td>
+            <td><strong>${fmt(s.competition_demand_factor, 3)}</strong></td>
+          </tr>`;
+
   return `
     <div class="verdict sim-verdict">${escapeHtml(summary)}</div>
     <p class="sim-competitor">${escapeHtml(data.competitor_response_note)}</p>
@@ -153,38 +288,7 @@ function renderSimResult(data, expert) {
             <th>시나리오</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>유효 일 소진 (개)</td>
-            <td>${fmt(b.effective_daily_demand)}</td>
-            <td><strong>${fmt(s.effective_daily_demand)}</strong></td>
-          </tr>
-          <tr>
-            <td>추천 ROP (개)</td>
-            <td>${fmt(b.recommended_rop, 0)}</td>
-            <td><strong>${fmt(s.recommended_rop, 0)}</strong></td>
-          </tr>
-          <tr>
-            <td>여유 재고 SS (개)</td>
-            <td>${fmt(b.store_safety_stock)}</td>
-            <td><strong>${fmt(s.store_safety_stock)}</strong></td>
-          </tr>
-          <tr>
-            <td>1회 발주량 Q (개)</td>
-            <td>${fmt(b.suggested_order_qty)}</td>
-            <td><strong>${fmt(s.suggested_order_qty)}</strong></td>
-          </tr>
-          <tr>
-            <td>LT (일)</td>
-            <td>${fmt(b.standard_lead_time_days)}</td>
-            <td><strong>${fmt(s.standard_lead_time_days)}</strong></td>
-          </tr>
-          <tr>
-            <td>경쟁 수요 계수</td>
-            <td>${fmt(b.competition_demand_factor, 3)}</td>
-            <td><strong>${fmt(s.competition_demand_factor, 3)}</strong></td>
-          </tr>
-        </tbody>
+        <tbody>${tableRows}</tbody>
       </table>
     </div>
     <p class="sim-sales-delta ${deltaCls}">

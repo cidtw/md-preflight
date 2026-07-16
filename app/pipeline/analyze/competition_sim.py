@@ -178,13 +178,19 @@ def run_simulation(
         f"{scenario_note}."
     )
     technical = (
-        f"scenario={body.scenario} intensity={body.intensity:.3f} "
-        f"D_eff {base_side.effective_daily_demand:g}→{shock_side.effective_daily_demand:g} "
-        f"ROP {base_side.recommended_rop:g}→{shock_side.recommended_rop:g} "
-        f"SS {base_side.store_safety_stock:g}→{shock_side.store_safety_stock:g} "
-        f"Q {base_side.suggested_order_qty:g}→{shock_side.suggested_order_qty:g} "
-        f"comp_factor {base_side.competition_demand_factor:.3f}→"
-        f"{shock_side.competition_demand_factor:.3f}"
+        f"[{label}] 충격 강도 {body.intensity:.0%}. "
+        f"유효 일 소진(D_eff) {base_side.effective_daily_demand:g}→"
+        f"{shock_side.effective_daily_demand:g}개/일 ({delta_pct:+.1f}%). "
+        f"재발주점(ROP) {base_side.recommended_rop:.1f}→{shock_side.recommended_rop:.1f}개, "
+        f"안전재고(SS) {base_side.store_safety_stock:.1f}→{shock_side.store_safety_stock:.1f}개, "
+        f"1회 발주량(Q) {base_side.suggested_order_qty:g}→{shock_side.suggested_order_qty:g}개, "
+        f"리드타임(LT) {base_side.standard_lead_time_days:g}→"
+        f"{shock_side.standard_lead_time_days:g}일. "
+        f"경쟁 수요 계수 {base_side.competition_demand_factor:.3f}→"
+        f"{shock_side.competition_demand_factor:.3f} "
+        f"(강도 지수 {base_side.competition_intensity:.3f}→"
+        f"{shock_side.competition_intensity:.3f}). "
+        f"{scenario_note}."
     )
     guidance = list(validated_shock.guidance)
     if not bool(base_params.get("use_precise_location")):
