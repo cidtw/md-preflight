@@ -5,32 +5,9 @@ import {
   sanitizeEvaluateParameters,
   validateStoreAddress,
 } from "./wizard_logic.mjs";
+import { initTheme } from "./theme.mjs";
 
-const THEME_KEY = "rop-theme-mode";
 const EXPERT_KEY = "rop-expert-mode";
-
-/** @type {"system"|"light"|"dark"} */
-function readThemeMode() {
-  const raw = localStorage.getItem(THEME_KEY);
-  if (raw === "light" || raw === "dark" || raw === "system") return raw;
-  return "system";
-}
-
-function applyThemeMode(mode) {
-  const m = mode === "light" || mode === "dark" || mode === "system" ? mode : "system";
-  document.documentElement.dataset.theme = m;
-  localStorage.setItem(THEME_KEY, m);
-  const sel = document.getElementById("theme-select");
-  if (sel && "value" in sel) sel.value = m;
-}
-
-function initTheme() {
-  applyThemeMode(readThemeMode());
-  document.getElementById("theme-select")?.addEventListener("change", (ev) => {
-    const t = ev.target;
-    if (t && "value" in t) applyThemeMode(String(t.value));
-  });
-}
 
 initTheme();
 
@@ -389,6 +366,18 @@ function pickNarrative(payload, expert) {
   return { comparison, evidence, recommendation };
 }
 
+function findRow(comparison, ...needles) {
+  return comparison.rows.find((r) =>
+    needles.some((n) => String(r.metric).includes(n)),
+  );
+}
+
+function statClass(delta) {
+  if (delta > 0) return "is-up";
+  if (delta < 0) return "is-down";
+  return "";
+}
+
 function renderResult(payload, expertOverride) {
   lastPayload = payload;
   const expert =
@@ -412,9 +401,14 @@ function renderResult(payload, expertOverride) {
   const colRec = expert ? "매장 맞춤" : "이 매장 추천";
   const colDelta = expert ? "Δ / 메모" : "어떻게 달라졌나";
   const evidenceTitle = expert
-    ? "계산 근거 · 지식 베이스 (전문)"
-    : "왜 이렇게 나왔나요? (쉬운 설명)";
-  const cmpTitle = expert ? "ROP 비교 대시보드" : "한눈에 보는 발주 기준";
+    ? "계산 근거 · 지식 베이스"
+    : "왜 이렇게 나왔나요?";
+  const cmpTitle = expert ? "ROP 비교" : "한눈에 보는 발주 기준";
+
+  const ropRow = findRow(comparison, "재발주", "ROP", "발주 시점");
+  const ssRow = findRow(comparison, "여유 재고", "안전재고", "Safety");
+  const qRow = findRow(comparison, "발주량", "Q");
+  const cycleRow = findRow(comparison, "발주 요일", "주기");
 
   const rows = comparison.rows
     .map((r) => {
@@ -430,7 +424,7 @@ function renderResult(payload, expertOverride) {
 
   const evidenceHtml = evidence
     .map(
-      (block) => `<article class="card evidence">
+      (block) => `<article class="evidence-card">
         <h3>${escapeHtml(block.title)}</h3>
         <p class="calc">${escapeHtml(block.calc_summary)}</p>
         <ul>${block.points.map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ul>
@@ -439,7 +433,7 @@ function renderResult(payload, expertOverride) {
     .join("");
 
   resultPanel.innerHTML = `
-    <div class="result-toolbar card">
+    <div class="result-head">
       <label class="expert-toggle">
         <input type="checkbox" id="expert-mode" ${expert ? "checked" : ""} />
         <span>
@@ -447,49 +441,75 @@ function renderResult(payload, expertOverride) {
           <small>전공·실무자용 공식·점수 표기 (Z, CAPA, FTI 등)</small>
         </span>
       </label>
-      <button type="button" class="btn-secondary btn-inline" id="again-btn">처음부터 다시</button>
+      <button type="button" class="btn btn-secondary" id="again-btn">처음부터 다시</button>
     </div>
-    <div class="result-layout">
-      <div class="result-main">
-        <section class="card">
-          <h2>추천 결과</h2>
-          <p class="hero-rec">${escapeHtml(recommendation)}</p>
-          ${guideHtml}
-          <h3>매장·품목 요약</h3>
-          <dl class="summary-grid">
-            <dt>분석 품목</dt><dd>${escapeHtml(s.product_name)}</dd>
-            <dt>유형 / 규모</dt><dd>${escapeHtml(s.store_type_label)} / ${escapeHtml(s.store_size_label)}</dd>
-            <dt>객단가</dt><dd>${escapeHtml(s.avg_ticket_label)}</dd>
-            <dt>입지 / 접근성</dt><dd>${escapeHtml(s.location_dong)} / ${escapeHtml(s.accessibility_label)}</dd>
-            ${addressRow}
-            <dt>상권</dt><dd>${escapeHtml(s.trade_area_label)}</dd>
-            <dt>서비스 레벨</dt><dd>${escapeHtml(s.service_level_label || "-")}</dd>
-            <dt>발주 요일 패턴</dt><dd>${escapeHtml(s.order_day_pattern_label || "-")}</dd>
-          </dl>
-        </section>
-        <section class="card">
-          <h2>${escapeHtml(cmpTitle)}</h2>
-          <div class="table-wrap">
-            <table class="cmp">
-              <thead>
-                <tr>
-                  <th>구분</th>
-                  <th>${escapeHtml(colStd)}</th>
-                  <th>${escapeHtml(colRec)}</th>
-                  <th>${escapeHtml(colDelta)}</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
-          <p class="rop-guide">${escapeHtml(comparison.rop_guidance)}</p>
-        </section>
+
+    <div class="verdict">
+      <span class="v-label">추천 결과</span>
+      ${escapeHtml(recommendation)}
+    </div>
+    ${guideHtml}
+
+    <div class="stat-grid">
+      <div class="stat-tile ${statClass(ropRow?.delta ?? 0)}">
+        <div class="stat-value">${fmt(ropRow?.recommended_value ?? payload.calc.recommended_rop, 0)}</div>
+        <div class="stat-label">발주 시점 재고 (개)</div>
       </div>
-      <aside class="result-aside">
-        <h2 class="section-heading">${escapeHtml(evidenceTitle)}</h2>
-        <div class="evidence-grid">${evidenceHtml}</div>
-      </aside>
+      <div class="stat-tile ${statClass(ssRow?.delta ?? 0)}">
+        <div class="stat-value">${fmt(ssRow?.recommended_value ?? payload.calc.store_safety_stock, 1)}</div>
+        <div class="stat-label">여유 재고 (개)</div>
+      </div>
+      <div class="stat-tile ${statClass(qRow?.delta ?? 0)}">
+        <div class="stat-value">${fmt(qRow?.recommended_value ?? payload.calc.suggested_order_qty, 1)}</div>
+        <div class="stat-label">1회 발주량 (개)</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-value">${escapeHtml(payload.calc.order_days_label || "—")}</div>
+        <div class="stat-label">발주 요일 · ${fmt(cycleRow?.recommended_value ?? payload.calc.order_cycle_days, 1)}일 주기</div>
+      </div>
     </div>
+
+    <section class="result-section">
+      <h2 class="section-title">매장 · 품목 요약</h2>
+      <div class="summary-box">
+        <dl class="summary-grid">
+          <dt>분석 품목</dt><dd>${escapeHtml(s.product_name)}</dd>
+          <dt>유형 / 규모</dt><dd>${escapeHtml(s.store_type_label)} / ${escapeHtml(s.store_size_label)}</dd>
+          <dt>객단가</dt><dd>${escapeHtml(s.avg_ticket_label)}</dd>
+          <dt>입지 / 접근성</dt><dd>${escapeHtml(s.location_dong)} / ${escapeHtml(s.accessibility_label)}</dd>
+          ${addressRow}
+          <dt>상권</dt><dd>${escapeHtml(s.trade_area_label)}</dd>
+          <dt>서비스 레벨</dt><dd>${escapeHtml(s.service_level_label || "-")}</dd>
+          <dt>발주 패턴</dt><dd>${escapeHtml(s.order_day_pattern_label || "-")}</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="result-section">
+      <h2 class="section-title">${escapeHtml(cmpTitle)}</h2>
+      <div class="table-wrap">
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th>구분</th>
+              <th>${escapeHtml(colStd)}</th>
+              <th>${escapeHtml(colRec)}</th>
+              <th>${escapeHtml(colDelta)}</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <p class="rop-guide">${escapeHtml(comparison.rop_guidance)}</p>
+    </section>
+
+    <section class="result-section">
+      <h2 class="section-title">
+        ${escapeHtml(evidenceTitle)}
+        <span class="count-chip">${evidence.length}</span>
+      </h2>
+      <div class="evidence-grid">${evidenceHtml}</div>
+    </section>
   `;
   resultPanel.hidden = false;
   document.getElementById("again-btn")?.addEventListener("click", () => {
@@ -506,6 +526,13 @@ function renderResult(payload, expertOverride) {
 
 document.getElementById("welcome-start")?.addEventListener("click", () => {
   showStep(1);
+});
+
+document.getElementById("nav-home")?.addEventListener("click", () => {
+  resultPanel.hidden = true;
+  loadingPanel.hidden = true;
+  inputPanel.hidden = false;
+  showStep(0);
 });
 
 btnBack?.addEventListener("click", () => {

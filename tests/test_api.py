@@ -138,5 +138,6 @@ def test_index_page(client: TestClient) -> None:
     assert "매장 기본 정보" in response.text
     assert "매장 세부 정보" in response.text
     assert "품목 · 운영 기준" in response.text
-    assert 'id="theme-select"' in response.text
-    assert "시스템" in response.text
+    assert "theme-toggle" in response.text
+    assert 'data-theme-btn="system"' in response.text
+    assert "top-nav" in response.text
