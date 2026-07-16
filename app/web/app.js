@@ -8,6 +8,8 @@ import {
 import { initTheme } from "./theme.mjs";
 import { exportReport } from "./report_export.mjs";
 import { DEMO_SCENARIOS, getDemoScenario } from "./demo_scenarios.mjs";
+import { mountStorePicker } from "./store_picker.mjs";
+import { mountCompetitionSim } from "./competition_sim.mjs";
 
 const EXPERT_KEY = "rop-expert-mode";
 
@@ -31,8 +33,14 @@ const demoScenarioList = document.getElementById("demo-scenario-list");
 /** @type {object | null} */
 let lastPayload = null;
 
+/** @type {Record<string, unknown> | null} */
+let lastParameters = null;
+
 /** @type {Record<string, object>} */
 let specsByKey = {};
+
+/** @type {ReturnType<typeof mountStorePicker> | null} */
+let storePicker = null;
 
 const STEPS = [
   {
@@ -142,6 +150,30 @@ function fieldControl(spec) {
 }
 
 function mountField(spec, container) {
+  // Custom combobox for precise store address (region cascade + Kakao search).
+  if (spec.key === "store_address") {
+    const host = document.createElement("div");
+    host.dataset.fieldKey = "store_address";
+    host.className = "store-picker-host";
+    storePicker = mountStorePicker(host, {
+      getStoreType: () => {
+        const el = form?.elements.namedItem("store_type");
+        return el && "value" in el ? String(el.value) : "";
+      },
+      onAddressSelected: ({ address, dongLabel }) => {
+        if (storePicker) storePicker.setAddress(address);
+        if (dongLabel) {
+          const dongInput = form?.elements.namedItem("location_dong");
+          if (dongInput && "value" in dongInput && !String(dongInput.value || "").trim()) {
+            dongInput.value = dongLabel;
+          }
+        }
+      },
+    });
+    container.appendChild(host);
+    return;
+  }
+
   const label = document.createElement("label");
   label.htmlFor = `field-${spec.key}`;
   label.dataset.fieldKey = spec.key;
@@ -188,8 +220,9 @@ function mountField(spec, container) {
 
 function syncPreciseLocationUI() {
   const checkbox = form?.elements.namedItem("use_precise_location");
-  const addressLabel = form?.querySelector('label[data-field-key="store_address"]');
-  const addressInput = form?.elements.namedItem("store_address");
+  const addressHost = form?.querySelector('[data-field-key="store_address"]');
+  const addressInput =
+    storePicker?.input || form?.elements.namedItem("store_address");
   const eventLabel = form?.querySelector(
     'label[data-field-key="consider_temp_foot_traffic"]',
   );
@@ -199,7 +232,11 @@ function syncPreciseLocationUI() {
   );
   const compInput = form?.elements.namedItem("consider_competition_saturation");
   const on = Boolean(checkbox && "checked" in checkbox && checkbox.checked);
-  if (addressLabel) addressLabel.hidden = !on;
+  if (storePicker) {
+    storePicker.setVisible(on);
+  } else if (addressHost) {
+    addressHost.hidden = !on;
+  }
   if (addressInput && "required" in addressInput) {
     addressInput.required = on;
     if (!on && "value" in addressInput) addressInput.value = "";
@@ -253,6 +290,10 @@ async function buildForm() {
 function applyParametersToForm(parameters) {
   if (!form) return;
   for (const [key, value] of Object.entries(parameters)) {
+    if (key === "store_address" && storePicker) {
+      storePicker.setAddress(value == null ? "" : String(value));
+      continue;
+    }
     const el = form.elements.namedItem(key);
     if (!el) continue;
     if (el instanceof RadioNodeList) continue;
@@ -668,6 +709,7 @@ function renderResult(payload, expertOverride) {
       </h2>
       <div class="evidence-grid">${evidenceHtml}</div>
     </section>
+    <section class="result-section" id="sim-mount"></section>
   `;
   resultPanel.hidden = false;
   if (comingSoon) comingSoon.hidden = true;
@@ -681,6 +723,11 @@ function renderResult(payload, expertOverride) {
     setExpertMode(on);
     if (lastPayload) renderResult(lastPayload, on);
   });
+  // Competition what-if simulator (uses last submitted parameters).
+  const simMount = document.getElementById("sim-mount");
+  if (simMount && lastParameters) {
+    mountCompetitionSim(simMount, lastParameters, { expert });
+  }
   // Export uses delegated listeners on #result-panel (see bindExportMenu).
   // Do not attach per-render — innerHTML replaces #export-btn each time.
 }
@@ -812,6 +859,7 @@ async function runEvaluate(opts = {}) {
 
   const started = performance.now();
   const parameters = readParameters(form);
+  lastParameters = parameters;
 
   try {
     const response = await fetch("/api/evaluate", {

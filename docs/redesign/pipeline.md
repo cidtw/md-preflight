@@ -100,6 +100,11 @@ CAPA 1~2 이고 상한 초과 시:
 |--------|------|
 | `GET` | `/api/health` |
 | `GET` | `/api/template` |
+| `GET` | `/api/regions/sido` · `/api/regions/sigungu` · `/api/regions/dong` |
+| `GET` | `/api/places/search` (점포·주소 자동완성, Kakao) |
 | `POST` | `/api/evaluate` |
+| `POST` | `/api/simulate` (경쟁·LT·ROP 충격 시나리오) |
+
+정확한 주소 UX: 시·도 → 시·군·구 → 읍·면·동(카카오 제안) 선택 후 점포명/도로명 일부 입력 → 콤보에서 공식 점포 선택 → `store_address`에 도로명 주소 확정.
 
 원 지시(역사 문서, Adjusted LT 서사 포함): `2026-07-14-New-Service-Flow.md` — **구현 SSOT는 본 파일 + `docs/architecture.md`**.

@@ -961,6 +961,172 @@ table.cmp td strong {
   font-weight: 500;
 }
 
+/* ---------- store picker (precise address) ---------- */
+.store-picker-host {
+  grid-column: 1 / -1;
+}
+.store-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-md);
+  padding: var(--s-md);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+}
+.store-picker-regions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-sm);
+}
+.store-picker-region-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+.store-picker-select,
+.store-picker-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--canvas);
+  color: var(--ink);
+  font: inherit;
+}
+.store-picker-search {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.store-picker-listbox {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% - 28px);
+  z-index: 20;
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--canvas);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.store-picker-option {
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.store-picker-option:hover,
+.store-picker-option.is-active {
+  background: var(--primary-soft);
+}
+.store-picker-option .sp-name {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 14px;
+}
+.store-picker-option .sp-addr {
+  font-size: 13px;
+  color: var(--body);
+}
+.store-picker-option .sp-meta {
+  font-size: 11px;
+  color: var(--mute);
+}
+.store-picker-status {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+.store-picker-selected {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--ok);
+  background: var(--ok-soft);
+  font-size: 13px;
+}
+
+/* ---------- competition simulation ---------- */
+.sim-panel {
+  margin-top: var(--s-md);
+  padding: var(--s-lg);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+}
+.sim-lede {
+  margin: 0 0 var(--s-md);
+  font-size: 14px;
+}
+.sim-scenarios {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-sm);
+  margin-bottom: var(--s-md);
+}
+.sim-scenario-btn {
+  text-align: left;
+  padding: var(--s-sm) var(--s-md);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--canvas);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sim-scenario-btn strong {
+  font-size: 13px;
+  color: var(--ink);
+}
+.sim-scenario-btn span {
+  font-size: 12px;
+  color: var(--mute);
+}
+.sim-scenario-btn.is-active,
+.sim-scenario-btn:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary-soft);
+}
+.sim-intensity {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: var(--s-md);
+}
+.sim-intensity em {
+  font-style: normal;
+  color: var(--primary);
+  font-weight: 600;
+}
+.sim-result {
+  margin-top: var(--s-md);
+}
+.sim-verdict {
+  margin-bottom: var(--s-sm);
+}
+.sim-competitor {
+  color: var(--body);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.sim-sales-delta {
+  font-size: 14px;
+  margin-top: var(--s-sm);
+}
+
 /* ---------- demo scenarios (welcome) ---------- */
 .demo-scenarios {
   margin-top: var(--s-xl);
@@ -1071,6 +1237,12 @@ table.cmp td strong {
     padding: var(--s-md);
   }
   .demo-scenario-list {
+    grid-template-columns: 1fr;
+  }
+  .store-picker-regions {
+    grid-template-columns: 1fr;
+  }
+  .sim-scenarios {
     grid-template-columns: 1fr;
   }
   .step-progress ol {

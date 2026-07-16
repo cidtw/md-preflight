@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "MD Preflight ROP"
-    app_version: str = "0.3.4-rop"
+    app_version: str = "0.3.5-rop"
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:3000",

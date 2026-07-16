@@ -162,6 +162,56 @@ def test_static_demo_assets(client: TestClient) -> None:
         "/static/favicon.svg",
         "/static/report_export.mjs",
         "/static/wizard_logic.mjs",
+        "/static/store_picker.mjs",
+        "/static/competition_sim.mjs",
     ):
         response = client.get(path)
         assert response.status_code == 200, path
+
+
+def test_regions_sido_and_sigungu(client: TestClient) -> None:
+    sido = client.get("/api/regions/sido")
+    assert sido.status_code == 200
+    items = sido.json()["items"]
+    assert "서울특별시" in items
+    sig = client.get("/api/regions/sigungu", params={"sido": "서울특별시"})
+    assert sig.status_code == 200
+    assert "마포구" in sig.json()["items"]
+
+
+def test_places_search_without_key_ok(client: TestClient) -> None:
+    """Missing Kakao key → 200 with empty results / fallback note."""
+    response = client.get(
+        "/api/places/search",
+        params={"q": "GS25", "sido": "서울특별시", "sigungu": "마포구"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "results" in body
+    assert body.get("used_fallback") is True or isinstance(body["results"], list)
+
+
+def test_simulate_endpoint(client: TestClient) -> None:
+    response = client.post(
+        "/api/simulate",
+        json={
+            "parameters": {
+                "product_name": "냉장 간편식",
+                "store_type": "convenience",
+                "store_size": "cv_s",
+                "avg_ticket": "t_le_8k",
+                "location_dong": "서울시 마포구 서교동",
+                "trade_area": "office",
+                "accessibility": "indoor",
+                "daily_demand": 12,
+                "standard_lead_time_days": 2,
+            },
+            "scenario": "competitor_pressure",
+            "intensity": 0.6,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["scenario"] == "competitor_pressure"
+    assert "baseline" in body and "shocked" in body
+    assert body["shocked"]["daily_demand"] <= body["baseline"]["daily_demand"]

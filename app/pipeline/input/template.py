@@ -25,7 +25,7 @@ from app.pipeline.types import (
 )
 
 TEMPLATE_ID = "rop-adjust-v1"
-TEMPLATE_VERSION = "1.4.0"
+TEMPLATE_VERSION = "1.5.0"
 
 
 def _opts(mapping: dict[str, str]) -> list[ParameterOption]:
@@ -93,7 +93,11 @@ def get_template() -> InputTemplate:
                 label="정확한 매장 주소",
                 type="string",
                 required=False,
-                description="정확한 위치 사용 시에만 필수. 예: 서울시 마포구 양화로 45",
+                description=(
+                    "정확한 위치 사용 시에만 필수. 시·도/시·군·구/읍·면·동을 고른 뒤 "
+                    "점포명·도로명·지번 일부로 검색해 공식 점포를 선택하세요. "
+                    "예: GS25 뉴서강대학사점"
+                ),
             ),
             ParameterSpec(
                 key="consider_temp_foot_traffic",
