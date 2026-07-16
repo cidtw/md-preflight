@@ -6,6 +6,7 @@ import {
   validateStoreAddress,
 } from "./wizard_logic.mjs";
 import { initTheme } from "./theme.mjs";
+import { exportReport } from "./report_export.mjs";
 
 const EXPERT_KEY = "rop-expert-mode";
 
@@ -451,7 +452,20 @@ function renderResult(payload, expertOverride) {
           <small>전공·실무자용 공식·점수 표기 (Z, CAPA, FTI 등)</small>
         </span>
       </label>
-      <button type="button" class="btn btn-secondary" id="again-btn">처음부터 다시</button>
+      <div class="result-actions">
+        <div class="export-menu" id="export-menu">
+          <button type="button" class="btn btn-primary" id="export-btn" aria-haspopup="true" aria-expanded="false">
+            리포트 내보내기
+          </button>
+          <div class="export-dropdown" id="export-dropdown" hidden role="menu">
+            <button type="button" class="export-item" data-export="pdf" role="menuitem">PDF (인쇄·저장)</button>
+            <button type="button" class="export-item" data-export="markdown" role="menuitem">Markdown (.md)</button>
+            <button type="button" class="export-item" data-export="csv" role="menuitem">비교표 CSV (.csv)</button>
+            <button type="button" class="export-item" data-export="json" role="menuitem">원본 JSON (.json)</button>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary" id="again-btn">처음부터 다시</button>
+      </div>
     </div>
 
     <div class="verdict">
@@ -532,6 +546,63 @@ function renderResult(payload, expertOverride) {
     setExpertMode(on);
     if (lastPayload) renderResult(lastPayload, on);
   });
+  bindExportMenu(expert);
+}
+
+function bindExportMenu(expert) {
+  const menu = document.getElementById("export-menu");
+  const btn = document.getElementById("export-btn");
+  const dropdown = document.getElementById("export-dropdown");
+  if (!menu || !btn || !dropdown) return;
+
+  const close = () => {
+    dropdown.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+  };
+  const open = () => {
+    dropdown.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+  };
+
+  btn.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    if (dropdown.hidden) open();
+    else close();
+  });
+
+  dropdown.querySelectorAll("[data-export]").forEach((item) => {
+    item.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const format = item.getAttribute("data-export");
+      close();
+      if (!lastPayload || !format) return;
+      try {
+        exportReport(format, lastPayload, {
+          expert: document.getElementById("expert-mode")?.checked ?? expert,
+        });
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : String(err));
+      }
+    });
+  });
+
+  // Close on outside click / Escape (one-shot listeners per render)
+  const onDocClick = (ev) => {
+    if (!menu.contains(ev.target)) {
+      close();
+      document.removeEventListener("click", onDocClick);
+    }
+  };
+  const onKey = (ev) => {
+    if (ev.key === "Escape") {
+      close();
+      document.removeEventListener("keydown", onKey);
+    }
+  };
+  setTimeout(() => {
+    document.addEventListener("click", onDocClick);
+    document.addEventListener("keydown", onKey);
+  }, 0);
 }
 
 document.getElementById("welcome-start")?.addEventListener("click", () => {
