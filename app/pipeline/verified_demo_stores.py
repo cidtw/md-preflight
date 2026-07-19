@@ -90,19 +90,21 @@ def list_verified_demo_stores(*, live: bool = False) -> list[VerifiedDemoStore]:
     """Return census-based demo stores.
 
     Default uses on-disk snapshot (fast UI). Pass live=True to re-query Kakao
-    (slow; use survey-anchor endpoint for full refresh).
+    (slow; prefer /api/demo/survey-anchor for full refresh).
     """
+    snap = load_survey_snapshot()
     if not live:
-        snap = load_survey_snapshot()
         if snap is not None and snap.stores:
             return _cards_to_models(surveyed_to_demo_cards(snap))
+        # Never fall through to live Kakao on the default UI path (timeout risk).
+        return []
+
     settings = get_settings()
     key = settings.kakao_rest_api_key
     if key:
         result = survey_anchor_stores(api_key=key, anchor_address=DEFAULT_ANCHOR_ADDRESS)
         if result.stores:
             return _cards_to_models(surveyed_to_demo_cards(result))
-    snap = load_survey_snapshot()
     if snap is not None and snap.stores:
         return _cards_to_models(surveyed_to_demo_cards(snap))
     return []
