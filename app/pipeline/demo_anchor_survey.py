@@ -31,12 +31,13 @@ from pydantic import BaseModel, Field
 from app.pipeline.types import ParameterValue
 
 # Top-level same-package import so Vercel Python bundler always packs the blob.
+_embedded_snapshot_json: str | None
 try:
-    from app.pipeline.demo_anchor_survey_blob import (
-        SNAPSHOT_JSON as _EMBEDDED_SNAPSHOT_JSON,
-    )
+    from app.pipeline.demo_anchor_survey_blob import SNAPSHOT_JSON
+
+    _embedded_snapshot_json = SNAPSHOT_JSON
 except ImportError:  # pragma: no cover
-    _EMBEDDED_SNAPSHOT_JSON = None
+    _embedded_snapshot_json = None
 
 logger = logging.getLogger(__name__)
 
@@ -420,6 +421,32 @@ def _classify_hyper(name: str, category_name: str) -> bool:
     return "편의점" not in category_name
 
 
+def normalize_location_dong(label: str) -> str:
+    """Collapse Kakao short sido + full sido duplication (경기 vs 경기도)."""
+    text = re.sub(r"\s+", " ", (label or "").strip())
+    if not text:
+        return "경기도 고양시 덕양구"
+    # Already-normalized mistakes first
+    text = re.sub(r"^경기도\s+경기\s+", "경기도 ", text)
+    text = re.sub(r"^서울특별시\s+서울\s+", "서울 ", text)
+    text = re.sub(r"^서울시\s+서울\s+", "서울 ", text)
+    # Expand bare short forms at start
+    expansions = (
+        (r"^경기\s+", "경기도 "),
+        (r"^서울\s+", "서울 "),
+        (r"^인천\s+", "인천광역시 "),
+        (r"^부산\s+", "부산광역시 "),
+        (r"^대구\s+", "대구광역시 "),
+        (r"^대전\s+", "대전광역시 "),
+        (r"^광주\s+", "광주광역시 "),
+        (r"^울산\s+", "울산광역시 "),
+        (r"^세종\s+", "세종특별자치시 "),
+    )
+    for pat, rep in expansions:
+        text = re.sub(pat, rep, text)
+    return text
+
+
 def _dong_from_address(road: str, jibun: str) -> str:
     text = jibun or road
     # Prefer "…구 …동" style
@@ -429,15 +456,15 @@ def _dong_from_address(road: str, jibun: str) -> str:
     )
     m = re.search(pattern, text)
     if m:
-        parts = [p for p in m.groups() if p]
-        return " ".join(p.strip() for p in parts if p)
+        parts = [p.strip() for p in m.groups() if p and str(p).strip()]
+        return normalize_location_dong(" ".join(parts))
     # Goyang style without leading sido sometimes
     m2 = re.search(r"(고양시\s*덕양구)\s*([가-힣0-9]+동)", text)
     if m2:
-        return f"경기도 {m2.group(1)} {m2.group(2)}".replace("  ", " ")
+        return normalize_location_dong(f"경기도 {m2.group(1)} {m2.group(2)}")
     if text:
         parts = text.split()
-        return " ".join(parts[:4]) if parts else text
+        return normalize_location_dong(" ".join(parts[:4]) if parts else text)
     return "경기도 고양시 덕양구"
 
 
@@ -648,11 +675,7 @@ def _build_store(
         accessibility=access,
         store_size=str(defaults["store_size"]),
         avg_ticket=str(defaults["avg_ticket"]),
-        location_dong=(
-            dong
-            if dong.startswith("경기도") or dong.startswith("서울")
-            else f"경기도 {dong}"
-        ),
+        location_dong=normalize_location_dong(dong),
         product_name=str(defaults["product_name"]),
         daily_demand=float(defaults["daily_demand"]),
         standard_lead_time_days=float(defaults["standard_lead_time_days"]),
@@ -827,22 +850,33 @@ def save_survey_snapshot(result: AnchorSurveyResult, path: Path | None = None) -
     return target
 
 
+def _normalize_snapshot_stores(result: AnchorSurveyResult) -> AnchorSurveyResult:
+    """Fix legacy snapshot labels (e.g. 경기도 경기 …) without re-survey."""
+    fixed: list[SurveyedStore] = []
+    for store in result.stores:
+        dong = normalize_location_dong(store.location_dong)
+        if dong != store.location_dong:
+            store = store.model_copy(update={"location_dong": dong})
+        fixed.append(store)
+    return result.model_copy(update={"stores": fixed})
+
+
 def load_survey_snapshot(path: Path | None = None) -> AnchorSurveyResult | None:
     # 1) Embedded blob (top-level import keeps Vercel bundler packing it)
-    if path is None and _EMBEDDED_SNAPSHOT_JSON:
+    if path is None and _embedded_snapshot_json:
         try:
-            data = json.loads(_EMBEDDED_SNAPSHOT_JSON)
-            return AnchorSurveyResult.model_validate(data)
-        except Exception as exc:  # noqa: BLE001 — fallback to file paths
+            data = json.loads(_embedded_snapshot_json)
+            return _normalize_snapshot_stores(AnchorSurveyResult.model_validate(data))
+        except Exception as exc:
             logger.warning("embedded census snapshot load failed: %s", exc)
 
-    candidates = [path] if path is not None else _snapshot_candidates()
+    candidates: list[Path] = [path] if path is not None else _snapshot_candidates()
     for target in candidates:
-        if target is None or not target.is_file():
+        if not target.is_file():
             continue
         try:
             data = json.loads(target.read_text(encoding="utf-8"))
-            return AnchorSurveyResult.model_validate(data)
+            return _normalize_snapshot_stores(AnchorSurveyResult.model_validate(data))
         except (OSError, ValueError, TypeError) as exc:
             logger.warning("survey snapshot load failed (%s): %s", target, exc)
     return None

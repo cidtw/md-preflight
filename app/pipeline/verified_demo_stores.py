@@ -15,11 +15,9 @@ from typing import cast
 
 from pydantic import BaseModel, Field
 
-from app.core.config import get_settings
 from app.pipeline.demo_anchor_survey import (
-    DEFAULT_ANCHOR_ADDRESS,
+    AnchorSurveyResult,
     load_survey_snapshot,
-    survey_anchor_stores,
     surveyed_to_demo_cards,
 )
 from app.pipeline.types import ParameterValue
@@ -86,27 +84,23 @@ def _cards_to_models(cards: list[dict[str, object]]) -> list[VerifiedDemoStore]:
     return [s for s in out if s.id and s.parameters]
 
 
+def stores_from_survey_result(result: AnchorSurveyResult) -> list[VerifiedDemoStore]:
+    """Convert a census result into demo store cards."""
+    if not result.stores:
+        return []
+    return _cards_to_models(surveyed_to_demo_cards(result))
+
+
 def list_verified_demo_stores(*, live: bool = False) -> list[VerifiedDemoStore]:
     """Return census-based demo stores.
 
-    Default uses on-disk snapshot (fast UI). Pass live=True to re-query Kakao
-    (slow; prefer /api/demo/survey-anchor for full refresh).
+    Default uses on-disk snapshot (fast UI). Live Kakao must go through the
+    guarded API layer (whitelist / cache / rate limit) — do not call Kakao here.
     """
+    _ = live  # live conversion is done in routes via stores_from_survey_result
     snap = load_survey_snapshot()
-    if not live:
-        if snap is not None and snap.stores:
-            return _cards_to_models(surveyed_to_demo_cards(snap))
-        # Never fall through to live Kakao on the default UI path (timeout risk).
-        return []
-
-    settings = get_settings()
-    key = settings.kakao_rest_api_key
-    if key:
-        result = survey_anchor_stores(api_key=key, anchor_address=DEFAULT_ANCHOR_ADDRESS)
-        if result.stores:
-            return _cards_to_models(surveyed_to_demo_cards(result))
     if snap is not None and snap.stores:
-        return _cards_to_models(surveyed_to_demo_cards(snap))
+        return stores_from_survey_result(snap)
     return []
 
 

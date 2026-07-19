@@ -36,20 +36,44 @@ def test_template_has_rop_fields(client: TestClient) -> None:
 
 
 def test_verified_demo_stores_and_survey_endpoints(client: TestClient) -> None:
-    # Without Kakao key + snapshot: empty list is OK (200).
-    response = client.get("/api/demo/verified-stores?live=false")
+    # Default path is snapshot (live defaults to false).
+    response = client.get("/api/demo/verified-stores")
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    body = response.json()
+    assert isinstance(body, list)
+    # Bundled census snapshot should load in tests.
+    assert len(body) >= 1
+    # No 경기도 경기 duplication on location labels
+    for row in body[:10]:
+        dong = str(row.get("parameters", {}).get("location_dong", ""))
+        assert "경기도 경기" not in dong
 
-    survey = client.get("/api/demo/survey-anchor?with_context=false")
+    # Arbitrary address must be rejected (quota protection).
+    blocked = client.get(
+        "/api/demo/survey-anchor",
+        params={"address": "서울 강남구 테헤란로 1", "with_context": "false"},
+    )
+    assert blocked.status_code == 403
+
+    # Demo anchor is allowed (may use snapshot/cache if no Kakao key).
+    survey = client.get(
+        "/api/demo/survey-anchor",
+        params={"with_context": "false"},
+    )
     assert survey.status_code == 200
-    body = survey.json()
-    assert "세솔로 25" in body["anchor_address"]
-    assert "stores" in body
-    assert "counts" in body
+    survey_body = survey.json()
+    assert "세솔로 25" in survey_body["anchor_address"]
+    assert "stores" in survey_body
 
     missing = client.get("/api/demo/verified-stores/no-such-store")
     assert missing.status_code == 404
+
+
+def test_health_has_no_secret_flags(client: TestClient) -> None:
+    body = client.get("/api/health").json()
+    assert body["status"] == "ok"
+    assert "census_live_key" not in body
+    assert "census_snapshot_stores" in body
 
 
 def test_evaluate_ok(client: TestClient) -> None:

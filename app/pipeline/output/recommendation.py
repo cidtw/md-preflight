@@ -62,10 +62,9 @@ def _summary(validated: ValidatedInput, calc: CalcBreakdown) -> StoreSummary:
     pattern_in = str(p.get("order_day_pattern", calc.order_day_pattern_input))
     pattern_label = ORDER_DAY_PATTERN.get(pattern_in, pattern_in)
     if calc.order_pattern_auto and pattern_in == "auto":
-        pattern_label = (
-            f"{pattern_label} → {calc.order_days_label} "
-            f"({ORDER_DAY_PATTERN.get(calc.order_day_pattern, calc.order_day_pattern)})"
-        )
+        # One line only: auto → weekdays (N/week). Do not repeat catalog label.
+        times = ORDER_PATTERN_META.get(calc.order_day_pattern, (0, "", 0))[2]
+        pattern_label = f"자동 추천 → {calc.order_days_label} (주 {times}회)"
     return StoreSummary(
         product_name=str(p["product_name"]),
         store_type_label=STORE_TYPE[str(p["store_type"])],
@@ -789,11 +788,11 @@ def _evidence_technical(
             (
                 f"'{dong}' · '{access}'. 상권 공급 난이도 {scores.supply_difficulty}/5 · "
                 + (
-                    f"logistics_delay_mode=measured_delay "
+                    "logistics_delay_mode=measured_delay "
                     + f"({calc.measured_logistics_delay_days:.2f}일)."
                     if calc.logistics_delay_mode == "measured_delay"
                     and calc.measured_logistics_delay_days is not None
-                    else f"logistics_delay_mode=proxy_kb "
+                    else "logistics_delay_mode=proxy_kb "
                     + f"(KB residual={kb.logistics_delay_days:.2f}일, 캘리브 아님)."
                 )
             ),
@@ -902,6 +901,13 @@ def _delta_phrase_plain(delta: float, *, unit: str = "개") -> str:
     return f"일반 기준보다 약 {abs(delta):.0f}{unit} 가볍게 잡아도 됩니다"
 
 
+def _fmt_units(n: float) -> str:
+    """Display policy: whole numbers as int, else one decimal (matches UI table)."""
+    if abs(n - round(n)) < 1e-9:
+        return f"{n:.0f}"
+    return f"{n:.1f}"
+
+
 def _one_liner_plain(summary: StoreSummary, calc: CalcBreakdown) -> str:
     """Store-owner recommendation in natural prose (not a bullet dump)."""
     name = summary.product_name
@@ -912,21 +918,21 @@ def _one_liner_plain(summary: StoreSummary, calc: CalcBreakdown) -> str:
     lt_clause = (
         f"배송 일정은 지금처럼 {lt:.0f}일 그대로 두면 됩니다"
         if abs(lt - round(lt)) < 1e-9
-        else f"배송 일정은 지금처럼 {lt:g}일 그대로 두면 됩니다"
+        else f"배송 일정은 지금처럼 {_fmt_units(lt)}일 그대로 두면 됩니다"
     )
 
     if calc.multi_order_suggestion:
         return (
-            f"[{name}] 재고가 약 {rop:.0f}개 아래로 떨어지기 전에 발주해 주세요. "
-            f"매장·창고 공간이 넉넉하지 않아, {days} 일정에 맞춰 한 번에 약 {qty:g}개씩 "
+            f"[{name}] 재고가 약 {_fmt_units(rop)}개 아래로 떨어지기 전에 발주해 주세요. "
+            f"매장·창고 공간이 넉넉하지 않아, {days} 일정에 맞춰 한 번에 약 {_fmt_units(qty)}개씩 "
             f"자주 나눠 넣는 운영을 권합니다. {lt_clause}."
         )
 
     posture = _delta_phrase_plain(calc.rop_delta)
     return (
         f"[{name}] {posture}. "
-        f"재고가 약 {rop:.0f}개 수준에 가까워지면 발주를 걸고, "
-        f"{days}에 한 번에 약 {qty:g}개 정도 넣으면 됩니다. "
+        f"재고가 약 {_fmt_units(rop)}개 수준에 가까워지면 발주를 걸고, "
+        f"{days}에 한 번에 약 {_fmt_units(qty)}개 정도 넣으면 됩니다. "
         f"{lt_clause}."
     )
 

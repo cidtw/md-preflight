@@ -41,6 +41,9 @@ ignore = ["B008"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "D", "ARG"]
+# Generated one-line census JSON payload
+"app/pipeline/demo_anchor_survey_blob.py" = ["E501"]
+"app/data/demo_anchor_survey_blob.py" = ["E501"]
 
 [tool.basedpyright]
 typeCheckingMode = "all"

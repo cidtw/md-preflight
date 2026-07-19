@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from app.pipeline.demo_anchor_survey import (
     DEFAULT_ANCHOR_ADDRESS,
+    SurveyedStore,
     _classify_hyper,
     _classify_sm_ssm,
     _dong_from_address,
     _infer_accessibility,
     _infer_trade_area,
     surveyed_store_to_parameters,
-    SurveyedStore,
 )
 
 
@@ -39,11 +39,18 @@ def test_infer_accessibility_and_trade() -> None:
 
 
 def test_dong_from_address() -> None:
+    from app.pipeline.demo_anchor_survey import normalize_location_dong
+
     dong = _dong_from_address(
         "경기 고양시 덕양구 세솔로 25",
         "경기 고양시 덕양구 행신동 123",
     )
     assert "덕양구" in dong or "행신" in dong
+    assert "경기도 경기" not in dong
+    assert normalize_location_dong("경기도 경기 고양시 덕양구 동산동") == (
+        "경기도 고양시 덕양구 동산동"
+    )
+    assert normalize_location_dong("경기 고양시 덕양구 동산동").startswith("경기도")
 
 
 def test_surveyed_store_to_parameters() -> None:

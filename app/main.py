@@ -1,6 +1,7 @@
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -31,13 +32,33 @@ def create_app() -> FastAPI:
     )
     app.include_router(router)
 
+    @app.middleware("http")
+    async def static_cache_headers(  # pyright: ignore[reportUnusedFunction]
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        response = await call_next(request)
+        if request.url.path.startswith("/static/"):
+            # Fingerprint-less assets: short public cache + revalidate window.
+            response.headers["Cache-Control"] = (
+                "public, max-age=3600, stale-while-revalidate=86400"
+            )
+        return response
+
     if WEB_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
         def index() -> HTMLResponse:
             return HTMLResponse(build_index_html(settings))
 
-        app.add_api_route("/", index, include_in_schema=False, response_class=HTMLResponse)
+        # Allow HEAD for uptime probes (was 405 with GET-only).
+        app.add_api_route(
+            "/",
+            index,
+            methods=["GET", "HEAD"],
+            include_in_schema=False,
+            response_class=HTMLResponse,
+        )
 
     return app
 

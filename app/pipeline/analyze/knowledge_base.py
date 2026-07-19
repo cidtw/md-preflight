@@ -240,16 +240,17 @@ def suggest_order_policy(
     cycle = round(cycle, 2)
     pattern_label = ORDER_DAY_PATTERN.get(resolved, days_label)
 
-    if was_auto:
-        freq = f"자동 · {days_label} ({times}회/주)"
-    else:
-        freq = f"{days_label} ({times}회/주 · 선택 패턴)"
+    # Single phrase — avoid "월·수·금 (주 3회) · 월·수·금 (주 3회)" duplication.
+    freq = (
+        f"자동 · {days_label} ({times}회/주)"
+        if was_auto
+        else f"{days_label} ({times}회/주)"
+    )
 
     # Extreme concentration can nudge daily flex even if weekly was chosen manually.
     if demand_concentration >= 5 and resolved == "weekly_mon" and not was_auto:
         freq = f"{freq} — 집중 수요로 주기 단축 검토 권고"
-    elif was_auto:
-        freq = f"{freq} · {pattern_label}"
 
+    _ = pattern_label  # kept for potential UI tooling
     order_qty = max(1.0, round(daily_demand * cycle, 1))
     return cycle, order_qty, freq, resolved, days_label, was_auto

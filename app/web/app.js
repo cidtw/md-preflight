@@ -843,7 +843,7 @@ function renderResult(payload, expertOverride) {
 
     <div class="stat-grid">
       <div class="stat-tile ${statClass(ropRow?.delta ?? 0)}">
-        <div class="stat-value">${fmt(ropRow?.recommended_value ?? payload.calc.recommended_rop, 0)}</div>
+        <div class="stat-value">${fmt(ropRow?.recommended_value ?? payload.calc.recommended_rop, 1)}</div>
         <div class="stat-label">발주 시점 재고 (개)</div>
       </div>
       <div class="stat-tile ${statClass(ssRow?.delta ?? 0)}">
