@@ -820,6 +820,16 @@ def save_survey_snapshot(result: AnchorSurveyResult, path: Path | None = None) -
 
 
 def load_survey_snapshot(path: Path | None = None) -> AnchorSurveyResult | None:
+    # 1) Embedded blob (always available on Vercel once imported as Python code)
+    if path is None:
+        try:
+            from app.data.demo_anchor_survey_blob import SNAPSHOT_JSON
+
+            data = json.loads(SNAPSHOT_JSON)
+            return AnchorSurveyResult.model_validate(data)
+        except Exception as exc:  # noqa: BLE001 — fallback to file paths
+            logger.warning("embedded census snapshot load failed: %s", exc)
+
     candidates = [path] if path is not None else _snapshot_candidates()
     for target in candidates:
         if target is None or not target.is_file():
