@@ -91,7 +91,7 @@ _SM_KEYWORD_QUERIES: Final[tuple[str, ...]] = (
 def _snapshot_candidates() -> list[Path]:
     """Resolve snapshot path across local repo and Vercel serverless layouts."""
     here = Path(__file__).resolve()
-    return [
+    candidates = [
         # Preferred: packaged with app/ (always included by Python build)
         here.parents[1] / "data" / "demo_anchor_survey.json",
         here.parents[2] / "data" / "demo_anchor_survey.json",
@@ -100,6 +100,24 @@ def _snapshot_candidates() -> list[Path]:
         Path("/var/task/app/data/demo_anchor_survey.json"),
         Path("/var/task/data/demo_anchor_survey.json"),
     ]
+    try:
+        import app as app_pkg
+
+        app_root = Path(app_pkg.__file__).resolve().parent
+        candidates.insert(0, app_root / "data" / "demo_anchor_survey.json")
+    except Exception:
+        pass
+    # Debug-friendly: log which exist (once per cold start at most via logger.debug)
+    for path in candidates:
+        if path.is_file():
+            logger.info("demo census snapshot found at %s", path)
+            break
+    else:
+        logger.warning(
+            "demo census snapshot missing; tried: %s",
+            [str(p) for p in candidates],
+        )
+    return candidates
 
 
 _SNAPSHOT_PATH: Final[Path] = _snapshot_candidates()[0]
