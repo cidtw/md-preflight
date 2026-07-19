@@ -12,6 +12,11 @@ import {
   VERIFIED_DEMO_STORES,
   getDemoScenario,
 } from "./demo_scenarios.mjs";
+
+/** @type {import("./demo_scenarios.mjs").DemoScenario[]} */
+let liveVerifiedStores = [...VERIFIED_DEMO_STORES];
+/** @type {string} */
+let verifiedFilterChannel = "all";
 import { mountStorePicker } from "./store_picker.mjs";
 import { clearCompetitionSimCache, mountCompetitionSim } from "./competition_sim.mjs";
 
@@ -34,6 +39,8 @@ const welcomeStep = document.getElementById("step-welcome");
 const comingSoon = document.getElementById("coming-soon");
 const demoScenarioList = document.getElementById("demo-scenario-list");
 const verifiedStoreList = document.getElementById("verified-store-list");
+const verifiedStoreMeta = document.getElementById("verified-store-meta");
+const verifiedStoreFilters = document.getElementById("verified-store-filters");
 
 /** @type {object | null} */
 let lastPayload = null;
@@ -376,14 +383,111 @@ function bindDemoListClicks(host) {
   });
 }
 
-function mountDemoScenarios() {
-  if (verifiedStoreList) {
-    verifiedStoreList.innerHTML = "";
-    for (const store of VERIFIED_DEMO_STORES) {
-      verifiedStoreList.appendChild(buildDemoCard(store, "verified"));
-    }
-    bindDemoListClicks(verifiedStoreList);
+/**
+ * Map API VerifiedDemoStore → frontend demo card shape.
+ * @param {Record<string, unknown>} row
+ */
+function mapApiStoreToScenario(row) {
+  return {
+    id: String(row.id || ""),
+    tier: "verified",
+    title: String(row.title || ""),
+    storeLabel: String(row.store_label || row.storeLabel || ""),
+    blurb: String(row.blurb || ""),
+    highlight: String(row.highlight || ""),
+    verificationNote: String(row.verification_note || row.verificationNote || ""),
+    expected: row.expected && typeof row.expected === "object" ? row.expected : {},
+    parameters:
+      row.parameters && typeof row.parameters === "object" ? row.parameters : {},
+    channel: String(row.channel || ""),
+    distance_m: Number(row.distance_m || 0),
+  };
+}
+
+function renderVerifiedStoreList() {
+  if (!verifiedStoreList) return;
+  verifiedStoreList.innerHTML = "";
+  const list =
+    verifiedFilterChannel === "all"
+      ? liveVerifiedStores
+      : liveVerifiedStores.filter((s) => s.channel === verifiedFilterChannel);
+  if (!list.length) {
+    const empty = document.createElement("p");
+    empty.className = "mute";
+    empty.textContent =
+      "전수조사 결과가 없습니다. Kakao 키·앵커 조사 API를 확인하세요.";
+    verifiedStoreList.appendChild(empty);
+    return;
   }
+  for (const store of list) {
+    verifiedStoreList.appendChild(buildDemoCard(store, "verified"));
+  }
+}
+
+function renderVerifiedFilters() {
+  if (!verifiedStoreFilters) return;
+  const channels = ["all", "convenience", "supermarket", "ssm", "hypermarket"];
+  const labels = {
+    all: "전체",
+    convenience: "편의점 1km",
+    supermarket: "슈퍼 3km",
+    ssm: "SSM 3km",
+    hypermarket: "대형 10km",
+  };
+  const counts = { all: liveVerifiedStores.length };
+  for (const s of liveVerifiedStores) {
+    const ch = s.channel || "other";
+    counts[ch] = (counts[ch] || 0) + 1;
+  }
+  verifiedStoreFilters.hidden = liveVerifiedStores.length === 0;
+  verifiedStoreFilters.innerHTML = channels
+    .map((ch) => {
+      const n = counts[ch] || 0;
+      if (ch !== "all" && n === 0) return "";
+      const active = verifiedFilterChannel === ch ? " is-active" : "";
+      return `<button type="button" class="demo-filter-chip${active}" data-channel="${ch}">${labels[ch]} (${n})</button>`;
+    })
+    .join("");
+  if (verifiedStoreFilters.dataset.filterBound !== "1") {
+    verifiedStoreFilters.dataset.filterBound = "1";
+    verifiedStoreFilters.addEventListener("click", (ev) => {
+      const t = ev.target;
+      if (!(t instanceof Element)) return;
+      const btn = t.closest("[data-channel]");
+      if (!btn) return;
+      verifiedFilterChannel = btn.getAttribute("data-channel") || "all";
+      renderVerifiedFilters();
+      renderVerifiedStoreList();
+    });
+  }
+}
+
+async function loadLiveVerifiedStores() {
+  try {
+    const res = await fetch("/api/demo/verified-stores?live=true");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rows = await res.json();
+    if (Array.isArray(rows) && rows.length) {
+      liveVerifiedStores = rows.map(mapApiStoreToScenario).filter((s) => s.id);
+    }
+  } catch {
+    // Keep bundled VERIFIED_DEMO_STORES fallback
+    liveVerifiedStores = [...VERIFIED_DEMO_STORES];
+  }
+  if (verifiedStoreMeta) {
+    verifiedStoreMeta.hidden = false;
+    verifiedStoreMeta.textContent = liveVerifiedStores.length
+      ? `조사 매장 ${liveVerifiedStores.length}곳 · 세솔로 25 앵커 · Kakao Local 전수조사`
+      : "조사 결과 없음 — 스냅샷/API 키를 확인하세요.";
+  }
+}
+
+async function mountDemoScenarios() {
+  await loadLiveVerifiedStores();
+  renderVerifiedFilters();
+  renderVerifiedStoreList();
+  bindDemoListClicks(verifiedStoreList);
+
   if (demoScenarioList) {
     demoScenarioList.innerHTML = "";
     for (const scenario of DEMO_SCENARIOS) {
@@ -398,7 +502,8 @@ function mountDemoScenarios() {
  * @param {"run"|"fill"} action
  */
 async function handleDemoScenario(id, action) {
-  const scenario = getDemoScenario(id);
+  const scenario =
+    liveVerifiedStores.find((s) => s.id === id) || getDemoScenario(id);
   if (!scenario || !form) return;
   applyParametersToForm(scenario.parameters);
   const isVerified = scenario.tier === "verified";

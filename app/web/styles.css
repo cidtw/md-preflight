@@ -1248,10 +1248,41 @@ table.cmp td strong {
   line-height: 1.5;
   color: var(--body);
 }
+.demo-scenarios-meta {
+  margin: 0 0 var(--s-sm);
+  font-size: 12px;
+}
+.demo-store-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--s-sm);
+}
+.demo-filter-chip {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: var(--surface-1);
+  color: var(--body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.demo-filter-chip.is-active {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+  color: var(--ok-deep);
+}
 .demo-scenario-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--s-sm);
+}
+.demo-scenario-list-dense {
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
 }
 .demo-card {
   display: flex;

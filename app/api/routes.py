@@ -12,6 +12,12 @@ from app.core.errors import InputValidationError
 from app.pipeline import get_input_template, run
 from app.pipeline.analyze.competition_sim import SimulationRequest, run_simulation
 from app.pipeline.analyze.store_search import search_dong, search_places
+from app.pipeline.demo_anchor_survey import (
+    DEFAULT_ANCHOR_ADDRESS,
+    AnchorSurveyResult,
+    save_survey_snapshot,
+    survey_anchor_stores,
+)
 from app.pipeline.region_catalog import list_sido, list_sigungu
 from app.pipeline.types import InputTemplate
 from app.pipeline.verified_demo_stores import (
@@ -43,14 +49,18 @@ def read_template() -> InputTemplate:
 
 
 @router.get("/demo/verified-stores", response_model=list[VerifiedDemoStore])
-def demo_verified_stores() -> list[VerifiedDemoStore]:
-    """Curated 1-2 store profiles for presentation builds (not live POS)."""
-    return list_verified_demo_stores()
+def demo_verified_stores(
+    settings: Annotated[Settings, Depends(get_app_settings)],
+    live: Annotated[bool, Query(description="Kakao 라이브 전수조사 사용")] = True,
+) -> list[VerifiedDemoStore]:
+    """Anchor census demo stores (세솔로 25 반경 전수조사 기반)."""
+    _ = settings
+    return list_verified_demo_stores(live=live)
 
 
 @router.get("/demo/verified-stores/{store_id}", response_model=VerifiedDemoStore)
 def demo_verified_store(store_id: str) -> VerifiedDemoStore:
-    """One verified demo store by id."""
+    """One demo store by id (from live census or snapshot)."""
     store = get_verified_demo_store(store_id)
     if store is None:
         raise HTTPException(
@@ -58,6 +68,43 @@ def demo_verified_store(store_id: str) -> VerifiedDemoStore:
             detail=f"Unknown verified demo store: {store_id}",
         )
     return store
+
+
+@router.get("/demo/survey-anchor", response_model=AnchorSurveyResult)
+def demo_survey_anchor(
+    settings: Annotated[Settings, Depends(get_app_settings)],
+    address: Annotated[
+        str,
+        Query(description="전수조사 앵커 주소"),
+    ] = DEFAULT_ANCHOR_ADDRESS,
+    with_context: Annotated[bool, Query()] = True,
+) -> AnchorSurveyResult:
+    """Full retail census around the demo anchor via Kakao Local."""
+    result = survey_anchor_stores(
+        api_key=settings.kakao_rest_api_key,
+        anchor_address=address.strip() or DEFAULT_ANCHOR_ADDRESS,
+        with_context=with_context,
+    )
+    return result
+
+
+@router.post("/demo/survey-anchor/refresh", response_model=AnchorSurveyResult)
+def demo_survey_anchor_refresh(
+    settings: Annotated[Settings, Depends(get_app_settings)],
+) -> AnchorSurveyResult:
+    """Re-run census and attempt to write data/demo_anchor_survey.json (local only)."""
+    result = survey_anchor_stores(
+        api_key=settings.kakao_rest_api_key,
+        anchor_address=DEFAULT_ANCHOR_ADDRESS,
+        with_context=True,
+    )
+    if result.used_live_api and result.stores:
+        try:
+            _ = save_survey_snapshot(result)
+            result.notes = [*result.notes, "snapshot written to data/demo_anchor_survey.json"]
+        except OSError as exc:
+            result.notes = [*result.notes, f"snapshot write skipped: {exc}"]
+    return result
 
 
 @router.get("/regions/sido")

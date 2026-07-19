@@ -4,7 +4,7 @@
     {
       "src": "app/main.py",
       "use": "@vercel/python",
-      "config": { "includeFiles": ["app/web/**"] }
+      "config": { "includeFiles": ["app/web/**", "data/**"] }
     }
   ],
   "routes": [

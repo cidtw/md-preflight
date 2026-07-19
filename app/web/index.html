@@ -76,13 +76,16 @@
             <button type="button" class="btn btn-primary" id="welcome-start">시작하기</button>
           </div>
 
-          <div class="demo-scenarios" aria-label="시연용 검증 매장">
-            <p class="demo-scenarios-kicker">시연 · 검증 매장 (1–2곳)</p>
+          <div class="demo-scenarios" aria-label="시연용 앵커 전수조사 매장">
+            <p class="demo-scenarios-kicker">시연 · 세솔로 25 앵커 전수조사</p>
             <p class="demo-scenarios-lede">
-              수치가 고정 검증된 <strong>매장 프로필</strong>입니다. 시연은 여기서만
-              진행하세요. (POS 연동 아님 · 행정동 경로 재현)
+              기준 주소 <strong>경기도 고양시 덕양구 세솔로 25</strong>에서
+              Kakao Local로 편의점(1km) · 슈퍼/SSM(3km) · 대형마트(10km)를 전수 조사한
+              매장입니다. 입지·상권·유동 요소는 주변 POI로 추론합니다. (POS 실측 아님)
             </p>
-            <div id="verified-store-list" class="demo-scenario-list"></div>
+            <p id="verified-store-meta" class="demo-scenarios-meta mute" hidden></p>
+            <div id="verified-store-filters" class="demo-store-filters" hidden></div>
+            <div id="verified-store-list" class="demo-scenario-list demo-scenario-list-dense"></div>
           </div>
 
           <div class="demo-scenarios demo-scenarios-explore" aria-label="탐색용 더미 시나리오">
