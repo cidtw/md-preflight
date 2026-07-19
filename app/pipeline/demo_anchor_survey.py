@@ -92,9 +92,12 @@ def _snapshot_candidates() -> list[Path]:
     """Resolve snapshot path across local repo and Vercel serverless layouts."""
     here = Path(__file__).resolve()
     return [
-        here.parents[2] / "data" / "demo_anchor_survey.json",
+        # Preferred: packaged with app/ (always included by Python build)
         here.parents[1] / "data" / "demo_anchor_survey.json",
+        here.parents[2] / "data" / "demo_anchor_survey.json",
         Path.cwd() / "data" / "demo_anchor_survey.json",
+        Path.cwd() / "app" / "data" / "demo_anchor_survey.json",
+        Path("/var/task/app/data/demo_anchor_survey.json"),
         Path("/var/task/data/demo_anchor_survey.json"),
     ]
 
