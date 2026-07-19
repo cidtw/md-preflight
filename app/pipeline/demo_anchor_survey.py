@@ -666,7 +666,7 @@ def survey_anchor_stores(
 
     raw_by_id: dict[str, tuple[StoreChannel, dict[str, object]]] = {}
 
-    # 1) Convenience CS2 within 1km
+    # 1) Convenience CS2 within 1km (reclassify obvious marts mis-tagged as CS2)
     for doc in _paginate_category(
         lat=lat,
         lng=lng,
@@ -681,7 +681,16 @@ def survey_anchor_stores(
         dist = float(dist_v) if isinstance(dist_v, (int, float)) else 0.0
         if dist > RADIUS_CONVENIENCE_M:
             continue
-        raw_by_id[pid] = ("convenience", f)
+        name = str(f.get("name") or "")
+        cat = str(f.get("cat") or "")
+        sm_ch = _classify_sm_ssm(name, cat)
+        if sm_ch is not None and not re.search(
+            r"(GS25|CU|세븐일레븐|이마트24|미니스톱|씨유)",
+            name,
+        ):
+            raw_by_id[pid] = (sm_ch, f)
+        else:
+            raw_by_id[pid] = ("convenience", f)
 
     # 2) Hyper MT1 within 10km
     for doc in _paginate_category(
