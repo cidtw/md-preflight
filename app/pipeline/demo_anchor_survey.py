@@ -30,9 +30,11 @@ from pydantic import BaseModel, Field
 
 from app.pipeline.types import ParameterValue
 
-# Top-level import so Vercel Python bundler always packs the census blob.
+# Top-level same-package import so Vercel Python bundler always packs the blob.
 try:
-    from app.data.demo_anchor_survey_blob import SNAPSHOT_JSON as _EMBEDDED_SNAPSHOT_JSON
+    from app.pipeline.demo_anchor_survey_blob import (
+        SNAPSHOT_JSON as _EMBEDDED_SNAPSHOT_JSON,
+    )
 except ImportError:  # pragma: no cover
     _EMBEDDED_SNAPSHOT_JSON = None
 
