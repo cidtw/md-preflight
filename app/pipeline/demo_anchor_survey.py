@@ -30,6 +30,12 @@ from pydantic import BaseModel, Field
 
 from app.pipeline.types import ParameterValue
 
+# Top-level import so Vercel Python bundler always packs the census blob.
+try:
+    from app.data.demo_anchor_survey_blob import SNAPSHOT_JSON as _EMBEDDED_SNAPSHOT_JSON
+except ImportError:  # pragma: no cover
+    _EMBEDDED_SNAPSHOT_JSON = None
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_ANCHOR_ADDRESS: Final[str] = "경기도 고양시 덕양구 세솔로 25"
@@ -820,12 +826,10 @@ def save_survey_snapshot(result: AnchorSurveyResult, path: Path | None = None) -
 
 
 def load_survey_snapshot(path: Path | None = None) -> AnchorSurveyResult | None:
-    # 1) Embedded blob (always available on Vercel once imported as Python code)
-    if path is None:
+    # 1) Embedded blob (top-level import keeps Vercel bundler packing it)
+    if path is None and _EMBEDDED_SNAPSHOT_JSON:
         try:
-            from app.data.demo_anchor_survey_blob import SNAPSHOT_JSON
-
-            data = json.loads(SNAPSHOT_JSON)
+            data = json.loads(_EMBEDDED_SNAPSHOT_JSON)
             return AnchorSurveyResult.model_validate(data)
         except Exception as exc:  # noqa: BLE001 — fallback to file paths
             logger.warning("embedded census snapshot load failed: %s", exc)
