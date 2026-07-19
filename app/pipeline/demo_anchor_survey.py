@@ -88,9 +88,18 @@ _SM_KEYWORD_QUERIES: Final[tuple[str, ...]] = (
     "식자재마트",
 )
 
-_SNAPSHOT_PATH: Final[Path] = (
-    Path(__file__).resolve().parents[2] / "data" / "demo_anchor_survey.json"
-)
+def _snapshot_candidates() -> list[Path]:
+    """Resolve snapshot path across local repo and Vercel serverless layouts."""
+    here = Path(__file__).resolve()
+    return [
+        here.parents[2] / "data" / "demo_anchor_survey.json",
+        here.parents[1] / "data" / "demo_anchor_survey.json",
+        Path.cwd() / "data" / "demo_anchor_survey.json",
+        Path("/var/task/data/demo_anchor_survey.json"),
+    ]
+
+
+_SNAPSHOT_PATH: Final[Path] = _snapshot_candidates()[0]
 
 
 class SurveyedStore(BaseModel):
@@ -790,15 +799,16 @@ def save_survey_snapshot(result: AnchorSurveyResult, path: Path | None = None) -
 
 
 def load_survey_snapshot(path: Path | None = None) -> AnchorSurveyResult | None:
-    target = path or _SNAPSHOT_PATH
-    if not target.is_file():
-        return None
-    try:
-        data = json.loads(target.read_text(encoding="utf-8"))
-        return AnchorSurveyResult.model_validate(data)
-    except (OSError, ValueError, TypeError) as exc:
-        logger.warning("survey snapshot load failed: %s", exc)
-        return None
+    candidates = [path] if path is not None else _snapshot_candidates()
+    for target in candidates:
+        if target is None or not target.is_file():
+            continue
+        try:
+            data = json.loads(target.read_text(encoding="utf-8"))
+            return AnchorSurveyResult.model_validate(data)
+        except (OSError, ValueError, TypeError) as exc:
+            logger.warning("survey snapshot load failed (%s): %s", target, exc)
+    return None
 
 
 def surveyed_store_to_parameters(store: SurveyedStore) -> dict[str, ParameterValue]:
