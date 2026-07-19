@@ -86,11 +86,19 @@ def _cards_to_models(cards: list[dict[str, object]]) -> list[VerifiedDemoStore]:
     return [s for s in out if s.id and s.parameters]
 
 
-def list_verified_demo_stores(*, live: bool = True) -> list[VerifiedDemoStore]:
-    """Return census-based demo stores (live Kakao when key present)."""
+def list_verified_demo_stores(*, live: bool = False) -> list[VerifiedDemoStore]:
+    """Return census-based demo stores.
+
+    Default uses on-disk snapshot (fast UI). Pass live=True to re-query Kakao
+    (slow; use survey-anchor endpoint for full refresh).
+    """
+    if not live:
+        snap = load_survey_snapshot()
+        if snap is not None and snap.stores:
+            return _cards_to_models(surveyed_to_demo_cards(snap))
     settings = get_settings()
     key = settings.kakao_rest_api_key
-    if live and key:
+    if key:
         result = survey_anchor_stores(api_key=key, anchor_address=DEFAULT_ANCHOR_ADDRESS)
         if result.stores:
             return _cards_to_models(surveyed_to_demo_cards(result))
@@ -104,7 +112,7 @@ def get_verified_demo_store(store_id: str) -> VerifiedDemoStore | None:
     sid = store_id.strip()
     if not sid:
         return None
-    for store in list_verified_demo_stores(live=True):
+    for store in list_verified_demo_stores(live=False):
         if store.id == sid:
             return store
     return None

@@ -464,7 +464,8 @@ function renderVerifiedFilters() {
 
 async function loadLiveVerifiedStores() {
   try {
-    const res = await fetch("/api/demo/verified-stores?live=true");
+    // Prefer snapshot (fast). Live Kakao census is via /api/demo/survey-anchor.
+    const res = await fetch("/api/demo/verified-stores?live=false");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const rows = await res.json();
     if (Array.isArray(rows) && rows.length) {
