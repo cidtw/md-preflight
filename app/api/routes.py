@@ -32,13 +32,18 @@ router = APIRouter(prefix="/api", tags=["pipeline"])
 
 
 @router.get("/health")
-def health(settings: Annotated[Settings, Depends(get_app_settings)]) -> dict[str, str]:
+def health(settings: Annotated[Settings, Depends(get_app_settings)]) -> dict[str, str | int | bool]:
+    from app.pipeline.demo_anchor_survey import load_survey_snapshot
+
+    snap = load_survey_snapshot()
     return {
         "status": "ok",
         "app": settings.app_name,
         "version": settings.app_version,
         "pipeline": "input-analyze-output",
         "service": "rop-adjust",
+        "census_snapshot_stores": len(snap.stores) if snap else 0,
+        "census_live_key": bool(settings.kakao_rest_api_key),
     }
 
 
