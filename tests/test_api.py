@@ -35,6 +35,41 @@ def test_template_has_rop_fields(client: TestClient) -> None:
     assert precise["type"] == "boolean"
 
 
+def test_verified_demo_stores_catalog(client: TestClient) -> None:
+    response = client.get("/api/demo/verified-stores")
+    assert response.status_code == 200
+    body = response.json()
+    assert 1 <= len(body) <= 2
+    ids = {s["id"] for s in body}
+    assert "verified-a-yeoksam-cvs" in ids
+    assert "verified-b-yeoksam-super" in ids
+    for store in body:
+        assert store["parameters"]["use_precise_location"] is False
+        assert store["verification_note"]
+        assert store["expected"]["recommended_rop"] is not None
+
+    one = client.get("/api/demo/verified-stores/verified-a-yeoksam-cvs")
+    assert one.status_code == 200
+    assert one.json()["title"].startswith("시연 A")
+    missing = client.get("/api/demo/verified-stores/no-such-store")
+    assert missing.status_code == 404
+
+
+def test_evaluate_verified_store_a_matches_expected(client: TestClient) -> None:
+    catalog = client.get("/api/demo/verified-stores/verified-a-yeoksam-cvs").json()
+    response = client.post(
+        "/api/evaluate",
+        json={"parameters": catalog["parameters"]},
+    )
+    assert response.status_code == 200
+    calc = response.json()["calc"]
+    exp = catalog["expected"]
+    assert calc["recommended_rop"] == exp["recommended_rop"]
+    assert calc["store_safety_stock"] == exp["store_safety_stock"]
+    assert calc["capa_capped"] is exp["capa_capped"]
+    assert calc["order_days_label"] == exp["order_days_label"]
+
+
 def test_evaluate_ok(client: TestClient) -> None:
     response = client.post(
         "/api/evaluate",
@@ -151,7 +186,9 @@ def test_index_page(client: TestClient) -> None:
     assert "footer-version" in response.text
     # Third-party demo readiness shell
     assert "demo-scenario-list" in response.text
-    assert "시연 시나리오" in response.text
+    assert "검증 매장" in response.text
+    assert "verified-store-list" in response.text
+    assert "demo-scenario-list" in response.text
     assert 'href="/static/favicon.svg"' in response.text
     assert 'name="description"' in response.text
 

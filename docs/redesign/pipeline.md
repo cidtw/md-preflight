@@ -32,6 +32,8 @@
 | `service_level` | (선택) 목표 서비스 레벨 90/95/99% → 정책 Z |
 | `order_day_pattern` | (선택) 발주 요일 패턴(자동·화목·월수금 등) |
 | `standard_rop` | (선택) 사내/업계 표준 ROP |
+| `demand_sigma_daily` | (선택, R16) POS 일 수요 표준편차 σ → SS = Z·σ·√LT·w (vol proxy 비활성) |
+| `measured_logistics_delay_days` | (선택, R16) 실측 추가 지연(일) → KB hash residual 대체 · 접근성 성분은 유지 |
 
 불일치 안내:
 
@@ -67,7 +69,9 @@ LT = 입력 품목 표준 LT   # 고정 — 조정 레버 아님
 Z = 서비스레벨 정책 Z(90/95/99) + 맥락(변동성·품목·FTI_kb)
 물류 리스크일 = max(0, 접근성 성분 + KB 상권·행정동 리스크)
 물류 버퍼개 = D_eff * 물류 리스크일
-통계 안전재고 = Z * D_eff * sqrt(LT * vol/5) * 회전가중치
+통계 안전재고 = Z * D_eff * sqrt(LT * vol/5) * 회전가중치   # 기본 L3 proxy
+  # R16 if demand_sigma_daily: Z * σ_D * sqrt(LT) * 회전가중치
+물류 리스크일 = max(0, 접근성 + (실측지연 R16 | KB residual))
 총 안전재고 = 통계 안전재고 + 물류 버퍼개
 추천 ROP = D_eff * LT + 총 안전재고
 발주 요일·주기·Q = 선택 패턴 또는 CAPA 자동 추천
@@ -108,3 +112,13 @@ CAPA 1~2 이고 상한 초과 시:
 정확한 주소 UX: 시·도 → 시·군·구 → 읍·면·동(카카오 제안) 선택 후 점포명/도로명 일부 입력 → 콤보에서 공식 점포 선택 → `store_address`에 도로명 주소 확정.
 
 원 지시(역사 문서, Adjusted LT 서사 포함): `2026-07-14-New-Service-Flow.md` — **구현 SSOT는 본 파일 + `docs/architecture.md`**.
+
+## 4. 산출 근거 (국면 XI)
+
+공식 항별 **문헌·기관 출처 · engineering assumption** 매핑:
+
+- 패키지 인덱스: [`docs/evidence/README.md`](../evidence/README.md)
+- 항별 매트릭스 SSOT: [`docs/evidence/evidence-matrix.md`](../evidence/evidence-matrix.md)
+- 시연 스코프(매장2·품목2): [`docs/evidence/demo-scope.md`](../evidence/demo-scope.md)
+
+3층: **L1** 표준 재고이론 · **L2** King/APICS·ASCM·Huff 등 · **L3** 본 서비스 명시 proxy.

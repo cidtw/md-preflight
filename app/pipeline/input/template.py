@@ -25,7 +25,7 @@ from app.pipeline.types import (
 )
 
 TEMPLATE_ID = "rop-adjust-v1"
-TEMPLATE_VERSION = "1.5.0"
+TEMPLATE_VERSION = "1.6.0"
 
 
 def _opts(mapping: dict[str, str]) -> list[ParameterOption]:
@@ -184,6 +184,30 @@ def get_template() -> InputTemplate:
                 description="미입력 시 표준 LT·기본 안전재고로 산정합니다.",
                 minimum=0.0,
                 maximum=1000000.0,
+            ),
+            ParameterSpec(
+                key="demand_sigma_daily",
+                label="일 수요 표준편차 sigma (POS, 개)",
+                type="number",
+                required=False,
+                description=(
+                    "선택. POS에서 구한 일 소진 표준편차. 입력 시 변동 점수(1-5) proxy 대신 "
+                    "SS = Z * sigma * sqrt(LT) * 회전가중 (King/ASCM)을 사용합니다 (R16)."
+                ),
+                minimum=0.0,
+                maximum=100000.0,
+            ),
+            ParameterSpec(
+                key="measured_logistics_delay_days",
+                label="실측 추가 물류 지연 (일)",
+                type="number",
+                required=False,
+                description=(
+                    "선택. 계약 LT 대비 평균 추가 지연 실측값. 입력 시 행정동 hash·상권 테이블 "
+                    "잔차 대신 이 값을 쓰고, 접근성 성분은 그대로 더합니다 (R16)."
+                ),
+                minimum=0.0,
+                maximum=30.0,
             ),
         ],
     )

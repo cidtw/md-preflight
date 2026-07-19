@@ -96,6 +96,12 @@ app/web/          # 폼 → 로딩 → 리포트
 | `GET /api/template` | 입력 템플릿 |
 | `POST /api/evaluate` | ROP 재조정 실행 |
 
+## 산출 근거 (시연·평가)
+
+공식 항별 문헌·가정 매핑: **[`docs/evidence/`](docs/evidence/)**  
+- 3층: L1 표준 이론 · L2 King/APICS·ASCM·Huff · L3 engineering proxy  
+- 시연 스코프(매장2·품목2): `docs/evidence/demo-scope.md`
+
 ---
 
 ## 문서

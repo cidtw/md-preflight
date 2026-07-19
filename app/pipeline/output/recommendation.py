@@ -26,6 +26,7 @@ from app.pipeline.types import (
     EvidenceBlock,
     RecommendationResult,
     ScoreBreakdown,
+    SourceLayerLine,
     StoreSummary,
     ValidatedInput,
 )
@@ -568,14 +569,25 @@ def _ss_formula_technical(
     scores: ScoreBreakdown,
 ) -> str:
     kb = calc.knowledge
-    head = (
+    d_eff = calc.effective_daily_demand or calc.daily_demand
+    z_head = (
         f"서비스 레벨 정책 Z={kb.service_level_z:.2f} "
         f"({calc.service_level_label}) → 맥락 반영 최종 Z={kb.safety_z_factor:.2f}. "
-        f"통계 안전재고(캡 전) = Z * 일평균소진 {calc.daily_demand:g} * "
-        f"sqrt(입력LT {calc.standard_lead_time_days} * "
-        f"vol_norm {scores.demand_volatility}/5) * 회전가중 "
-        f"{scores.turnover_weight} = {calc.statistical_safety_stock:.1f}개. "
     )
+    if calc.ss_mode == "measured_sigma" and calc.demand_sigma_daily is not None:
+        ss_body = (
+            f"통계 안전재고(캡 전, R16 실측 sigma) = Z * sigma_D "
+            f"{calc.demand_sigma_daily:g} * sqrt(LT {calc.standard_lead_time_days}) "
+            f"* 회전가중 {scores.turnover_weight} = "
+            f"{calc.statistical_safety_stock:.1f}개 (King/ASCM 형태). "
+        )
+    else:
+        ss_body = (
+            f"통계 안전재고(캡 전, L3 vol proxy) = Z * D_eff {d_eff:g} * "
+            f"sqrt(LT {calc.standard_lead_time_days} * "
+            f"vol_norm {scores.demand_volatility}/5) * 회전가중 "
+            f"{scores.turnover_weight} = {calc.statistical_safety_stock:.1f}개. "
+        )
     if calc.capa_capped:
         pre_cap = calc.statistical_safety_stock + calc.logistics_buffer_units
         tail = (
@@ -587,7 +599,58 @@ def _ss_formula_technical(
             f"총 안전재고 = 통계 + 물류버퍼 "
             f"{calc.logistics_buffer_units:.1f} = {calc.store_safety_stock:.1f}개."
         )
-    return head + tail
+    return z_head + ss_body + tail
+
+
+def _source_layers(calc: CalcBreakdown) -> list[SourceLayerLine]:
+    """Expert-mode L1/L2/L3 one-liners (docs/evidence SSOT)."""
+    kb = calc.knowledge
+    d_eff = calc.effective_daily_demand or calc.daily_demand
+    l1 = SourceLayerLine(
+        layer="L1",
+        title="표준 이론",
+        text=(
+            f"ROP = D*LT + SS · continuous review. "
+            f"여기 D_eff={d_eff:g}, LT={calc.standard_lead_time_days:g}일, "
+            f"SS={calc.store_safety_stock:.1f} → ROP={calc.recommended_rop:.1f}."
+        ),
+    )
+    l2 = SourceLayerLine(
+        layer="L2",
+        title="문헌·기관",
+        text=(
+            f"CSL {calc.service_level_label}: 정책 Z={kb.service_level_z:.2f} "
+            f"(King APICS 2011 · 90/95/99→1.28/1.65/2.33). "
+            f"SS ~ Z*sqrt(LT) (ASCM/기간 스케일). LT 고정·지연은 버퍼."
+        ),
+    )
+    if calc.ss_mode == "measured_sigma" and calc.demand_sigma_daily is not None:
+        ss_note = f"sigma_D={calc.demand_sigma_daily:g} 실측 (vol proxy 비활성)"
+    else:
+        ss_note = (
+            f"sigma proxy = D*sqrt(vol/5), vol={calc.scores.demand_volatility}/5 "
+            f"(POS sigma 미입력)"
+        )
+    if calc.logistics_delay_mode == "measured_delay" and (
+        calc.measured_logistics_delay_days is not None
+    ):
+        delay_note = (
+            f"실측 지연 {calc.measured_logistics_delay_days:g}일 "
+            f"+ 접근성 {calc.scores.accessibility_lt_delta_days:+.1f}일 "
+            f"→ risk {calc.logistics_risk_days:.2f}일"
+        )
+    else:
+        delay_note = (
+            f"KB residual {kb.logistics_delay_days:.2f}일(hash·테이블) "
+            f"+ 접근성 {calc.scores.accessibility_lt_delta_days:+.1f}일 "
+            f"→ risk {calc.logistics_risk_days:.2f}일 (캘리브 아님)"
+        )
+    l3 = SourceLayerLine(
+        layer="L3",
+        title="서비스 assumption",
+        text=f"{ss_note}. {delay_note}. 상세 docs/evidence/.",
+    )
+    return [l1, l2, l3]
 
 
 def _evidence_plain(validated: ValidatedInput, calc: CalcBreakdown) -> list[EvidenceBlock]:
@@ -709,25 +772,36 @@ def _evidence_technical(
         points=[
             (
                 "리드타임은 계약·표준 일정으로 두며 재조정 대상이 아닙니다. "
-                "접근성·상권 물류 리스크는 재고 버퍼로만 반영합니다."
+                + "접근성·상권 물류 리스크는 재고 버퍼로만 반영합니다."
             ),
             (
                 f"접근성 '{access}' 리스크 성분 "
-                f"{scores.accessibility_lt_delta_days:+.1f}일 "
-                f"+ KB 상권·행정동 리스크 +{kb.logistics_delay_days:.2f}일 "
-                f"= 합산 리스크 {calc.logistics_risk_days:.2f}일 "
-                f"(음수는 0으로 절사)."
+                + f"{scores.accessibility_lt_delta_days:+.1f}일 "
+                + (
+                    f"+ 실측 지연(R16) +{calc.measured_logistics_delay_days:.2f}일 "
+                    if calc.logistics_delay_mode == "measured_delay"
+                    and calc.measured_logistics_delay_days is not None
+                    else f"+ KB 상권·행정동 리스크 +{kb.logistics_delay_days:.2f}일 "
+                )
+                + f"= 합산 리스크 {calc.logistics_risk_days:.2f}일 "
+                + "(음수는 0으로 절사)."
             ),
             (
-                f"'{dong}' 인근 배송 이력 패턴과 '{access}' 조건을 매칭. "
-                f"상권 공급 난이도 {scores.supply_difficulty}/5 · "
-                f"KB logistics_delay={kb.logistics_delay_days:.2f}일."
+                f"'{dong}' · '{access}'. 상권 공급 난이도 {scores.supply_difficulty}/5 · "
+                + (
+                    f"logistics_delay_mode=measured_delay "
+                    + f"({calc.measured_logistics_delay_days:.2f}일)."
+                    if calc.logistics_delay_mode == "measured_delay"
+                    and calc.measured_logistics_delay_days is not None
+                    else f"logistics_delay_mode=proxy_kb "
+                    + f"(KB residual={kb.logistics_delay_days:.2f}일, 캘리브 아님)."
+                )
             ),
             (
-                f"버퍼 환산: 일평균 소진 {calc.daily_demand:g} * 리스크 "
-                f"{calc.logistics_risk_days:.2f}일 = "
-                f"{calc.logistics_buffer_units:.1f}개. "
-                f"KB 검색: {kb.search_query}."
+                f"버퍼 환산: D_eff {calc.effective_daily_demand or calc.daily_demand:g} * 리스크 "
+                + f"{calc.logistics_risk_days:.2f}일 = "
+                + f"{calc.logistics_buffer_units:.1f}개. "
+                + f"KB 검색: {kb.search_query}."
             ),
         ],
     )
@@ -919,6 +993,16 @@ def render(validated: ValidatedInput, calc: CalcBreakdown) -> RecommendationResu
     guidance = list(validated.guidance)
     if calc.geo.enabled and calc.geo.used_fallback:
         guidance.extend(calc.geo.notes)
+    if calc.ss_mode == "measured_sigma":
+        guidance.append(
+            "일 수요 표준편차(sigma) 실측값이 반영되어 변동 점수 proxy 대신 "
+            + "SS = Z * sigma * sqrt(LT) 경로를 사용했습니다 (R16).",
+        )
+    if calc.logistics_delay_mode == "measured_delay":
+        guidance.append(
+            "실측 추가 물류 지연이 반영되어 행정동 hash residual 대신 "
+            + "측정 지연 + 접근성 성분으로 버퍼를 산정했습니다 (R16).",
+        )
     return RecommendationResult(
         recommendation=_one_liner_plain(summary, calc),
         recommendation_technical=_one_liner_technical(summary, calc),
@@ -930,5 +1014,6 @@ def render(validated: ValidatedInput, calc: CalcBreakdown) -> RecommendationResu
         comparison_technical=_comparison_technical(calc),
         evidence=_evidence_plain(validated, calc),
         evidence_technical=_evidence_technical(validated, calc),
+        source_layers=_source_layers(calc),
         calc=calc,
     )

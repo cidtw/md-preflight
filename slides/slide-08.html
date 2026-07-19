@@ -104,21 +104,31 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 <body>
 
   <div>
-    <div class="eyebrow">Formula</div>
-    <h1 style="font-size:20pt;">LT는 상수, 조정은 재고·발주 정책 · SS∝수요</h1>
-    
+    <div class="eyebrow">Formula · Evidence</div>
+    <h1 style="font-size:18pt;">LT는 상수 · 식은 표준 이론 · 계수는 출처 표</h1>
   </div>
 
-  <div class="main" style="display:flex;flex-direction:column;gap:10pt;justify-content:flex-start;">
-    <div class="formula" style="font-size:10.5pt;line-height:1.5;">
-LT = 품목 입력 (delta=0) · 미입력 시 규모→채널 기본값<br>
-Z = Z_policy(90/95/99) + 맥락(변동성·품목·FTI_kb)<br>
+  <div class="main" style="display:flex;flex-direction:column;gap:8pt;justify-content:flex-start;">
+    <div class="formula" style="font-size:10pt;line-height:1.45;">
+ROP = D_eff × LT + SS &nbsp;·&nbsp; SS = SS_stat + buffer<br>
 SS_stat = Z × D_eff × √(LT × vol/5) × turnover<br>
-buffer = D_eff × risk_days &nbsp;·&nbsp; SS = SS_stat + buffer<br>
-ROP = D_eff × LT + SS &nbsp;·&nbsp; Q ≈ D_eff × cycle<br>
-CAPA 시 Q ≤ MaxCap · 표시 SS 항등 (ROP = D_eff×LT+SS)
+buffer = D_eff × risk_days &nbsp;·&nbsp; LT 입력 고정 (delta=0)
     </div>
-    <p class="key" style="margin-top:4pt;font-size:12pt;">비교 표 표준 SS/Q = 행사 미반영 D · 추천 측 = D_eff</p>
+    <div class="grid-3" style="height:auto; gap:8pt;">
+      <div class="card" style="padding:10pt 12pt;">
+        <h3 style="font-size:11pt;">L1 이론</h3>
+        <p style="font-size:10pt;">연속검토 ROP=LTD+SS · SS∝Z·√L</p>
+      </div>
+      <div class="card" style="padding:10pt 12pt;">
+        <h3 style="font-size:11pt;">L2 문헌</h3>
+        <p style="font-size:10pt;">Z 90/95/99 = 1.28/1.65/2.33 (King APICS)</p>
+      </div>
+      <div class="card" style="padding:10pt 12pt;">
+        <h3 style="font-size:11pt;">L3 proxy</h3>
+        <p style="font-size:10pt;">vol·접근성 일수·soft-sat = 명시 assumption</p>
+      </div>
+    </div>
+    <p class="key" style="margin-top:2pt;font-size:11pt;">상세 매핑 · docs/evidence/ · 시연 숫자는 evaluate 실측</p>
   </div>
 
   <div class="footer">

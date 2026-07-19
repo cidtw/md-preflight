@@ -2,30 +2,30 @@
 
 > **slides-grab Stage 1 (Plan / foundation)**  
 > 본 문서는 **내용·구성·메시지 정본**이다. `slide-*.html` 재생성·디자인 게이트·PDF export는 **본 아웃라인 승인 후** Stage 2로 진행한다.  
-> 근거: `docs/dev-journal-2026-07.md` (국면 I–IX) · `docs/architecture.md` · `docs/redesign/pipeline.md` · pivot tip `468e00d`
+> 근거: `docs/dev-journal-2026-07.md` (국면 I–XI) · `docs/architecture.md` · `docs/redesign/pipeline.md` · **`docs/evidence/`** · pivot
 
 ## Meta
-- **Topic**: main v1(프로모션 사전검수) → 중간발표·피드백 → pivot ROP 제품 → 정확도·안정화·일시 유동까지 포함한 최종 산출
+- **Topic**: main v1(프로모션 사전검수) → 중간발표·피드백 → pivot ROP 제품 → 정확도·안정화 → **튜터 피드백 근거 심화(논리 완결)**
 - **Target Audience**: 유통 비즈니스 이해관계자 · 테크 리드 · 멘토/평가 패널
-- **Tone/Mood**: Restrained · Professional · Evidence-first (숫자·계약·데모 중심)
+- **Tone/Mood**: Restrained · Professional · Evidence-first (숫자·계약·문헌·데모 중심)
 - **Slide Count**: **14 slides**
 - **Aspect Ratio**: 16:9
-- **Presentation focus**: 피벗 이유 + 동작하는 ROP 서비스 + 공식 정합 + 7/16 안정화·일시 유동 + 라이브 데모
+- **Presentation focus**: 피벗 이유 + 동작하는 ROP + **L1–L3 근거 체인** + 좁은 스코프 시연 + 로드맵
 - **Style (유지)**: `executive-minimal`  
   - 여백·키노트형 · 슬라이드당 한 메시지 · 비즈니스+기술 혼성  
   - 미채택: `ppt-consulting-precision-grid` · `swiss-international-style`  
   - 이전 중간발표 참고: `ppt-samsung-ir-restrained` (구 7장)
 - **Branch policy**: **`main` = v1 아카이브 (변경 금지)** · 활성 개발·배포 = `pivot/project-direction`
 - **Prod**: https://md-preflight.vercel.app
-- **Status**: **STAGE 2 REGENERATED (2026-07-16)** — 14장 HTML `slides/slide-01..14.html` · style `executive-minimal` · `slides-grab validate` pass
+- **Status**: **STAGE 1+ HTML PATCH (2026-07-19)** — 근거·스코프 반영 · 전량 재생성 전 아웃라인·핵심 HTML 동기화
 
 ## Narrative Arc (한 줄)
 
 ```
 문제(프로모션 오입력) → v1 라이브 검수 엔진 → 중간발표 피드백
   → 방향 피벗 → 매장 특화 ROP · 운영 레버
-  → 정확도 패치(SS∝D) → 안정화·윤문·export
-  → 일시 유동 수요 증분 → 라이브 · 다음
+  → 정확도·안정화·일시 유동
+  → 튜터: 근거 빈약 우려 → 문헌 매트릭스 + 스코프 축소 → 라이브 · 다음(캘리브)
 ```
 
 ## Slide Composition
@@ -33,20 +33,20 @@
 ### Slide 1 - Cover
 - **Type**: Cover
 - **Title**: 매장 특화 발주 기준 재조정
-- **Subtitle**: MD Preflight — v1 사전검수에서 ROP 운영 레버 제품까지
-- **Kicker**: 2026.07.01–16 · main 아카이브 → pivot/project-direction · 라이브
+- **Subtitle**: MD Preflight — v1 사전검수에서 ROP 운영 레버 · 근거 완결까지
+- **Kicker**: 2026.07.01–19 · main 아카이브 → pivot/project-direction · 라이브
 - **Presenter**: 개발 권태원 (SaaS Platformer)
-- **Notes**: 부제 한 줄 가능 — “Lead Time 입력 유지 · ROP·SS·Q·요일·SL 조정 · (선택) 일시 유동”
+- **Notes**: “Lead Time 입력 유지 · ROP·SS·Q·요일·SL · **근거 3층(L1–L3)**”
 
 ### Slide 2 - Agenda
 - **Type**: Contents
 - **Items**:
   1. 문제와 v1 해법 (`main`)
-  2. 중간발표 성과와 한계 → 피벗
+  2. 중간발표 → 피벗 → 튜터 피드백
   3. 새 제품: 매장 특화 ROP
-  4. 아키텍처 · 공식 · 지도·일시 유동
-  5. 정확도·안정화 패치 (7/15–16)
-  6. 검증 수치 · 데모 · 로드맵
+  4. 아키텍처 · **공식 + 문헌 근거**
+  5. 지도·일시 유동 · 정확도 패치
+  6. **좁은 스코프 데모** · 검증 · 로드맵
 
 ### Slide 3 - 문제 정의 (유통 현장)
 - **Type**: Content
@@ -69,15 +69,15 @@
 - **Chart (optional)**: 막대 — pytest 47 → 104 → 132 → 150 (일지 §2)
 - **Notes**: 티켓 T1–T59는 성과 스냅샷만; 전수 나열 금지
 
-### Slide 5 - 중간발표 피드백 → 피벗
+### Slide 5 - 피드백 두 단계 → 피벗 · 근거 심화
 - **Type**: Content / Two-column
-- **Key Message**: 피드백은 “더 많은 룰”이 아니라 **문제 정의 재정렬**을 요구했다.
+- **Key Message**: 중간발표는 **문제 정의**, 튜터는 **논리·객관 근거**를 요구했다.
 - **Details**:
+  - **중간발표 → 피벗**: 고정 스키마 검수 UI ↓ · 매장 특화 ROP 제품 ↑ · `pivot/project-direction`
   - **유지**: 결정론 코어 · 근거 제시 · degrade 가능한 주변부
-  - **내려놓음**: 고정 스키마 프로모션 파일 검수 UI 복잡도
-  - **새 목표**: 매장 파라미터 → 내부 점수 + KB → **근거 있는 발주 기준 추천**
-  - **브랜치**: `main` 동결 · `pivot/project-direction` 3단 파이프라인 재구축
-- **Visual**: Before/After (Preflight 검수 → ROP Adjust)
+  - **튜터 (ROP 이후)**: 아이템(ROP·LT 레버·이중 UX) 고평가 · 다만 **산출 객관 근거 빈약** 우려
+  - **수용**: 품목·매장 수 ↓ 해도 됨 → **논리 완결 우선** · `docs/evidence/`
+- **Visual**: 2단 타임라인 — (1) 피벗 (2) 근거 심화
 
 ### Slide 6 - 제품 한 장 (What it does)
 - **Type**: Content
@@ -101,18 +101,19 @@
 - **Visual**: tldraw 권장 — 모듈 박스 + 데이터 화살표 (Stage 2)
 - **Notes**: v1의 path 격리 교훈 → 주변부 최소, 코어 결정론
 
-### Slide 8 - 핵심 공식 (운영 레버 · SS∝D)
+### Slide 8 - 핵심 공식 + 근거 3층
 - **Type**: Content
-- **Key Message**: LT는 곱하는 상수, 조정은 재고·발주 정책으로 한다. 통계 SS는 **수요 비례**.
-- **Details** (SSOT: `docs/redesign/pipeline.md`):
-  - `LT = 품목 표준/계약 입력` (출력 delta = 0) · 미입력 시 **규모 밴드→채널** 기본값
-  - `Z = Z_policy(90/95/99) + 맥락(변동성·품목·FTI_kb)`
-  - `buffer = D_eff × risk_days`
-  - `SS_stat = Z × D_eff × √(LT × vol/5) × turnover` ← **∝ demand**
-  - `SS = SS_stat + buffer` · `ROP = D_eff × LT + SS`
-  - `Q ≈ D_eff × cycle` · CAPA 협소 시 MaxCap · **표시 SS 항등 유지** · Q ≤ MaxCap
-  - 비교 표: 표준 SS/Q는 **행사 미반영 D** 기준 · 추천은 D_eff
-- **Visual**: 공식 카드 4장 (LT · Z · SS∝D · ROP) + CAPA 칩
+- **Key Message**: LT는 상수, 조정은 재고·발주. **식은 표준 이론, 계수는 출처 표**.
+- **Details** (SSOT: `docs/redesign/pipeline.md` · `docs/evidence/evidence-matrix.md`):
+  - **L1 형태**: `ROP = D_eff×LT + SS` · `SS ∝ Z·√LT` · continuous review (King/ASCM/교재)
+  - **L2 수치**: CSL 90/95/99 → Z **1.28 / 1.65 / 2.33** (King APICS 2011 Fig.2)
+  - **구현식**:  
+    `SS_stat = Z × D_eff × √(LT × vol/5) × turnover`  
+    `buffer = D_eff × risk_days` · `SS = SS_stat + buffer`  
+    LT 입력 고정 · CAPA 시 MaxCap · 항등 유지
+  - **L3 proxy (정직)**: vol 1–5·접근성 일수·soft-sat 계수 = engineering assumption  
+    → 시연에서 “캘리브레이션 아님” 명시 · 상세 `docs/evidence/`
+- **Visual**: 공식 블록 + 옆 작은 3층 칩 (L1/L2/L3)
 - **Do not invent numbers**: 데모 시 실 evaluate 응답
 
 ### Slide 9 - 지도 유동 · 일시 유동 옵션
@@ -150,34 +151,35 @@
   - 계약: 결정론 · 예시 문장 하드코딩 금지 · LT 미조정 · ROP=D_eff×LT+SS 항등
 - **Chart**: 라인/막대 — pytest 시점별 (일지 수치만; 창작 금지)
 
-### Slide 12 - 데모 스토리보드
+### Slide 12 - 데모 스토리보드 (스코프 축소 · 실측)
 - **Type**: Timeline / Steps
-- **Key Message**: 3–4분 안에 “입력 → 레버 → 근거 → 내보내기”를 보여 준다.
-- **Details**:
-  1. 세션1–3: 편의점 소형 · 오피스 · 건물 내 · 냉장 간편식 · D=12 · LT=2 · SL=95% · 요일=자동
-  2. 결과: **문장형 추천** · ROP·SS·요일 · “배송 일정 그대로” 확인
-  3. **전문 해설 토글** → Z·CAPA·공식 톤 전환
-  4. (선택) 정확한 위치 + **일시 유동** 체크 → geo/행사 근거 · D_eff 언급
-  5. **리포트 내보내기** → PDF/MD 중 하나
-- **Notes**: Kakao 키 없을 때 fallback도 의도된 UX로 설명 · 하드 리프레시 후 export
+- **Key Message**: 매장·품목을 줄이고, **한 케이스의 논리 체인**을 끝까지 보여 준다.
+- **Details** (SSOT: `docs/evidence/demo-scope.md` · evaluate 2026-07-19):
+  1. **시나리오 A**: 편의 소형 · 오피스 · 건물 내 · 냉장 · D=12 · LT=2 · SL=95% · 자동
+  2. **실측 체인**: LTD=24 · Z 1.65→2.38 · SS_stat 54.2 + buf 15.6 → raw ROP **93.8** → CAPA MaxCap **31.2** · 표시 SS **7.2** · Q **28** · 월·수·금
+  3. **전문 토글** → **L1/L2/L3 출처 카드** · King Z · CAPA 항등
+  4. **B 실측 대조**: 주거 슈퍼·대로·상온 · ROP **37.04** · SS **21.04** · Q 28 · **월·목** · CAPA 캡 없음 · buffer 0
+  5. 메시지: A는 **공간 병목**, B는 **맥락 SS 전부 반영** (같은 95%)
+- **Notes**: SSOT = `test_scenario_a/b_measured_walkthrough` · Kakao 없음 = 행정동 경로
 
 ### Slide 13 - 로드맵 · 의사결정
 - **Type**: Content
-- **Key Message**: 다음은 “더 예쁜 UI”보다 **실측 데이터와 운영 연동**.
+- **Key Message**: 근거 표는 올렸다. 다음은 **proxy를 실측으로 교체**.
 - **Details**:
-  - **DONE (부분)**: Vercel prod 반복 배포 · trust 카피 · export · 일시 유동 프록시
-  - **NEXT**: 실시간 행사 캘린더/공공 API · 실측 KB · Agent 포트 · 품목 마스터 · 발주 캘린더 UX · evaluate 취소 UX
-  - **비목표**: main 부활 · v1 프로모션 검수 UI 복원 (태그로만)
-- **Visual**: Now / Next / Later 3열
+  - **Now (DONE)**: Vercel · export · 일시 유동 프록시 · **`docs/evidence/` 매트릭스** · 스코프 축소 시연
+  - **Next**: POS σ 캘리브(R16) · 실측 LT 지연 · 행사 캘린더 API · 실측 KB · 품목 마스터
+  - **Not**: main 부활 · v1 검수 UI 복원 · 근거 없는 계수 과대 주장
+- **Visual**: Now / Next / Not 3열
 
 ### Slide 14 - Closing · Q&A
 - **Type**: Closing
 - **Message**:  
-  v1으로 **신뢰 가능한 결정론 제품** 습관을 만들었고,  
-  피벗 후 **매장이 실제로 움직이는 발주 레버**에 그 습관을 옮겼습니다.  
-  7/16까지 **정확도·문장·내보내기·일시 유동**까지 프로덕션에 올렸습니다.
+  v1으로 **결정론 제품** 습관을 만들었고,  
+  피벗 후 **발주 레버(ROP·SS·Q·SL)** 로 옮겼습니다.  
+  튜터 피드백 이후에는 **넓이보다 깊이** — 문헌 근거와 좁은 시연으로  
+  “이 숫자의 근거”에 답할 수 있게 정리했습니다.
 - **Contact**: GitHub `github.com/cidtw/md-preflight` · 브랜치 `pivot/project-direction` · https://md-preflight.vercel.app
-- **Appendix pointers**: `docs/dev-journal-2026-07.md` · `docs/architecture.md` · `docs/redesign/pipeline.md`
+- **Appendix pointers**: `docs/evidence/` · `docs/dev-journal-2026-07.md` · `docs/architecture.md` · `docs/redesign/pipeline.md`
 
 ---
 
@@ -197,13 +199,14 @@
 | 슬라이드 | 출처 |
 |----------|------|
 | 4 v1 성과 | `docs/dev-journal-2026-07.md` §0–3 · tag archive |
-| 5 피벗 | `2026-07-14-Project-Redesign.md` · redesign/ |
-| 6–8 제품·공식 | `docs/redesign/pipeline.md` · `docs/architecture.md` |
+| 5 피벗·튜터 | redesign/ · 일지 국면 XI · `docs/evidence/README.md` |
+| 6–7 제품·아키텍처 | `docs/redesign/pipeline.md` · `docs/architecture.md` |
+| 8 공식·근거 | `pipeline.md` · **`docs/evidence/evidence-matrix.md`** · King/ASCM |
 | 9 Kakao·event | `docs/setup-kakao-local.md` · `geo_enrichment.py` · `event_foot_traffic.py` |
-| 10 패치 | 일지 국면 VIII–IX · 커밋 ebe68f0…468e00d |
-| 11 지표 | 일지 · pytest **46** (2026-07-16 tip) |
-| 12 데모 | `POST /api/evaluate` · 라이브 URL |
-| 13 로드맵 | 일지 「이후 — ROP 고도화」 |
+| 10 패치 | 일지 국면 VIII–IX |
+| 11 지표 | 일지 · pytest (당일 실측 우선) |
+| 12 데모 | **`docs/evidence/demo-scope.md`** · `POST /api/evaluate` · 라이브 URL |
+| 13 로드맵 | 일지 R15/R16 · evidence 한계 절 |
 
 ## Out of scope (이번 아웃라인 / Stage 1)
 

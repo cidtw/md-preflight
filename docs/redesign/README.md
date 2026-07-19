@@ -14,6 +14,7 @@
 | [**`../architecture.md`**](../architecture.md) | **리빌드 아키텍처 요약 (정본)** |
 | [`direction.md`](./direction.md) | 문제·원칙·비목표 |
 | [`pipeline.md`](./pipeline.md) | 3단 계약·공식 |
+| [**`../evidence/`**](../evidence/) | **산출 근거 패키지** (문헌·매트릭스·시연 스코프) |
 | [`board.md`](./board.md) | 티켓 보드 |
 | [`../dev-journal-2026-07.md`](../dev-journal-2026-07.md) | 개발 일지 |
 

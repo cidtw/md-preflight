@@ -171,19 +171,31 @@ def store_safety_stock(
     demand_volatility: int,
     turnover_weight: float,
     daily_demand: float,
+    demand_sigma_daily: float | None = None,
 ) -> float:
     """Statistical safety stock in units (개), demand-proportional.
 
-    SS = Z * daily_demand * sqrt(LT * vol_norm) * turnover_weight
-    where vol_norm = demand_volatility / 5 (score 1-5 -> 0.2-1.0).
+    Default (L3 proxy when POS sigma unavailable):
+      SS = Z * daily_demand * sqrt(LT * vol_norm) * turnover_weight
+      vol_norm = demand_volatility / 5 (score 1-5 -> 0.2-1.0).
 
-    Scales with daily demand like logistics buffer (daily * risk_days).
+    Measured (R16, when demand_sigma_daily is set):
+      SS = Z * sigma_D * sqrt(LT) * turnover_weight
+      (King/ASCM form with daily sigma and performance cycle = LT days).
+
     Uses fixed contractual LT only; logistics risk is added separately.
     """
+    z = max(0.0, float(safety_z))
+    lt = max(0.0, float(lead_time_days))
+    tw = max(0.0, float(turnover_weight))
+    if demand_sigma_daily is not None:
+        sigma = max(0.0, float(demand_sigma_daily))
+        raw = z * sigma * math.sqrt(lt)
+        return round(raw * tw, 2)
     vol_norm = max(0.0, float(demand_volatility)) / 5.0
-    inner = max(0.0, lead_time_days * vol_norm)
-    raw = safety_z * max(0.0, daily_demand) * math.sqrt(inner)
-    return round(raw * turnover_weight, 2)
+    inner = max(0.0, lt * vol_norm)
+    raw = z * max(0.0, daily_demand) * math.sqrt(inner)
+    return round(raw * tw, 2)
 
 
 def resolve_order_day_pattern(

@@ -7,7 +7,11 @@ import {
 } from "./wizard_logic.mjs";
 import { initTheme } from "./theme.mjs";
 import { exportReport } from "./report_export.mjs";
-import { DEMO_SCENARIOS, getDemoScenario } from "./demo_scenarios.mjs";
+import {
+  DEMO_SCENARIOS,
+  VERIFIED_DEMO_STORES,
+  getDemoScenario,
+} from "./demo_scenarios.mjs";
 import { mountStorePicker } from "./store_picker.mjs";
 import { clearCompetitionSimCache, mountCompetitionSim } from "./competition_sim.mjs";
 
@@ -29,6 +33,7 @@ const stepProgressList = document.getElementById("step-progress-list");
 const welcomeStep = document.getElementById("step-welcome");
 const comingSoon = document.getElementById("coming-soon");
 const demoScenarioList = document.getElementById("demo-scenario-list");
+const verifiedStoreList = document.getElementById("verified-store-list");
 
 /** @type {object | null} */
 let lastPayload = null;
@@ -78,6 +83,8 @@ const STEPS = [
       "service_level",
       "order_day_pattern",
       "standard_rop",
+      "demand_sigma_daily",
+      "measured_logistics_delay_days",
     ],
     el: () => document.getElementById("step-inventory"),
   },
@@ -317,26 +324,46 @@ function applyParametersToForm(parameters) {
   syncPreciseLocationUI();
 }
 
-function mountDemoScenarios() {
-  if (!demoScenarioList) return;
-  demoScenarioList.innerHTML = "";
-  for (const scenario of DEMO_SCENARIOS) {
-    const card = document.createElement("article");
-    card.className = "demo-card";
-    card.dataset.scenarioId = scenario.id;
-    card.innerHTML = `
+/**
+ * @param {import("./demo_scenarios.mjs").DemoScenario} scenario
+ * @param {"verified"|"explore"} tier
+ */
+function buildDemoCard(scenario, tier) {
+  const card = document.createElement("article");
+  card.className =
+    tier === "verified" ? "demo-card demo-card-verified" : "demo-card demo-card-explore";
+  card.dataset.scenarioId = scenario.id;
+  const badge =
+    tier === "verified"
+      ? `<span class="demo-badge demo-badge-verified">검증 매장</span>`
+      : `<span class="demo-badge demo-badge-explore">탐색·더미</span>`;
+  const storeLine = scenario.storeLabel
+    ? `<span class="demo-card-store">${escapeHtml(scenario.storeLabel)}</span>`
+    : "";
+  const note = scenario.verificationNote
+    ? `<span class="demo-card-note">${escapeHtml(scenario.verificationNote)}</span>`
+    : "";
+  card.innerHTML = `
+      ${badge}
       <span class="demo-card-title">${escapeHtml(scenario.title)}</span>
+      ${storeLine}
       <span class="demo-card-blurb">${escapeHtml(scenario.blurb)}</span>
       <span class="demo-card-highlight">볼 포인트 · ${escapeHtml(scenario.highlight)}</span>
+      ${note}
       <div class="demo-card-actions">
-        <button type="button" class="btn btn-primary" data-demo-action="run">바로 분석</button>
+        <button type="button" class="btn btn-primary" data-demo-action="run">
+          ${tier === "verified" ? "이 매장으로 분석" : "바로 분석"}
+        </button>
         <button type="button" class="btn btn-ghost" data-demo-action="fill">입력만 채우기</button>
       </div>
     `;
-    demoScenarioList.appendChild(card);
-  }
+  return card;
+}
 
-  demoScenarioList.addEventListener("click", (ev) => {
+function bindDemoListClicks(host) {
+  if (!host || host.dataset.demoBound === "1") return;
+  host.dataset.demoBound = "1";
+  host.addEventListener("click", (ev) => {
     const target = ev.target;
     if (!(target instanceof Element)) return;
     const actionBtn = target.closest("[data-demo-action]");
@@ -349,6 +376,23 @@ function mountDemoScenarios() {
   });
 }
 
+function mountDemoScenarios() {
+  if (verifiedStoreList) {
+    verifiedStoreList.innerHTML = "";
+    for (const store of VERIFIED_DEMO_STORES) {
+      verifiedStoreList.appendChild(buildDemoCard(store, "verified"));
+    }
+    bindDemoListClicks(verifiedStoreList);
+  }
+  if (demoScenarioList) {
+    demoScenarioList.innerHTML = "";
+    for (const scenario of DEMO_SCENARIOS) {
+      demoScenarioList.appendChild(buildDemoCard(scenario, "explore"));
+    }
+    bindDemoListClicks(demoScenarioList);
+  }
+}
+
 /**
  * @param {string} id
  * @param {"run"|"fill"} action
@@ -357,10 +401,13 @@ async function handleDemoScenario(id, action) {
   const scenario = getDemoScenario(id);
   if (!scenario || !form) return;
   applyParametersToForm(scenario.parameters);
+  const isVerified = scenario.tier === "verified";
   if (action === "fill") {
     showStep(1);
     formError.hidden = false;
-    formError.textContent = `시연 시나리오 「${scenario.title}」 입력을 채웠습니다. 값을 확인한 뒤 분석하세요.`;
+    formError.textContent = isVerified
+      ? `검증 매장 「${scenario.title}」 프로필을 채웠습니다. 값을 확인한 뒤 분석하세요.`
+      : `탐색 시나리오 「${scenario.title}」 입력을 채웠습니다. (더미/지도 탐색 경로)`;
     return;
   }
   // Jump to inventory so validate path matches normal submit, then evaluate.
@@ -608,6 +655,27 @@ function renderResult(payload, expertOverride) {
     ? "계산 근거 · 지식 베이스"
     : "왜 이렇게 나왔나요?";
   const cmpTitle = expert ? "ROP 비교" : "한눈에 보는 발주 기준";
+  const layers = Array.isArray(payload.source_layers) ? payload.source_layers : [];
+  const sourceLayersHtml =
+    expert && layers.length
+      ? `<div class="source-layers" aria-label="산출 근거 층">
+          <div class="source-layers-head">
+            <strong>산출 근거 층</strong>
+            <span class="source-layers-hint">L1 이론 · L2 문헌 · L3 assumption</span>
+          </div>
+          <div class="source-layers-grid">
+            ${layers
+              .map(
+                (row) => `<article class="source-layer-card layer-${escapeHtml(String(row.layer || "").toLowerCase())}">
+                  <span class="layer-badge">${escapeHtml(row.layer || "")}</span>
+                  <strong class="layer-title">${escapeHtml(row.title || "")}</strong>
+                  <p class="layer-text">${escapeHtml(row.text || "")}</p>
+                </article>`,
+              )
+              .join("")}
+          </div>
+        </div>`
+      : "";
 
   const ropRow = findRow(comparison, "재발주", "ROP", "발주 시점");
   const ssRow = findRow(comparison, "여유 재고", "안전재고", "Safety");
@@ -727,6 +795,7 @@ function renderResult(payload, expertOverride) {
         ${escapeHtml(evidenceTitle)}
         <span class="count-chip">${evidence.length}</span>
       </h2>
+      ${sourceLayersHtml}
       <div class="evidence-grid">${evidenceHtml}</div>
     </section>
     <section class="result-section" id="sim-mount"></section>

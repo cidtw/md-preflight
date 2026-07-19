@@ -797,6 +797,81 @@ table.cmp td strong {
   border: 1px solid var(--hairline);
 }
 
+/* source layers (expert mode L1/L2/L3) */
+.source-layers {
+  margin-bottom: var(--s-md);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  padding: var(--s-md);
+}
+.source-layers-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-xs) var(--s-sm);
+  margin-bottom: var(--s-sm);
+}
+.source-layers-head strong {
+  font-size: 13px;
+  color: var(--ink);
+}
+.source-layers-hint {
+  font-size: 12px;
+  color: var(--mute);
+}
+.source-layers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s-sm);
+}
+.source-layer-card {
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--canvas);
+  padding: var(--s-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+.layer-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.source-layer-card.layer-l3 .layer-badge {
+  background: var(--warning-soft);
+  color: var(--warning-deep);
+}
+.source-layer-card.layer-l1 .layer-badge {
+  background: var(--ok-soft);
+  color: var(--ok-deep);
+}
+.layer-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.layer-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--body);
+  word-break: keep-all;
+}
+@media (max-width: 720px) {
+  .source-layers-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* evidence — equal cards */
 .evidence-grid {
   display: grid;
@@ -1154,6 +1229,11 @@ table.cmp td strong {
   padding-top: var(--s-lg);
   border-top: 1px solid var(--hairline);
 }
+.demo-scenarios-explore {
+  margin-top: var(--s-md);
+  padding-top: var(--s-md);
+  border-top: 1px dashed var(--hairline);
+}
 .demo-scenarios-kicker {
   margin: 0 0 var(--s-xxs);
   font-size: 12px;
@@ -1183,23 +1263,54 @@ table.cmp td strong {
   border-radius: var(--r-md);
   background: var(--surface-1);
   color: inherit;
-  cursor: pointer;
   transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.demo-card-verified {
+  border-color: #7cbc93;
+  background: linear-gradient(180deg, var(--ok-soft) 0%, var(--canvas) 42%);
+}
+.demo-card-explore {
+  background: var(--surface-1);
 }
 .demo-card:hover {
   border-color: var(--primary);
   background: var(--canvas);
   box-shadow: 0 0 0 1px var(--primary-soft);
 }
+.demo-card-verified:hover {
+  border-color: var(--ok-deep);
+}
 .demo-card:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+.demo-badge {
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+}
+.demo-badge-verified {
+  background: var(--ok);
+  color: #fff;
+}
+.demo-badge-explore {
+  background: var(--surface-2);
+  color: var(--mute);
+  border: 1px solid var(--hairline);
 }
 .demo-card-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
   letter-spacing: -0.2px;
+}
+.demo-card-store {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ok-deep);
 }
 .demo-card-blurb {
   font-size: 13px;
@@ -1212,6 +1323,11 @@ table.cmp td strong {
   line-height: 1.4;
   color: var(--primary);
   font-weight: 500;
+}
+.demo-card-note {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--mute);
 }
 .demo-card-actions {
   display: flex;

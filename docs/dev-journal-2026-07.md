@@ -35,6 +35,8 @@
 [7/16]     안정화·기능  CAPA/Q · 추천 윤문 · export · 일시 유동 옵션 (국면 IX)
     ↓
 [7/16+]    제3자 시연   프리셋·demo.sh·폴리시 (국면 X)
+    ↓
+[7/19]     근거 심화   튜터 피드백 · 문헌 매트릭스 · 스코프 축소 (국면 XI)
 ```
 
 | 국면 | 기간 | 한 줄 목표 | 대표 산출 |
@@ -50,13 +52,14 @@
 | **VIII. 정확도 패치** | 7/15 | 리뷰 P0 정확도·UX 회귀 수정 | SS∝D · Z/geo 표시 · size 기본값 |
 | **IX. 안정화·일시 유동** | 7/16 | CAPA/UX 픽스 · 추천 윤문 · 행사 수요 증분 | Q clamp · export 위임 · event 200m |
 | **X. 제3자 시연** | 7/16+ | 데모 프리셋 · 스모크 · 탭 폴리시 | demo_scenarios · demo.sh · favicon |
+| **XI. 근거 심화** | 7/19 | 객관 출처 매핑 · 논리 완결 · 스코프 축소 | `docs/evidence/` · 일지·발표 반영 |
 
 **불변 원칙**
 
 | 구간 | 원칙 |
 |------|------|
 | **국면 I–V (v1, D3 / `main`)** | 판정 = 결정론 룰 · 서술 = LLM(실패 시 fallback) · 검수 비로그인 200 · 이력은 격리·append-only |
-| **국면 VI+ (재설계 / `pivot/project-direction`)** | 판정 = 결정론 **가중치 점수** · 입력 = 파라미터 템플릿 · 출력 = **한 줄 recommendation** · **LT는 품목 입력(유지)** · 조정 레버 = ROP·SS·Q·발주 요일·서비스 레벨 · **SS 통계항∝일평균 소진** (VIII) · 미입력 기본값=규모 밴드 · **일시 유동 옵션 시 D_eff** (IX) · **main은 아카이브(변경 금지)** |
+| **국면 VI+ (재설계 / `pivot/project-direction`)** | 판정 = 결정론 **가중치 점수** · 입력 = 파라미터 템플릿 · 출력 = **한 줄 recommendation** · **LT는 품목 입력(유지)** · 조정 레버 = ROP·SS·Q·발주 요일·서비스 레벨 · **SS 통계항∝일평균 소진** (VIII) · 미입력 기본값=규모 밴드 · **일시 유동 옵션 시 D_eff** (IX) · **근거 3층(L1이론·L2문헌·L3 assumption)** (XI) · **main은 아카이브(변경 금지)** |
 
 **v1 복원 키**: 태그 `archive/v1-md-preflight` @ `b444be0` · 문서 `archive/v1-md-preflight/`
 
@@ -791,14 +794,73 @@ vercel deploy --prod            # md-preflight.vercel.app
 | 항목 | 상태 | 비고 |
 |------|------|------|
 | R8 배포·환경 패리티 | **DONE (부분)** | Vercel prod 반복 배포 · Kakao 시크릿은 운영 문서 기준 |
-| R9 실측 KB / 공공 데이터 | TODO | 현재 결정론 KB · 행사 스캔은 시설 프록시 |
+| R9 실측 KB / 공공 데이터 | TODO | 현재 결정론 KB · 행사 스캔은 시설 프록시 · **XI에서 출처 표는 완료** |
 | R9+ 실시간 행사 캘린더 | TODO | 공공/티켓 API 연동 시 event 프록시 교체 |
 | R10 실 Agent AI 교체 | TODO | `knowledge_base.py` 포트 |
 | R11 품목 마스터 연동 | TODO | |
 | R12 발주 스케줄 캘린더 UX | TODO | 요일 패턴 시각화 |
 | R13 클라이언트 타임아웃·취소 UX | TODO | AbortController |
 | R14 stockout% 서술 캘리브 문구 | **DONE (부분)** | 상대 위험·인덱스 카피 (VIII/IX) · 잔여 폴리시는 선택 |
+| **R15 산출 근거 패키지** | **DONE (문서)** | `docs/evidence/` · 문헌 매트릭스 · 스코프 축소 (국면 XI) |
+| **R16 실측 σ·지연 경로** | **DONE (코드)** | `demand_sigma_daily` · `measured_logistics_delay_days` · source_layers UI · 시나리오 A 실측 |
 | (구) T54/T55 v1 freeze | **SUPERSEDED** | v1 아카이브 · **main 변경 금지** |
+
+---
+
+## 4.x 국면 XI — 튜터 피드백 · 근거 심화 (2026-07-19)
+
+### 피드백 요지
+
+| # | 내용 | 대응 방침 |
+|---|------|-----------|
+| 1 | 아이템(ROP·LT 운영 레버 + 이중 UX)은 v1보다 훨씬 좋음 | **유지** |
+| 2 | 시연 시 “실제 ROP/LT 산출 **객관 근거**” 빈약 우려 | 문헌·기관 1차 출처 매핑 |
+| 3 | 품목·매장 수 ↓ 해도 **논리 완결** 우선 | 스코프 축소 시나리오 고정 |
+
+### 진단 (코드 기준)
+
+- **강한 축**: \(ROP = D\cdot L + SS\), \(Z_{90/95/99}=1.28/1.65/2.33\), \(SS \propto Z\sqrt{L}\), LT 고정·지연→버퍼  
+- **약한 축**: vol 1–5 σ proxy, 접근성 일수 테이블, hash logistics residual, soft-sat 계수, CAPA cover_days  
+- 시연 리스크는 “식 틀림”이 아니라 **계수 출처 미표기**
+
+### 산출물
+
+| 경로 | 내용 |
+|------|------|
+| `docs/evidence/README.md` | 3층 답변 구조 (L1이론 · L2문헌 · L3 assumption) |
+| `docs/evidence/literature-sources.md` | King/APICS PDF · ASCM · ROP 표준 · Huff · √L · 한계 문헌 |
+| `docs/evidence/evidence-matrix.md` | **공식 항 ↔ 코드 ↔ 출처** SSOT 매트릭스 |
+| `docs/evidence/parameter-ranges.md` | 계수 스케일 vs 문헌 관례 |
+| `docs/evidence/demo-scope.md` | 매장 2 · 품목 2 고정 시연 체인 |
+| `slide-outline.md` · `slides/` | 발표 아크에 근거·스코프 반영 |
+
+### 핵심 1차 출처 (발표에서 이름 대기)
+
+1. **Peter L. King, CSCP** — *Understanding safety stock…*, APICS 2011 (MIT 미러 PDF) — Z 표 · \(SS=Z\cdot\sigma\sqrt{\cdot}\)  
+2. **ASCM** — Safety stock / Z-factor 실무 인사이트  
+3. **표준 ROP** — LTD + SS (실무 합의 · 교재 continuous review)  
+4. **Huff (1964)** — 경쟁·거리 감쇠 형태  
+5. Vandeput 등 — 고전 식 한계 (정직 인용)
+
+### 시연 한 문장 (국면 XI)
+
+> 재주문점은 연속검토 표준식이고, Z는 King/APICS 표입니다.  
+> 매장 변동·접근성 계수는 문헌 범위 안의 **명시적 proxy**이며,  
+> 품목·매장을 줄인 대신 이 체인(입력→L1→L2→L3→숫자)을 끝까지 보입니다.
+
+### 의도적으로 안 한 것 (XI 문서 단계)
+
+- 신규 공공 API 연동  
+- main/v1 복원  
+
+### 후속 구현 (같은 날 · R16 + 시나리오 A 실측)
+
+| 항목 | 결과 |
+|------|------|
+| 시나리오 A evaluate | ROP **31.2** · SS **7.2** · Q **28** · 월수금 · raw 93.8 · CAPA cap · Z 1.65→2.38 |
+| 전문 토글 | `source_layers` L1/L2/L3 카드 + export MD/PDF |
+| R16 입력 | `demand_sigma_daily` · `measured_logistics_delay_days` (template v1.6.0) |
+| 테스트 | `test_scenario_a_measured_walkthrough` · `test_r16_measured_sigma_and_delay` |
 
 ---
 
@@ -807,7 +869,8 @@ vercel deploy --prod            # md-preflight.vercel.app
 ### 5.1 30초
 > 7월에 유통 **프로모션 사전검수 v1**을 엔진부터 Vercel 라이브까지 올렸고, 중간발표 뒤 입력 유연성까지 다듬었습니다.  
 > 피드백 후 v1은 태그 아카이브하고, **매장 특화 발주 기준(ROP) 재조정**으로 방향을 바꿨습니다.  
-> 리드타임은 품목 입력으로 유지하고, 실제로 조정하는 것은 ROP·안전재고·발주 요일·서비스 레벨입니다.
+> 리드타임은 품목 입력으로 유지하고, 실제로 조정하는 것은 ROP·안전재고·발주 요일·서비스 레벨입니다.  
+> 최근 튜터 피드백에 맞춰 **문헌 근거 매트릭스**와 **좁은 스코프 시연**으로 논리 완결을 보강했습니다.
 
 ### 5.2 2분 (국면별)
 1. **엔진(v1 / main)** — 판정은 룰, LLM은 설명. 계약 테스트로 증명.  
@@ -816,11 +879,26 @@ vercel deploy --prod            # md-preflight.vercel.app
 4. **피벗** — `archive/v1-md-preflight` · 3단 파이프라인.  
 5. **ROP 제품** — 파라미터 → 점수·KB·Kakao 유동 → 근거 리포트 · 운영 레버.  
 6. **정확도 패치(7/15)** — SS∝수요 · 비교표 Z/주기 · size 기본값 · CAPA/geo 테스트.  
-7. **안정화·일시 유동(7/16)** — CAPA/Q · 추천 윤문 · export 복구 · 200m 행사 수요 증분 · Vercel.
+7. **안정화·일시 유동(7/16)** — CAPA/Q · 추천 윤문 · export 복구 · 200m 행사 수요 증분 · Vercel.  
+8. **근거 심화(7/19)** — King/ASCM/Huff 매핑 · L1–L3 · 매장2·품목2 시연.
 
 ### 5.3 5분
-위 + CAPA 상한 · 불일치 guidance · foot_traffic 탈포화 · `POST /api/evaluate` 데모 · 실 KB/Agent 로드맵.  
-발표 장표 정본: **`slide-outline.md`** (slides-grab Stage 1 · 생성은 승인 후).
+위 + 시나리오 A 실측 워크스루:  
+LTD=24 → Z 1.65→2.38 → raw ROP 93.8 → **CAPA 31.2 / SS 7.2 / Q 28 / 월수금**  
++ 전문 토글 **L1/L2/L3 카드** + (가능 시) R16 σ 입력 데모.  
+발표 장표: **`slide-outline.md`** · 숫자 SSOT: **`docs/evidence/demo-scope.md`**.
+
+### 5.4 질의 예상 — “근거가 뭐냐?”
+
+| 질문 | 답 축 |
+|------|--------|
+| ROP 식이 맞나? | L1 continuous review: LTD+SS |
+| 1.65는? | King/APICS CSL 95% Z |
+| 왜 √LT? | 독립 기간 분산 합 → σ√L |
+| 왜 ROP가 31이지 93이 아니야? | CAPA MaxCap 12×2.6=31.2 · 표시 SS 7.2로 항등 유지 · 다회 소량 |
+| 골목/건물내 일수? | L3 engineering · R16 실측 지연 입력 시 대체 |
+| 행정동 hash? | proxy_kb · **캘리브 아님** · measured_logistics_delay_days로 축소 |
+| POS σ 있으면? | `demand_sigma_daily` → measured_sigma 경로 |
 
 ---
 
@@ -829,6 +907,10 @@ vercel deploy --prod            # md-preflight.vercel.app
 | 주제 | 경로 |
 |------|------|
 | **리빌드 아키텍처 요약 (정본)** | `docs/architecture.md` |
+| **산출 근거 패키지 (국면 XI)** | `docs/evidence/` |
+| **근거 매트릭스 SSOT** | `docs/evidence/evidence-matrix.md` |
+| **문헌 목록** | `docs/evidence/literature-sources.md` |
+| **시연 스코프** | `docs/evidence/demo-scope.md` |
 | **재설계 지시** | `2026-07-14-Project-Redesign.md` |
 | **ROP 서비스 플로우** | `2026-07-14-New-Service-Flow.md` |
 | **재설계 판** | `docs/redesign/` |
@@ -865,4 +947,6 @@ vercel deploy --prod            # md-preflight.vercel.app
 *국면 VII+ 운영 레버·일지/발표 아웃라인 갱신: 2026-07-14*  
 *국면 VIII 정확도 패치(리뷰 권장 수정) 반영: 2026-07-15*  
 *국면 IX 안정화·일시 유동·배포 반영: 2026-07-16*  
-*국면 X 제3자 시연 준비(R14): 2026-07-16*
+*국면 X 제3자 시연 준비(R14): 2026-07-16*  
+*국면 XI 튜터 피드백·근거 패키지(R15)·발표 반영: 2026-07-19*  
+*시나리오 A 실측 · source_layers UI · R16 실측 경로: 2026-07-19*

@@ -14,6 +14,11 @@ from app.pipeline.analyze.competition_sim import SimulationRequest, run_simulati
 from app.pipeline.analyze.store_search import search_dong, search_places
 from app.pipeline.region_catalog import list_sido, list_sigungu
 from app.pipeline.types import InputTemplate
+from app.pipeline.verified_demo_stores import (
+    VerifiedDemoStore,
+    get_verified_demo_store,
+    list_verified_demo_stores,
+)
 from app.schemas.evaluate import EvaluateRequest, EvaluateResponse
 from app.schemas.places import DongSearchResponse, PlaceSearchResponse, SimulationResponse
 
@@ -35,6 +40,24 @@ def health(settings: Annotated[Settings, Depends(get_app_settings)]) -> dict[str
 def read_template() -> InputTemplate:
     """Public input template for store-specific ROP adjustment."""
     return get_input_template()
+
+
+@router.get("/demo/verified-stores", response_model=list[VerifiedDemoStore])
+def demo_verified_stores() -> list[VerifiedDemoStore]:
+    """Curated 1-2 store profiles for presentation builds (not live POS)."""
+    return list_verified_demo_stores()
+
+
+@router.get("/demo/verified-stores/{store_id}", response_model=VerifiedDemoStore)
+def demo_verified_store(store_id: str) -> VerifiedDemoStore:
+    """One verified demo store by id."""
+    store = get_verified_demo_store(store_id)
+    if store is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown verified demo store: {store_id}",
+        )
+    return store
 
 
 @router.get("/regions/sido")

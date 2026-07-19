@@ -104,7 +104,15 @@ export function buildMarkdown(payload, { expert = false } = {}) {
       `| ${r.metric} | ${fmt(r.standard_value)} ${r.unit} | ${fmt(r.recommended_value)} ${r.unit} | ${r.delta_label} |`,
     );
   }
-  lines.push(``, comparison.rop_guidance, ``, `## 근거`, ``);
+  lines.push(``, comparison.rop_guidance, ``);
+  if (expert && payload.source_layers?.length) {
+    lines.push(`## 산출 근거 층 (L1 · L2 · L3)`, ``);
+    for (const row of payload.source_layers) {
+      lines.push(`- **${row.layer} ${row.title}**: ${row.text}`);
+    }
+    lines.push(``);
+  }
+  lines.push(`## 근거`, ``);
   for (const block of evidence) {
     lines.push(`### ${block.title}`, ``, `*${block.calc_summary}*`, ``);
     for (const p of block.points) lines.push(`- ${p}`);
@@ -176,6 +184,16 @@ export function buildPrintableHtml(payload, { expert = false } = {}) {
     </section>`,
     )
     .join("");
+  const layersHtml =
+    expert && payload.source_layers?.length
+      ? `<h2>산출 근거 층 (L1 · L2 · L3)</h2>
+    <ul>${payload.source_layers
+      .map(
+        (row) =>
+          `<li><strong>${escape(row.layer)} ${escape(row.title)}</strong> — ${escape(row.text)}</li>`,
+      )
+      .join("")}</ul>`
+      : "";
   const address =
     s.use_precise_location && s.store_address
       ? `<tr><th>상세 주소</th><td colspan="3">${escape(s.store_address)}</td></tr>`
@@ -243,6 +261,7 @@ export function buildPrintableHtml(payload, { expert = false } = {}) {
     <tbody>${cmpRows}</tbody>
   </table>
   <p class="guide">${escape(comparison.rop_guidance)}</p>
+  ${layersHtml}
   <h2>근거</h2>
   ${evidenceHtml}
   <p class="foot">MD Preflight ROP · ${escape(payload.template_id)} v${escape(payload.template_version)}</p>

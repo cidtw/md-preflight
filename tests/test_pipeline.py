@@ -426,3 +426,111 @@ def test_store_safety_stock_edge_cases() -> None:
         daily_demand=0.0,
     )
     assert zero_d == 0.0
+    # R16 measured sigma path: SS = Z * sigma * sqrt(LT) * turnover
+    import math
+
+    measured = store_safety_stock(
+        safety_z=1.65,
+        lead_time_days=4.0,
+        demand_volatility=5,
+        turnover_weight=1.0,
+        daily_demand=100.0,
+        demand_sigma_daily=2.0,
+    )
+    assert measured == pytest.approx(1.65 * 2.0 * math.sqrt(4.0), abs=0.01)
+
+
+def test_scenario_a_measured_walkthrough() -> None:
+    """Fixed demo-scope A numbers (docs/evidence/demo-scope.md)."""
+    result = run(
+        {
+            "product_name": "냉장 간편식 도시락",
+            "store_type": "convenience",
+            "store_size": "cv_s",
+            "avg_ticket": "t_le_8k",
+            "location_dong": "서울시 강남구 역삼1동",
+            "trade_area": "office",
+            "accessibility": "indoor",
+            "daily_demand": 12,
+            "standard_lead_time_days": 2,
+            "service_level": "sl_95",
+            "order_day_pattern": "auto",
+        },
+    )
+    c = result.calc
+    assert c.knowledge.service_level_z == pytest.approx(1.65)
+    assert c.standard_lead_time_days == 2.0
+    assert c.daily_demand == 12.0
+    # CAPA=1 MaxCap = 12 * (2 + 0.6) = 31.2; raw ROP exceeds → cap path.
+    assert c.capa_capped is True
+    assert c.max_rop_cap == pytest.approx(31.2)
+    assert c.recommended_rop == pytest.approx(31.2)
+    assert c.store_safety_stock == pytest.approx(7.2)
+    assert c.order_days_label == "월·수·금"
+    assert c.suggested_order_qty == pytest.approx(28.0)
+    assert c.ss_mode == "proxy_vol"
+    assert c.logistics_delay_mode == "proxy_kb"
+    layers = {line.layer for line in result.source_layers}
+    assert layers == {"L1", "L2", "L3"}
+
+
+def test_scenario_b_measured_walkthrough() -> None:
+    """Fixed demo-scope B contrast numbers (residential super · dry goods)."""
+    result = run(
+        {
+            "product_name": "상온 라면",
+            "store_type": "supermarket",
+            "store_size": "sm",
+            "avg_ticket": "t_8k_15k",
+            "location_dong": "서울시 강남구 역삼1동",
+            "trade_area": "residential",
+            "accessibility": "main_road",
+            "daily_demand": 8,
+            "standard_lead_time_days": 2,
+            "service_level": "sl_95",
+            "order_day_pattern": "auto",
+        },
+    )
+    c = result.calc
+    assert c.knowledge.service_level_z == pytest.approx(1.65)
+    assert c.scores.capa_score == 3
+    assert c.capa_capped is False
+    assert c.max_rop_cap is None
+    assert c.logistics_risk_days == pytest.approx(0.0)
+    assert c.logistics_buffer_units == pytest.approx(0.0)
+    assert c.recommended_rop == pytest.approx(37.04)
+    assert c.store_safety_stock == pytest.approx(21.04)
+    assert c.suggested_order_qty == pytest.approx(28.0)
+    assert c.order_days_label == "월·목"
+    # Contrast with A: same SL, no CAPA clamp, buffer zero via main_road offset.
+    assert c.recommended_rop == pytest.approx(c.recommended_rop_raw)
+
+
+def test_r16_measured_sigma_and_delay() -> None:
+    base = {
+        "product_name": "냉장 간편식 도시락",
+        "store_type": "convenience",
+        "store_size": "cv_s",
+        "avg_ticket": "t_le_8k",
+        "location_dong": "서울시 강남구 역삼1동",
+        "trade_area": "office",
+        "accessibility": "indoor",
+        "daily_demand": 12,
+        "standard_lead_time_days": 2,
+        "service_level": "sl_95",
+        "order_day_pattern": "auto",
+    }
+    proxy = run(base)
+    sigma = run({**base, "demand_sigma_daily": 3.0})
+    assert sigma.calc.ss_mode == "measured_sigma"
+    assert sigma.calc.demand_sigma_daily == pytest.approx(3.0)
+    assert sigma.calc.statistical_safety_stock != proxy.calc.statistical_safety_stock
+    assert any("sigma" in g or "표준편차" in g for g in sigma.guidance)
+
+    delay = run({**base, "measured_logistics_delay_days": 0.5})
+    assert delay.calc.logistics_delay_mode == "measured_delay"
+    # indoor +1.0 + measured 0.5 = 1.5
+    assert delay.calc.logistics_risk_days == pytest.approx(1.5)
+    assert delay.calc.logistics_buffer_units == pytest.approx(12.0 * 1.5)
+    assert any("실측" in g for g in delay.guidance)
+    assert "measured" in delay.source_layers[2].text or "실측" in delay.source_layers[2].text

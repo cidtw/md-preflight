@@ -170,9 +170,24 @@ class CalcBreakdown(BaseModel):
     capa_capped: bool
     max_rop_cap: float | None = None
     multi_order_suggestion: str | None = None
+    # R16: measured inputs shrink L3 proxies when provided.
+    # ss_mode: proxy_vol (L3) | measured_sigma (POS daily sigma)
+    ss_mode: str = "proxy_vol"
+    demand_sigma_daily: float | None = None
+    # logistics_delay_mode: proxy_kb (L3 hash/table) | measured_delay
+    logistics_delay_mode: str = "proxy_kb"
+    measured_logistics_delay_days: float | None = None
     scores: ScoreBreakdown
     knowledge: KnowledgeSignals
     geo: GeoEnrichment = Field(default_factory=GeoEnrichment)
+
+
+class SourceLayerLine(BaseModel):
+    """One citation line for expert/technical narrative (L1 / L2 / L3)."""
+
+    layer: str  # L1 | L2 | L3
+    title: str
+    text: str
 
 
 class StoreSummary(BaseModel):
@@ -229,4 +244,6 @@ class RecommendationResult(BaseModel):
     comparison_technical: ComparisonDashboard | None = None
     evidence: list[EvidenceBlock]
     evidence_technical: list[EvidenceBlock] = Field(default_factory=list)
+    # Expert-mode source stack (L1 theory · L2 literature · L3 assumption).
+    source_layers: list[SourceLayerLine] = Field(default_factory=list)
     calc: CalcBreakdown

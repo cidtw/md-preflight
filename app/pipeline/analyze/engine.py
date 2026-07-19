@@ -146,8 +146,19 @@ def analyze(
     event_uplift_frac = round(max(0.0, mult - 1.0), 4)
     competition_cut_frac = round(max(0.0, 1.0 - comp_factor), 4)
 
+    # R16: optional measured logistics delay replaces KB residual (hash/table L3).
+    # Accessibility risk days still apply on top.
+    measured_delay: float | None = None
+    logistics_delay_mode = "proxy_kb"
+    if "measured_logistics_delay_days" in p:
+        measured_delay = max(0.0, _as_float(p["measured_logistics_delay_days"], 0.0))
+        logistics_delay_mode = "measured_delay"
+        delay_component = measured_delay
+    else:
+        delay_component = knowledge.logistics_delay_days
+
     logistics_risk_days = round(
-        max(0.0, scores.accessibility_lt_delta_days + knowledge.logistics_delay_days),
+        max(0.0, scores.accessibility_lt_delta_days + delay_component),
         2,
     )
     # Logistics buffer and SS scale with event-adjusted demand when uplift is on.
@@ -162,12 +173,20 @@ def analyze(
         # Baseline standard stays on unadjusted demand (no temporary event).
         standard_rop = round(daily_demand * fixed_lt + base_safety, 2)
 
+    # R16: optional POS daily demand sigma replaces vol-score proxy (L3).
+    demand_sigma: float | None = None
+    ss_mode = "proxy_vol"
+    if "demand_sigma_daily" in p:
+        demand_sigma = max(0.0, _as_float(p["demand_sigma_daily"], 0.0))
+        ss_mode = "measured_sigma"
+
     statistical_ss = store_safety_stock(
         safety_z=knowledge.safety_z_factor,
         lead_time_days=fixed_lt,
         demand_volatility=scores.demand_volatility,
         turnover_weight=scores.turnover_weight,
         daily_demand=effective_demand,
+        demand_sigma_daily=demand_sigma,
     )
     # Total safety stock = statistical SS + logistics risk buffer (units).
     store_safety = round(statistical_ss + logistics_buffer, 2)
@@ -266,6 +285,10 @@ def analyze(
         order_cycle_days=order_cycle,
         suggested_order_qty=order_qty,
         order_frequency_label=order_label,
+        ss_mode=ss_mode,
+        demand_sigma_daily=demand_sigma,
+        logistics_delay_mode=logistics_delay_mode,
+        measured_logistics_delay_days=measured_delay,
         recommended_rop_raw=raw_rop,
         capa_capped=capa_capped,
         max_rop_cap=max_cap,
