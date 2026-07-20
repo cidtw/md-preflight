@@ -38,7 +38,7 @@
 | 영속 | RunStore / HistoryStore (메모리·Postgres) |
 | 인증 | Clerk / stub / off |
 | UI | SPA (업로드·편집·이력·설정·테마 등) |
-| 문서 | `BACKEND_ARCHITECTURE.md`, `DESIGN.md`, `docs/architecture-*.md`, ADR-0001, 개발일지 Part A–B |
+| 문서 | 태그 안 `BACKEND_ARCHITECTURE.md`, `DESIGN.md`, `docs/architecture-*.md`, ADR-0001 등 (활성 트리 2026-07-20 정리로 제거) · 일지 Part A–B 는 `docs/dev-journal-2026-07.md` |
 
 상세 목록: [`MANIFEST.md`](./MANIFEST.md)  
 폐기·격리 판단: [`DISCARD-REVIEW.md`](./DISCARD-REVIEW.md)

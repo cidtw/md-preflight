@@ -1,8 +1,0 @@
-product_code,product_name,normal_price,cost
-SKU-1,Item 1,10000,5500
-SKU-1,Item 1 (dup),10000,5500
-SKU-2,Item 2,10000,5500
-SKU-3,Item 3,10000,5500
-SKU-4,Item 4,,6000
-SKU-5,Item 5,10000,5500
-SKU-6,Item 6,10000,5500

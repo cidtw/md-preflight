@@ -300,8 +300,8 @@ app/
 | 작업 보드 | `docs/redesign/board.md` |
 | 개발 일지 | `docs/dev-journal-2026-07.md` |
 | 프로젝트 브리프 | `PROJECT_BRIEF.md` |
-| v1 아카이브 | `archive/v1-md-preflight/` |
-| v1 쉬운 아키텍처 (archived) | `docs/architecture-easy.md` |
+| v1 아카이브 | `archive/v1-md-preflight/` · tag `archive/v1-md-preflight` |
+| v1 설계 문서 (트리에서 제거) | 태그 경로: `BACKEND_ARCHITECTURE.md`, `docs/architecture-easy.md`, `docs/rule-matrix.md` 등 |
 
 ---
 

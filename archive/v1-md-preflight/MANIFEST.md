@@ -37,15 +37,20 @@
 
 ## 문서·발표 산출
 
+> **2026-07-20 정리**: 아래 v1 전용 문서·`data/samples/**` 는 활성 트리에서 제거됨.  
+> 내용은 태그 `archive/v1-md-preflight` 에서 확인 (`git show archive/v1-md-preflight:PATH`).
+
 | 경로 | 비고 |
 |------|------|
-| `BACKEND_ARCHITECTURE.md`, `DESIGN.md`, `PROJECT_BRIEF.md` | v1 서술 (브리프는 재작성) |
-| `docs/architecture-easy.md`, `architecture-input-flexibility-decision.md` | v1 |
-| `docs/adr/0001-input-adapter-canonical-frames.md` | v1 ADR |
-| `docs/rule-matrix.md` | v1 10룰 |
-| `docs/dev-journal-2026-07.md` | **유지·연장** (국면 VI 기록) |
-| `slides/`, `slide-outline.md` | 중간발표 자산 (로컬/repo 상태 유지, 제품 경로 비의존) |
-| `handoff/` | gitignore 로컬 히스토리 |
+| `BACKEND_ARCHITECTURE.md`, `DESIGN.md` | v1 서술 — **활성 트리 삭제**, 태그에 보존 |
+| `docs/architecture-easy.md`, `architecture-input-flexibility-decision.md` | v1 — 태그 보존 |
+| `docs/adr/0001-input-adapter-canonical-frames.md` | v1 ADR — 태그 보존 |
+| `docs/rule-matrix.md` | v1 10룰 — 태그 보존 |
+| `docs/design-references/**`, `data/samples/**` | v1 UI·샘플 — 태그 보존 |
+| `PROJECT_BRIEF.md` | 활성 트리에서 ROP용으로 재작성 |
+| `docs/dev-journal-2026-07.md` | **유지·연장** (국면 VI+ 기록) |
+| `slides/`, `slide-outline.md` | 발표 자산 (제품 경로 비의존) |
+| `handoff/` | gitignore 로컬 히스토리; pre-pivot 는 `handoff/archive-v1-pre-pivot-*.tar.gz` |
 
 ## 테스트 (v1)
 
