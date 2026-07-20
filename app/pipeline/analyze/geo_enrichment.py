@@ -49,8 +49,9 @@ from app.pipeline.types import (
 logger = logging.getLogger(__name__)
 
 # Cap wall-clock for nearby POI fan-out (geocode is outside this budget).
-_POI_TOTAL_BUDGET_S = 4.0
-_HTTP_TIMEOUT_S = 2.5
+# Keep request timeouts tight so evaluate degrades to dong fallback quickly.
+_POI_TOTAL_BUDGET_S = 3.0
+_HTTP_TIMEOUT_S = 1.5
 _POI_MAX_WORKERS = 6
 
 JsonObject = dict[str, object]

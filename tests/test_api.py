@@ -258,3 +258,8 @@ def test_simulate_endpoint(client: TestClient) -> None:
     assert body["scenario"] == "competitor_pressure"
     assert "baseline" in body and "shocked" in body
     assert body["shocked"]["daily_demand"] <= body["baseline"]["daily_demand"]
+    assert body["own_sales_index_delta_pct"] < 0
+    assert body["sales_decline"] is True
+    assert body["ai_advice"]
+    assert "로컬 폴백" in body["ai_advice"] or "ROP" in body["ai_advice"]
+    assert body["ai_used"] is False

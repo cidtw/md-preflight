@@ -61,8 +61,11 @@ event_demand_multiplier = 1 + 0.35 * event_uplift   # max +35% demand
 competition_intensity = soft_sat(Σ tier_w * exp(-d/decay) * 0.5^rank_tier)
   tier_w: direct=1.0 · threat=0.85 · indirect=0.40
 competition_demand_factor = 1 − 0.40 * intensity     # max −40% demand
-D_eff = D * event_demand_multiplier * competition_demand_factor
+  # 경쟁 = 수요 누수 방향 L3 proxy · 집적(agglomeration) 미모델
+D_eff_raw = D * event_demand_multiplier * competition_demand_factor
+D_eff = clamp(D_eff_raw, 0.5*D, 2.0*D)   # engine 전역 밴드 (안전망)
   # 미옵션 시 각 배수=1 → D_eff=D
+  # 밴드 적용 시 calc.effective_demand_clamped + guidance
 FTI_kb = min(1, FTI + 0.20 * event_uplift)
 # LT is product input (kept as-is). Output never recommends changing LT.
 LT = 입력 품목 표준 LT   # 고정 — 조정 레버 아님
@@ -77,10 +80,13 @@ Z = 서비스레벨 정책 Z(90/95/99) + 맥락(변동성·품목·FTI_kb)
 발주 요일·주기·Q = 선택 패턴 또는 CAPA 자동 추천
   Q ≈ D_eff × cycle_days
 CAPA 1~2 이고 상한 초과 시:
-  ROP = MaxCap, 표시 SS = max(0, MaxCap − D_eff×LT)   # 항등 유지
+  ROP = MaxCap, 표시 SS = max(0, MaxCap − D_eff×LT)   # 항등 유지 (표시용)
   Q = min(Q, MaxCap)
   → 다회 소량 발주 강화
+  # 주의: 항등 유지 ≠ 캡 전 목표 서비스 레벨(CSL) 보장
+  #        공간 제약 하 발주 빈도 trade-off (evidence · guidance 명시)
 # 표준(비교 기준) ROP/SS는 행사·경쟁 미반영 D 기준 — 보정은 추천 측에만 반영
+# SS = SS_stat(수요 불확실) + B(구조적 지연 버퍼) — 역할 분리, 접근성 1회만
 ```
 
 비교 표 기준선:

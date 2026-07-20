@@ -13,7 +13,7 @@
 | \(D\) | 일평균 소진 (입력) | `daily_demand` | 입력 |
 | \(m_e\) | 행사 수요 배수 ≥1 | `event_demand_multiplier` | L3 (형태 L2) |
 | \(m_c\) | 경쟁 수요 계수 ≤1 | `competition_demand_factor` | L3 (형태 L1 Huff) |
-| \(D_{eff}\) | \(D \cdot m_e \cdot m_c\) | `effective_daily_demand` | 합성 |
+| \(D_{eff}\) | \(\mathrm{clamp}(D \cdot m_e \cdot m_c,\ 0.5D,\ 2.0D)\) | `effective_daily_demand` · `effective_demand_clamped` | 합성 |
 | \(L\) | 품목 표준/계약 LT (일) | `standard_lead_time_days` **고정** | L1 (역할) · L3 (디폴트값) |
 | \(Z_{pol}\) | 정책 CSL → z | `SERVICE_LEVEL_Z` | **L2 King** |
 | \(Z\) | \(Z_{pol}\) + 맥락 | `safety_z_factor` | L2+L3 |

@@ -271,6 +271,7 @@
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -281,40 +282,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -331,9 +326,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -341,10 +334,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -352,8 +345,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -364,23 +357,56 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
-
   <div style=&quot;flex:1;display:flex;flex-direction:column;justify-content:center;&quot;>
-    <div class=&quot;eyebrow&quot;>2026.07.01–16 · Final Briefing</div>
+    <div class=&quot;eyebrow&quot;>2026.07.01–20 · Final Briefing</div>
     <h1 style=&quot;font-size:30pt;margin-top:16pt;&quot;>매장 특화 발주 기준 재조정</h1>
-    <p class=&quot;key&quot; style=&quot;font-size:14pt;margin-top:12pt;max-width:520pt;&quot;>
-      MD Preflight — v1 사전검수에서 ROP 운영 레버 제품까지
+    <p class=&quot;key&quot; style=&quot;font-size:14pt;margin-top:12pt;max-width:540pt;&quot;>
+      MD Preflight: v1 사전검수에서 ROP, 근거, 상권 시뮬까지
     </p>
     <div class=&quot;chip-row&quot; style=&quot;margin-top:20pt;&quot;>
       <span class=&quot;chip&quot;>LT 입력 유지</span>
       <span class=&quot;chip ghost&quot;>ROP · SS · Q · 요일 · SL</span>
-      <span class=&quot;chip ghost&quot;>일시 유동 (선택)</span>
+      <span class=&quot;chip ghost&quot;>근거 L1–L3 · D_eff</span>
     </div>
   </div>
   <div style=&quot;display:flex;justify-content:space-between;font-size:11pt;color:#666;margin-bottom:8pt;&quot;>
@@ -549,6 +575,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -559,40 +586,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -609,9 +630,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -619,10 +638,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -630,8 +649,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -642,8 +661,42 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
@@ -651,17 +704,16 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <div>
     <div class=&quot;eyebrow&quot;>Agenda</div>
     <h1>오늘 이야기</h1>
-    <p class=&quot;key&quot;>피벗 이유 → 동작하는 제품 → 정확도·안정화 → 데모</p>
+    <p class=&quot;key&quot;>피벗 이유 → 제품 → 문헌 근거 → 상권·시뮬 → 좁은 스코프 데모</p>
   </div>
-
   <div class=&quot;main&quot;>
-    <ol class=&quot;list&quot; style=&quot;counter-reset: a; list-style: none;&quot;>
-      <li><strong>01</strong> &amp;nbsp; 문제와 v1 해법 (main 아카이브)</li>
-      <li><strong>02</strong> &amp;nbsp; 중간발표 성과와 한계 → 피벗</li>
-      <li><strong>03</strong> &amp;nbsp; 새 제품: 매장 특화 ROP</li>
-      <li><strong>04</strong> &amp;nbsp; 아키텍처 · 공식 · 지도·일시 유동</li>
-      <li><strong>05</strong> &amp;nbsp; 정확도·안정화 패치 (7/15–16)</li>
-      <li><strong>06</strong> &amp;nbsp; 검증 수치 · 데모 · 로드맵</li>
+    <ol class=&quot;agenda-grid&quot;>
+      <li><span class=&quot;n&quot;>01</span><span class=&quot;t&quot;>문제와 v1 해법 (main 아카이브)</span></li>
+      <li><span class=&quot;n&quot;>02</span><span class=&quot;t&quot;>중간발표 → 피벗 → 튜터 피드백</span></li>
+      <li><span class=&quot;n&quot;>03</span><span class=&quot;t&quot;>새 제품: 매장 특화 ROP</span></li>
+      <li><span class=&quot;n&quot;>04</span><span class=&quot;t&quot;>아키텍처 · 공식 + 문헌 근거</span></li>
+      <li><span class=&quot;n&quot;>05</span><span class=&quot;t&quot;>지도·경쟁·일시 유동 · 정확도 패치</span></li>
+      <li><span class=&quot;n&quot;>06</span><span class=&quot;t&quot;>좁은 스코프 데모 · what-if · 검증 · 로드맵</span></li>
     </ol>
   </div>
 
@@ -826,6 +878,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -836,40 +889,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -886,9 +933,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -896,10 +941,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -907,8 +952,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -919,28 +964,68 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
   <div>
     <div class=&quot;eyebrow&quot;>Problem</div>
-    <h1>평균 표준 발주로는 매장마다 품절·과잉이 갈린다.</h1>
-    
+    <h1 style=&quot;font-size:18pt;&quot;>평균 표준 발주로는 매장마다 품절과 과잉이 갈린다</h1>
   </div>
-
-  <div class=&quot;main grid-2&quot;>
-    <div class=&quot;card&quot;>
-      <h3>v1 문제 · 프로모션 사전검수</h3>
-      <p>등록 전 가격·기간·마진·재고 교차 오류 → 점포 혼선·마진 악화</p>
-      <p style=&quot;margin-top:8pt;&quot;>해법: 10룰 결정론 판정 + LLM 서술 (라이브까지)</p>
+  <div class=&quot;main&quot;>
+    <div class=&quot;grid-2&quot;>
+      <div class=&quot;card&quot;>
+        <div class=&quot;col-title&quot;>v1 문제 · 프로모션 사전검수</div>
+        <h3>등록 전 교차 오류</h3>
+        <p>가격·기간·마진·재고가 서로 어긋나면 점포 혼선과 마진 악화로 이어집니다.</p>
+        <p style=&quot;margin-top:4pt;&quot;><span class=&quot;strong&quot;>해법</span> 10룰 결정론 판정 + LLM 서술 (라이브까지)</p>
+      </div>
+      <div class=&quot;card&quot;>
+        <div class=&quot;col-title&quot;>피벗 후 문제 · 발주 기준</div>
+        <h3>채널 평균 LT/ROP의 한계</h3>
+        <p>입지·상권·CAPA·피크·(선택) 임시 유동·경쟁을 반영하지 못합니다.</p>
+        <p style=&quot;margin-top:4pt;&quot;><span class=&quot;strong&quot;>제약</span> LT는 계약·품목 일정. 「LT를 올려라」는 운영 레버가 아닙니다.</p>
+      </div>
     </div>
-    <div class=&quot;card&quot;>
-      <h3>피벗 후 문제 · 발주 기준</h3>
-      <p>업계·사내 평균 LT/ROP는 채널 평균에 가깝고 입지·상권·CAPA·피크·임시 유동을 반영하지 못함</p>
-      <p style=&quot;margin-top:8pt;&quot;><strong>제약:</strong> LT는 계약·품목 일정 → 「LT를 올려라」는 운영 레버가 아님</p>
+    <div class=&quot;chip-row&quot;>
+      <span class=&quot;chip ghost&quot;>고정 입력: LT</span>
+      <span class=&quot;chip&quot;>조정 레버: ROP · SS · Q · 요일 · SL</span>
     </div>
   </div>
 
@@ -1105,6 +1190,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -1115,40 +1201,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -1165,9 +1245,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -1175,10 +1253,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -1186,8 +1264,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -1198,26 +1276,68 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
   <div>
     <div class=&quot;eyebrow&quot;>v1 on main</div>
-    <h1>7/1–7/13, 결정론 검수 엔진을 라이브까지</h1>
-    <p class=&quot;key&quot;>이후 main은 아카이브 — 변경하지 않음</p>
+    <h1 style=&quot;font-size:18pt;&quot;>7/1–7/13, 결정론 검수 엔진을 라이브 SaaS까지 올렸다</h1>
   </div>
-
   <div class=&quot;main&quot;>
     <div class=&quot;stat-row&quot;>
-      <div class=&quot;stat&quot;><div class=&quot;n&quot;>10</div><div class=&quot;l&quot;>결정론 룰<br>LLM은 서술만</div></div>
-      <div class=&quot;stat&quot;><div class=&quot;n&quot;>150</div><div class=&quot;l&quot;>pytest peak<br>(T59)</div></div>
-      <div class=&quot;stat&quot;><div class=&quot;n&quot;>SPA</div><div class=&quot;l&quot;>업로드→이슈<br>CSV 수정→재검수</div></div>
-      <div class=&quot;stat&quot;><div class=&quot;n&quot;>Live</div><div class=&quot;l&quot;>Vercel · Clerk<br>Neon · LLM degrade</div></div>
+      <div class=&quot;stat&quot;><div class=&quot;n&quot;>10</div><div class=&quot;l&quot;>결정론 룰 · LLM은 서술만</div></div>
+      <div class=&quot;stat&quot;><div class=&quot;n&quot;>150</div><div class=&quot;l&quot;>pytest 피크 (T59)</div></div>
+      <div class=&quot;stat&quot;><div class=&quot;n&quot;>SPA</div><div class=&quot;l&quot;>업로드 → 수정 → 재검수</div></div>
+      <div class=&quot;stat&quot;><div class=&quot;n&quot;>Live</div><div class=&quot;l&quot;>Vercel · Clerk · Neon</div></div>
     </div>
-    <p class=&quot;key&quot; style=&quot;margin-top:18pt;&quot;>태그 <strong>archive/v1-md-preflight</strong> @ b444be0 · 브랜치 정책: main 동결</p>
+    <div class=&quot;grid-2&quot;>
+      <div class=&quot;card&quot; style=&quot;padding:12pt 14pt;&quot;>
+        <h3>품질 궤적 (pytest)</h3>
+        <p>47 → 104 → 132 → <span class=&quot;strong&quot;>150</span></p>
+      </div>
+      <div class=&quot;card&quot; style=&quot;padding:12pt 14pt;&quot;>
+        <h3>동결</h3>
+        <p>태그 <span class=&quot;strong&quot;>archive/v1-md-preflight</span> @ b444be0</p>
+        <p>이후 main 변경 없음</p>
+      </div>
+    </div>
   </div>
 
   <div class=&quot;footer&quot;>
@@ -1381,6 +1501,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -1391,40 +1512,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -1441,9 +1556,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -1451,10 +1564,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -1462,8 +1575,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -1474,34 +1587,70 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
   <div>
-    <div class=&quot;eyebrow&quot;>Pivot</div>
-    <h1>피드백은 “더 많은 룰”이 아니라 문제 정의 재정렬</h1>
-    
+    <div class=&quot;eyebrow&quot;>Feedback → Pivot</div>
+    <h1 style=&quot;font-size:17pt;&quot;>중간발표는 문제 정의를, 튜터는 논리와 객관 근거를 요구했다</h1>
   </div>
-
-  <div class=&quot;main grid-2&quot;>
-    <div class=&quot;card&quot;>
-      <div class=&quot;col-title&quot;>유지</div>
-      <ul>
-        <li>결정론 코어</li>
-        <li>근거 제시</li>
-        <li>degrade 가능한 주변부</li>
-      </ul>
-    </div>
-    <div class=&quot;card&quot;>
-      <div class=&quot;col-title&quot;>전환</div>
-      <ul>
-        <li>고정 스키마 파일 검수 UI ↓</li>
-        <li>매장 파라미터 → 점수·KB → 발주 기준 추천</li>
-        <li>pivot/project-direction 3단 재구축</li>
-      </ul>
+  <div class=&quot;main&quot;>
+    <div class=&quot;timeline&quot;>
+      <div class=&quot;tl&quot;>
+        <div class=&quot;phase&quot;>01 · 피벗</div>
+        <h3>중간발표 이후</h3>
+        <p>고정 스키마 검수 UI를 줄이고, 매장 특화 ROP 제품으로 옮김</p>
+        <p><span class=&quot;strong&quot;>유지</span> 결정론 코어 · 근거 제시 · degrade 가능 주변부</p>
+      </div>
+      <div class=&quot;tl&quot;>
+        <div class=&quot;phase&quot;>02 · 근거 심화</div>
+        <h3>튜터 피드백</h3>
+        <p>아이템(ROP·LT 레버·이중 UX)은 고평가</p>
+        <p>다만 <span class=&quot;strong&quot;>산출 객관 근거</span>가 약해 보인다는 우려</p>
+      </div>
+      <div class=&quot;tl&quot;>
+        <div class=&quot;phase&quot;>03 · 정합</div>
+        <h3>국면 XII</h3>
+        <p>품목·매장 수를 줄여도 논리 완결 우선</p>
+        <p><span class=&quot;strong&quot;>docs/evidence/</span> · 경쟁·시뮬 · 엔진=서사</p>
+      </div>
     </div>
   </div>
 
@@ -1666,6 +1815,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -1676,40 +1826,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -1726,9 +1870,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -1736,10 +1878,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -1747,8 +1889,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -1759,40 +1901,79 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
   <div>
     <div class=&quot;eyebrow&quot;>Product</div>
-    <h1>3세션 입력 → 내부 연산 → 비교·근거·내보내기</h1>
-    
+    <h1 style=&quot;font-size:17pt;&quot;>3세션 입력 → 내부 연산 → 비교·근거·what-if·내보내기</h1>
   </div>
-
   <div class=&quot;main&quot;>
-    <div class=&quot;flow&quot; style=&quot;height:auto;&quot;>
+    <div class=&quot;flow&quot;>
       <div class=&quot;flow-step&quot;>
         <div class=&quot;num&quot;>INPUT</div>
         <h3>3세션 위저드</h3>
-        <p>유형·규모 · 주소·상권 · 품목·D·LT·SL·요일 · (선택) 일시 유동</p>
+        <p>① 유형·규모·객단가</p>
+        <p>② 행정동·(선택) 주소·상권·접근성·일시 유동·경쟁</p>
+        <p>③ 품목·D·LT·SL·요일·표준 ROP</p>
       </div>
       <div class=&quot;arrow&quot;>→</div>
       <div class=&quot;flow-step&quot;>
         <div class=&quot;num&quot;>ANALYZE</div>
         <h3>내부 전용</h3>
-        <p>scoring · Kakao · event · KB · engine</p>
+        <p>스코어링 · KB · Kakao geo</p>
+        <p>event · competition</p>
+        <p>엔진 · simulate</p>
       </div>
       <div class=&quot;arrow&quot;>→</div>
       <div class=&quot;flow-step&quot;>
         <div class=&quot;num&quot;>OUTPUT</div>
         <h3>운영 레버</h3>
-        <p>ROP · SS · Q · 요일 · SL · plain/tech · export</p>
+        <p>ROP · SS · Q · 요일 · SL</p>
+        <p>비교표 · 근거 · L1–L3</p>
+        <p>what-if · PDF/MD/CSV/JSON</p>
       </div>
     </div>
-    <div class=&quot;chip-row&quot; style=&quot;margin-top:14pt;&quot;>
+    <div class=&quot;chip-row&quot;>
       <span class=&quot;chip&quot;>비레버: LT 입력 유지</span>
+      <span class=&quot;chip ghost&quot;>일반/전문 토글</span>
       <span class=&quot;chip ghost&quot;>md-preflight.vercel.app</span>
     </div>
   </div>
@@ -1958,6 +2139,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -1968,40 +2150,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -2018,9 +2194,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -2028,10 +2202,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -2039,8 +2213,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -2051,36 +2225,74 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
   <div>
     <div class=&quot;eyebrow&quot;>Architecture</div>
-    <h1>스테이지를 늘려 확장하고, 판정은 결정론으로</h1>
-    
+    <h1 style=&quot;font-size:17pt;&quot;>스테이지를 묶어 확장하고, 판정은 결정론으로 유지한다</h1>
   </div>
-
-  <div class=&quot;main grid-3&quot;>
-    <div class=&quot;card&quot;>
-      <h3>input/</h3>
-      <p>템플릿·검증</p>
-      <p>규모·객단가 우선 + guidance</p>
+  <div class=&quot;main&quot;>
+    <div class=&quot;grid-3&quot;>
+      <div class=&quot;card&quot;>
+        <div class=&quot;col-title&quot;>input/</div>
+        <h3>템플릿 · 검증</h3>
+        <p>유형과 규모/객단가가 어긋나면 <span class=&quot;strong&quot;>규모·객단가 우선</span> + guidance</p>
+      </div>
+      <div class=&quot;card&quot;>
+        <div class=&quot;col-title&quot;>analyze/</div>
+        <h3>점수 · 신호 · 엔진</h3>
+        <p>scoring · Kakao geo · event 200m</p>
+        <p>competition · KB · engine · simulate</p>
+      </div>
+      <div class=&quot;card&quot;>
+        <div class=&quot;col-title&quot;>output/</div>
+        <h3>추천 · 근거</h3>
+        <p>plain + technical · 비교표</p>
+        <p>근거 블록 · L1–L3 · guidance</p>
+      </div>
     </div>
-    <div class=&quot;card&quot;>
-      <h3>analyze/</h3>
-      <p>scoring · geo · event 200m</p>
-      <p>KB · engine</p>
-    </div>
-    <div class=&quot;card&quot;>
-      <h3>output/</h3>
-      <p>recommendation plain/tech</p>
-      <p>비교표 · 근거 4블록 · guidance</p>
-    </div>
+    <p class=&quot;key&quot; style=&quot;font-size:11pt;&quot;>
+      API: GET /api/template · POST /api/evaluate · POST /api/simulate · places/regions · health
+    </p>
   </div>
-  <p class=&quot;key&quot; style=&quot;margin-top:10pt;margin-bottom:0;&quot;>API · GET /template · POST /evaluate · GET /health</p>
 
   <div class=&quot;footer&quot;>
     <span>MD Preflight · pivot/project-direction</span>
@@ -2243,6 +2455,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -2253,40 +2466,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -2303,9 +2510,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -2313,10 +2518,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -2324,8 +2529,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -2336,27 +2541,71 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
   <div>
-    <div class=&quot;eyebrow&quot;>Formula</div>
-    <h1>LT는 상수, 조정은 재고·발주 정책 · SS∝수요</h1>
-    
+    <div class=&quot;eyebrow&quot;>Formula · Evidence</div>
+    <h1 style=&quot;font-size:16pt;&quot;>LT는 상수, 조정은 재고·발주. 식은 표준 이론, 서사는 엔진과 같다</h1>
   </div>
-
   <div class=&quot;main&quot;>
     <div class=&quot;formula&quot;>
-LT = 품목 입력 (delta=0) · 미입력 시 규모→채널 기본값<br>
-Z = Z_policy(90/95/99) + 맥락(변동성·품목·FTI_kb)<br>
-SS_stat = Z × D_eff × √(LT × vol/5) × turnover<br>
-buffer = D_eff × risk_days · SS = SS_stat + buffer<br>
-ROP = D_eff × LT + SS · Q ≈ D_eff × cycle · CAPA 시 Q ≤ MaxCap · 표시 SS 항등
+D_eff = D × event_mult × competition_factor<br>
+ROP = D_eff × LT + SS &amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp; SS = SS_stat + buffer<br>
+SS_stat = Z × D_eff × √(LT × vol/5) × turnover &amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp; buffer = D_eff × risk_days
     </div>
-    <p class=&quot;key&quot; style=&quot;margin-top:12pt;&quot;>비교 표 표준 SS/Q = 행사 미반영 D · 추천 측 = D_eff</p>
+    <div class=&quot;grid-3&quot;>
+      <div class=&quot;card&quot; style=&quot;padding:12pt;&quot;>
+        <h3>L1 이론</h3>
+        <p>연속검토 ROP = LTD + SS · SS ∝ Z·√L</p>
+      </div>
+      <div class=&quot;card&quot; style=&quot;padding:12pt;&quot;>
+        <h3>L2 문헌</h3>
+        <p>Z 90/95/99 = 1.28 / 1.65 / 2.33 (King APICS)</p>
+      </div>
+      <div class=&quot;card&quot; style=&quot;padding:12pt;&quot;>
+        <h3>L3 proxy</h3>
+        <p>vol·접근성 일수·soft-sat = 명시 assumption (캘리브 아님)</p>
+      </div>
+    </div>
+    <p class=&quot;key&quot; style=&quot;font-size:11pt;&quot;>상세 매핑은 docs/evidence/. 시연 숫자는 evaluate 실측만 사용합니다.</p>
   </div>
 
   <div class=&quot;footer&quot;>
@@ -2520,6 +2769,7 @@ ROP = D_eff × LT + SS · Q ≈ D_eff × cycle · CAPA 시 Q ≤ MaxCap · 표�
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -2530,40 +2780,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -2580,9 +2824,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -2590,10 +2832,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -2601,8 +2843,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -2613,36 +2855,74 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
   <div>
-    <div class=&quot;eyebrow&quot;>Location signals</div>
-    <h1>구조 유동(POI)과 임시 유동(행사 시설)을 나눈다</h1>
-    
+    <div class=&quot;eyebrow&quot;>Geo Signals</div>
+    <h1 style=&quot;font-size:16pt;&quot;>상세 주소가 있으면 구조 유동, 임시 유동, 경쟁 포화를 옵션으로 나눈다</h1>
   </div>
-
-  <div class=&quot;main grid-2&quot;>
-    <div class=&quot;card&quot;>
-      <h3>구조 FTI · 주소 시</h3>
-      <ul>
-        <li>반경 ~500m POI · soft_sat</li>
-        <li>카테고리 N캡 · CS2 저가중</li>
-        <li>실패 시 행정동 fallback</li>
-      </ul>
+  <div class=&quot;main&quot;>
+    <div class=&quot;grid-3&quot;>
+      <div class=&quot;card&quot;>
+        <div class=&quot;col-title&quot;>구조 FTI</div>
+        <h3>반경 기본 500m</h3>
+        <p>POI · soft_sat · 카테고리 N캡 · CS2 저가중</p>
+        <p>실패 시 행정동 fallback</p>
+      </div>
+      <div class=&quot;card&quot;>
+        <div class=&quot;col-title&quot;>일시 유동 · 옵션</div>
+        <h3>주소 필수 · 200m</h3>
+        <p>경기장·공연장·전시장 프록시</p>
+        <p>D_eff 상방 최대 약 <span class=&quot;strong&quot;>+35%</span></p>
+      </div>
+      <div class=&quot;card&quot;>
+        <div class=&quot;col-title&quot;>경쟁 포화 · 옵션</div>
+        <h3>업종 반경 스캔</h3>
+        <p>intensity → demand factor</p>
+        <p>최대 약 <span class=&quot;strong&quot;>−40%</span> · Huff 형태 감쇠</p>
+      </div>
     </div>
-    <div class=&quot;card&quot;>
-      <h3>일시 유동 · 옵션</h3>
-      <ul>
-        <li>정확한 주소 필수 · 반경 200m</li>
-        <li>경기장·공연장·전시장·컨벤션</li>
-        <li>D_eff = D×(1+0.35×uplift)</li>
-        <li>캘린더 없음 → 시설 근접 프록시</li>
-      </ul>
-    </div>
+    <p class=&quot;key&quot; style=&quot;font-size:11pt;&quot;>
+      한계: 실시간 점유·행사 캘린더는 없음. 근접 프록시이며 근거 블록에 명시합니다.
+    </p>
   </div>
 
   <div class=&quot;footer&quot;>
@@ -2806,6 +3086,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -2816,40 +3097,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -2866,9 +3141,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -2876,10 +3149,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -2887,8 +3160,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -2899,34 +3172,77 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
   <div>
-    <div class=&quot;eyebrow&quot;>Hardening</div>
-    <h1>틀린 숫자와 안 열리는 버튼부터 막았다</h1>
-    
+    <div class=&quot;eyebrow&quot;>Accuracy · Stabilization</div>
+    <h1 style=&quot;font-size:16pt;&quot;>틀린 숫자, 안 열리는 버튼, 엔진과 서사 불일치를 순서대로 막았다</h1>
   </div>
-
-  <div class=&quot;main grid-2&quot;>
-    <div class=&quot;card&quot;>
-      <div class=&quot;col-title&quot;>VIII · 7/15 정확도</div>
-      <ul>
-        <li>SS∝D · 비교표 Z/주기</li>
-        <li>size 기본값 · FTI 귀속</li>
-        <li>CAPA 표시 SS 항등</li>
-      </ul>
+  <div class=&quot;main&quot;>
+    <div class=&quot;timeline&quot;>
+      <div class=&quot;tl&quot;>
+        <div class=&quot;phase&quot;>VIII · 7/15</div>
+        <h3>정확도</h3>
+        <p>SS∝D · 비교표 Z/주기</p>
+        <p>size 기본값 · geo FTI 귀속</p>
+        <p>CAPA 표시 SS</p>
+      </div>
+      <div class=&quot;tl&quot;>
+        <div class=&quot;phase&quot;>IX · 7/16</div>
+        <h3>안정화</h3>
+        <p>CAPA Q ≤ MaxCap</p>
+        <p>추천 윤문 · export 복구</p>
+        <p>일시 유동 옵션</p>
+      </div>
+      <div class=&quot;tl&quot;>
+        <div class=&quot;phase&quot;>XII · 7/20 P0</div>
+        <h3>정합</h3>
+        <p>시뮬 조언 UI · 리포트 D_eff</p>
+        <p>경쟁 −28%는 수요 이탈만</p>
+        <p>census 스냅샷 91점</p>
+      </div>
     </div>
-    <div class=&quot;card&quot;>
-      <div class=&quot;col-title&quot;>IX · 7/16 안정화·기능</div>
-      <ul>
-        <li>Q ≤ MaxCap · multi-order 문구</li>
-        <li>추천 문장 윤문 · export 복구</li>
-        <li>일시 유동 옵션</li>
-      </ul>
+    <div class=&quot;chip-row&quot;>
+      <span class=&quot;chip&quot;>식 = 서사</span>
+      <span class=&quot;chip ghost&quot;>이중 적용 금지</span>
     </div>
   </div>
 
@@ -3091,6 +3407,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  <script src=&quot;https://cdn.jsdelivr.net/npm/chart.js&quot;></script>
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -3101,40 +3418,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -3151,9 +3462,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -3161,10 +3470,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -3172,8 +3481,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -3184,57 +3493,112 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 150pt; position: relative; flex-shrink: 0; }
+
 </style>
 </head>
 <body>
 
   <div>
     <div class=&quot;eyebrow&quot;>Quality</div>
-    <h1>제품이 바뀌어도 측정 가능한 품질 습관은 유지</h1>
-    
+    <h1 style=&quot;font-size:17pt;&quot;>제품이 바뀌어도 측정 가능한 품질 습관은 유지했다</h1>
+  </div>
+  <div class=&quot;main&quot; style=&quot;display:grid;grid-template-columns:1.15fr 0.85fr;gap:14pt;align-items:start;&quot;>
+    <div class=&quot;chart-wrap&quot;>
+      <canvas id=&quot;pytestChart&quot;></canvas>
+    </div>
+    <div style=&quot;display:flex;flex-direction:column;gap:8pt;&quot;>
+      <div class=&quot;stat&quot; style=&quot;padding:12pt;&quot;>
+        <div class=&quot;n&quot; style=&quot;font-size:20pt;&quot;>85</div>
+        <div class=&quot;l&quot;>현행 tip pytest (7/20)</div>
+      </div>
+      <div class=&quot;card&quot; style=&quot;padding:12pt;flex:1;&quot;>
+        <h3>계약</h3>
+        <p>결정론 · 예시 문장 하드코딩 금지</p>
+        <p>LT 미조정 · ROP = D_eff×LT+SS</p>
+        <p>시뮬 단일 쇼크 · ruff · basedpyright 0</p>
+      </div>
+    </div>
   </div>
 
-  <div class=&quot;main&quot; style=&quot;display:grid;grid-template-columns:1.1fr 1fr;gap:16pt;&quot;>
-    <div>
-      <canvas id=&quot;pytestChart&quot; style=&quot;width:100%;height:200pt;&quot;></canvas>
-    </div>
-    <div class=&quot;card&quot; style=&quot;justify-content:center;&quot;>
-      <p><strong>현행 tip</strong> pytest <strong>46</strong></p>
-      <p style=&quot;margin-top:8pt;&quot;>ruff · basedpyright 0</p>
-      <p style=&quot;margin-top:8pt;&quot;>wizard / export smoke</p>
-      <p style=&quot;margin-top:8pt;&quot;>계약: 결정론 · LT 미조정 · ROP=D_eff×LT+SS</p>
-    </div>
-  </div>
-  <script src=&quot;https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js&quot;></script>
   <script>
+  (() => {
     const ctx = document.getElementById('pytestChart');
+    if (!ctx || typeof Chart === 'undefined') return;
     new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: ['v1 peak', 'pivot skeleton', 'ROP 7/14', 'VIII 7/15', 'IX 7/16'],
+        labels: ['v1 peak', 'pivot 골격', 'ROP ops', 'IX 7/16', '7/20 tip'],
         datasets: [{
           label: 'pytest',
-          data: [150, 12, 30, 32, 46],
+          data: [150, 12, 32, 47, 85],
           backgroundColor: '#1A1A1A',
           borderRadius: 4,
-          barPercentage: 0.6
+          maxBarThickness: 36
         }]
       },
       options: {
         animation: false,
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: 'pytest 궤적 (일지 수치만)',
+            color: '#666',
+            font: { size: 12, family: 'Pretendard' }
+          }
+        },
         scales: {
-          x: { ticks: { color: '#666', font: { size: 10 } }, grid: { display: false } },
-          y: { beginAtZero: true, ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#D4D4D0' } }
+          x: {
+            ticks: { color: '#666', font: { size: 10, family: 'Pretendard' } },
+            grid: { display: false }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#666', font: { size: 10, family: 'Pretendard' } },
+            grid: { color: '#E0E0DA' }
+          }
         }
       }
     });
+  })();
   </script>
-
   <div class=&quot;footer&quot;>
     <span>MD Preflight · pivot/project-direction</span>
     <span>11 / 14</span>
@@ -3396,6 +3760,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -3406,40 +3771,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -3456,9 +3815,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -3466,10 +3823,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -3477,10 +3834,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
-.steps { display: flex; flex-direction: column; gap: 7pt; }
+.steps { display: flex; flex-direction: column; gap: 6pt; flex-shrink: 0; }
 .step {
   display: grid; grid-template-columns: 28pt 1fr; gap: 10pt; align-items: start;
 }
@@ -3489,24 +3846,61 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
   <div>
-    <div class=&quot;eyebrow&quot;>Demo</div>
-    <h1>3–4분: 입력 → 레버 → 근거 → 내보내기</h1>
-    
+    <div class=&quot;eyebrow&quot;>Demo Storyboard</div>
+    <h1 style=&quot;font-size:16pt;&quot;>매장·품목을 줄이고, 한 케이스의 논리 체인을 끝까지 보여 준다</h1>
   </div>
-
-  <div class=&quot;main steps&quot;>
-    <div class=&quot;step&quot;><div class=&quot;i&quot;>1</div><p>세션 입력 · 편의점 소형 · D=12 · LT=2 · SL=95% · 요일 자동</p></div>
-    <div class=&quot;step&quot;><div class=&quot;i&quot;>2</div><p>문장형 추천 · ROP·SS·요일 · 「배송 일정 그대로」</p></div>
-    <div class=&quot;step&quot;><div class=&quot;i&quot;>3</div><p>전문 해설 토글 → Z·CAPA·공식 톤</p></div>
-    <div class=&quot;step&quot;><div class=&quot;i&quot;>4</div><p>(선택) 상세 주소 + 일시 유동 → geo/행사 · D_eff</p></div>
-    <div class=&quot;step&quot;><div class=&quot;i&quot;>5</div><p>리포트 내보내기 PDF/MD</p></div>
+  <div class=&quot;main&quot;>
+    <div class=&quot;steps&quot;>
+      <div class=&quot;step&quot;><div class=&quot;i&quot;>1</div><p><span class=&quot;strong&quot;>시나리오 A</span> 편의 소형 · 오피스 · 건물 내 · 냉장 · D=12 · LT=2 · SL=95%</p></div>
+      <div class=&quot;step&quot;><div class=&quot;i&quot;>2</div><p><span class=&quot;strong&quot;>실측 체인</span> LTD=24 · Z 1.65→2.38 · raw ROP 93.8 → CAPA <span class=&quot;strong&quot;>31.2</span> · SS 7.2 · Q 28 · 월수금</p></div>
+      <div class=&quot;step&quot;><div class=&quot;i&quot;>3</div><p><span class=&quot;strong&quot;>전문 토글</span> L1/L2/L3 출처 카드 · King Z · CAPA 항등 · D_eff 문구</p></div>
+      <div class=&quot;step&quot;><div class=&quot;i&quot;>4</div><p><span class=&quot;strong&quot;>B 대조</span> 주거 슈퍼 · ROP 37.04 · SS 21.04 · 월목 · CAPA 캡 없음</p></div>
+      <div class=&quot;step&quot;><div class=&quot;i&quot;>5</div><p><span class=&quot;strong&quot;>옵션 시뮬</span> 경쟁 공세 → 유효 수요 −% · ROP/Q · 대응 패널 (폴백/AI)</p></div>
+    </div>
+    <p class=&quot;key&quot; style=&quot;font-size:11pt;&quot;>
+      A = 공간 병목 · B = 맥락 SS 전부 반영 · 시뮬 = 상대 지수 (실측 점유율 아님)
+    </p>
   </div>
 
   <div class=&quot;footer&quot;>
@@ -3670,6 +4064,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -3680,40 +4075,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -3730,9 +4119,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -3740,10 +4127,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -3751,8 +4138,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -3763,42 +4150,73 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
   <div>
     <div class=&quot;eyebrow&quot;>Roadmap</div>
-    <h1>다음은 더 예쁜 UI보다 실측 데이터와 운영 연동</h1>
-    
+    <h1 style=&quot;font-size:16pt;&quot;>근거 표와 정합은 올렸다. 다음은 proxy를 실측·캐시로 교체하는 일</h1>
   </div>
-
-  <div class=&quot;main grid-3&quot;>
-    <div class=&quot;card&quot;>
-      <div class=&quot;col-title&quot;>Now</div>
-      <ul>
-        <li>Vercel prod</li>
-        <li>export · 윤문</li>
-        <li>일시 유동 프록시</li>
-      </ul>
-    </div>
-    <div class=&quot;card&quot;>
-      <div class=&quot;col-title&quot;>Next</div>
-      <ul>
-        <li>행사 캘린더 API</li>
-        <li>실측 KB · Agent</li>
-        <li>품목 마스터</li>
-      </ul>
-    </div>
-    <div class=&quot;card&quot;>
-      <div class=&quot;col-title&quot;>Not</div>
-      <ul>
-        <li>main 부활</li>
-        <li>v1 검수 UI 복원</li>
-        <li>(태그만 유지)</li>
-      </ul>
+  <div class=&quot;main&quot;>
+    <div class=&quot;grid-3&quot;>
+      <div class=&quot;card&quot;>
+        <div class=&quot;col-title&quot;>Now · DONE</div>
+        <h3>지금</h3>
+        <p>Vercel · export · 일시·경쟁 프록시</p>
+        <p>what-if · census · docs/evidence/</p>
+        <p><span class=&quot;strong&quot;>D_eff 서사 정합</span></p>
+      </div>
+      <div class=&quot;card&quot;>
+        <div class=&quot;col-title&quot;>Next</div>
+        <h3>다음</h3>
+        <p>geo_override 재사용 · AI 타임박스</p>
+        <p>places rate limit · 행사 캘린더</p>
+        <p>실측 KB · POS σ 운영 캘리브</p>
+      </div>
+      <div class=&quot;card&quot;>
+        <div class=&quot;col-title&quot;>Not</div>
+        <h3>하지 않음</h3>
+        <p>main 부활 · v1 검수 UI 복원</p>
+        <p>근거 없는 계수 과대 주장</p>
+        <p>시뮬 이중 쇼크</p>
+      </div>
     </div>
   </div>
 
@@ -3963,6 +4381,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   <meta charset=&quot;utf-8&quot;>
   <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
   <link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css&quot;>
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -3973,40 +4392,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -4023,9 +4436,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: &quot;&quot;; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -4033,10 +4444,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -4044,8 +4455,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -4056,25 +4467,62 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
-
   <div style=&quot;flex:1;display:flex;flex-direction:column;justify-content:center;&quot;>
-    <div class=&quot;eyebrow&quot;>Closing</div>
-    <h1 style=&quot;font-size:22pt;margin-top:14pt;max-width:560pt;line-height:1.35;&quot;>
-      결정론 제품 습관을 만들었고,<br>
-      매장이 움직이는 발주 레버로 옮겼습니다.
+    <div class=&quot;eyebrow&quot;>Closing · Q&amp;amp;A</div>
+    <h1 style=&quot;font-size:18pt;margin-top:14pt;max-width:600pt;line-height:1.4;&quot;>
+      v1으로 결정론 제품 습관을 만들었고,<br>
+      피벗 뒤에는 발주 레버(ROP·SS·Q·SL)로 옮겼습니다.<br>
+      문헌 근거와 좁은 시연으로 “이 숫자의 근거”에 답하고,<br>
+      상권·what-if까지 엔진과 같은 식으로 맞춰 두었습니다.
     </h1>
-    <p class=&quot;key&quot; style=&quot;margin-top:14pt;&quot;>7/16 · 정확도 · 문장 · 내보내기 · 일시 유동까지 프로덕션</p>
     <div class=&quot;chip-row&quot; style=&quot;margin-top:22pt;&quot;>
       <span class=&quot;chip&quot;>github.com/cidtw/md-preflight</span>
       <span class=&quot;chip ghost&quot;>pivot/project-direction</span>
       <span class=&quot;chip ghost&quot;>md-preflight.vercel.app</span>
     </div>
+    <p class=&quot;key&quot; style=&quot;margin-top:16pt;font-size:11pt;&quot;>
+      부록: docs/evidence/ · docs/dev-journal-2026-07.md · docs/architecture.md · docs/redesign/pipeline.md
+    </p>
   </div>
 
   <div class=&quot;footer&quot;>

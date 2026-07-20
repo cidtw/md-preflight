@@ -307,6 +307,14 @@ def _event_plain_points(calc: CalcBreakdown) -> list[str]:
     ]
 
 
+def _competition_scope_disclaimer_plain() -> str:
+    return (
+        "※ 경쟁 보정은 '근접 동종으로 수요가 분산되는' 방향의 상한 있는 "
+        "추정(proxy)이며, 상권이 커지며 손님이 늘어나는 집적 효과는 "
+        "반영하지 않습니다."
+    )
+
+
 def _competition_plain_points(calc: CalcBreakdown) -> list[str]:
     geo = calc.geo
     if not geo.competition_scan_enabled:
@@ -323,19 +331,31 @@ def _competition_plain_points(calc: CalcBreakdown) -> list[str]:
             for c in top
         )
         cut_pct = calc.competition_demand_cut_frac * 100
-        return [
+        points = [
             (
                 f"업태 1차 상권(약 {geo.competition_primary_radius_m}m) 기준으로 "
                 f"경쟁 점포 {len(geo.competitors)}곳을 반영해 시장 포화 수요를 "
                 f"약 {cut_pct:.0f}% 낮춰 잡았습니다. (예: {names})"
             ),
         ]
-    return [
-        (
-            f"경쟁 포화 옵션을 켰지만 검색 반경 {geo.competition_radius_m}m 안 "
-            "동종·위협 경쟁 점포가 검색되지 않아 수요 분산은 0입니다."
-        ),
-    ]
+    elif calc.competition_demand_cut_frac > 0:
+        # Intensity provided without competitor list (tests / overrides).
+        cut_pct = calc.competition_demand_cut_frac * 100
+        points = [
+            (
+                f"경쟁 포화 옵션으로 수요를 약 {cut_pct:.0f}% 낮춰 잡았습니다 "
+                f"(1차 상권 기준 수요 분산 proxy)."
+            ),
+        ]
+    else:
+        points = [
+            (
+                f"경쟁 포화 옵션을 켰지만 검색 반경 {geo.competition_radius_m}m 안 "
+                "동종·위협 경쟁 점포가 검색되지 않아 수요 분산은 0입니다."
+            ),
+        ]
+    points.append(_competition_scope_disclaimer_plain())
+    return points
 
 
 def _effective_demand_plain_point(calc: CalcBreakdown) -> list[str]:
@@ -382,6 +402,13 @@ def _event_technical_points(calc: CalcBreakdown) -> list[str]:
     ]
 
 
+def _competition_scope_disclaimer_technical() -> str:
+    return (
+        "L3 demand-leak only (max -40% at full intensity); "
+        "agglomeration / market-size growth is out of scope."
+    )
+
+
 def _competition_technical_points(calc: CalcBreakdown) -> list[str]:
     geo = calc.geo
     if not geo.competition_scan_enabled:
@@ -391,7 +418,7 @@ def _competition_technical_points(calc: CalcBreakdown) -> list[str]:
             f"{c.name}[{c.tier}/{c.kind}] {c.distance_m:.0f}m w={c.weight:.3f}"
             for c in geo.competitors[:5]
         )
-        return [
+        points = [
             (
                 f"competition_scan primary={geo.competition_primary_radius_m}m · "
                 f"search={geo.competition_radius_m}m · type={geo.competition_store_type} · "
@@ -401,12 +428,17 @@ def _competition_technical_points(calc: CalcBreakdown) -> list[str]:
             ),
             f"상위 경쟁: {top}",
         ]
-    return [
-        (
-            f"competition_scan search={geo.competition_radius_m}m · n=0 · "
-            f"intensity=0 · demand_factor=1.0 (no saturation cut)."
-        ),
-    ]
+    else:
+        points = [
+            (
+                f"competition_scan search={geo.competition_radius_m}m · "
+                f"n={len(geo.competitors)} · intensity={geo.competition_intensity:.3f} · "
+                f"demand_factor={geo.competition_demand_factor:.3f} · "
+                f"D {calc.daily_demand:g}→{calc.effective_daily_demand:g}."
+            ),
+        ]
+    points.append(_competition_scope_disclaimer_technical())
+    return points
 
 
 def _geo_plain(calc: CalcBreakdown) -> EvidenceBlock:
@@ -424,6 +456,7 @@ def _geo_plain(calc: CalcBreakdown) -> EvidenceBlock:
     if geo.used_fallback:
         points = [
             "입력하신 주소를 지도에서 찾지 못했거나, 지도 연결이 원활하지 않았습니다.",
+            "계산 경로: 지도 보강 실패 → 행정동·상권 결정론 경로(used_fallback)로 전환했습니다.",
             "이 경우에도 행정동·상권 정보로 여유 재고를 계산해 두었습니다.",
             "가능하면 도로명 주소(번지 포함)로 다시 시도해 주세요.",
             *_event_plain_points(calc),
@@ -547,19 +580,43 @@ def _geo_technical(calc: CalcBreakdown) -> EvidenceBlock:
     )
 
 
+def _demand_basis_for_buffers(calc: CalcBreakdown) -> tuple[float, str]:
+    """Demand used for SS/logistics buffers: D_eff when adjusted, else base D."""
+    d_eff = calc.effective_daily_demand or calc.daily_demand
+    if abs(d_eff - calc.daily_demand) > 1e-9:
+        return d_eff, f"보정 후 일 소진(D_eff) 약 {d_eff:g}개"
+    return calc.daily_demand, f"하루 약 {calc.daily_demand:g}개"
+
+
 def _ss_plain_point(calc: CalcBreakdown) -> str:
+    _d_basis, basis_label = _demand_basis_for_buffers(calc)
     if calc.capa_capped:
         return (
             f"여유 재고는 약 {calc.store_safety_stock:.0f}개로 잡았습니다. "
             f"(창고 공간 한도를 맞춰 조정한 값입니다. "
-            f"일 판매 약 {calc.daily_demand:g}개, 배송 "
+            f"{basis_label}, 배송 "
             f"{calc.standard_lead_time_days:g}일 기준.)"
         )
     return (
         f"여유 재고는 약 {calc.store_safety_stock:.0f}개입니다. "
         f"배송 지연 대비 {calc.logistics_buffer_units:.0f}개 + "
         f"수요 변동 대비 {calc.statistical_safety_stock:.0f}개를 합친 값입니다. "
-        f"(하루 약 {calc.daily_demand:g}개 팔릴 때 기준.)"
+        f"({basis_label} 팔릴 때 기준.)"
+    )
+
+
+def _rop_formula_technical(calc: CalcBreakdown) -> str:
+    """ROP identity using D_eff (engine path), with base D when adjusted."""
+    d_eff = calc.effective_daily_demand or calc.daily_demand
+    base_note = ""
+    if abs(d_eff - calc.daily_demand) > 1e-9:
+        base_note = f" (base D={calc.daily_demand:g})"
+    pattern_mode = "auto" if calc.order_pattern_auto else "fixed"
+    return (
+        f"ROP = D_eff {d_eff:g} * LT {calc.standard_lead_time_days:g} + SS "
+        f"{calc.store_safety_stock:.1f}{base_note}. "
+        f"pattern={calc.order_day_pattern} ({pattern_mode}) · "
+        f"{calc.order_frequency_label} · Q≈{calc.suggested_order_qty:g}."
     )
 
 
@@ -680,8 +737,13 @@ def _evidence_plain(validated: ValidatedInput, calc: CalcBreakdown) -> list[Evid
             kb.logistics_issue_note,
             (
                 "계약 배송 일정은 바꾸지 않고, 늦을 수 있는 만큼만 "
-                f"재고로 대비합니다. (하루 {calc.daily_demand:g}개 x "
+                f"재고로 대비합니다. ({_demand_basis_for_buffers(calc)[1]} x "
                 f"{risk_days:.1f}일 ~ {calc.logistics_buffer_units:.0f}개)"
+            ),
+            (
+                "여유 재고는 '수요 변동 대비'와 '배송·하역 지연 대비'를 "
+                "나눠 더한 값입니다. 같은 위험을 두 번 넣은 것이 아니라 "
+                "역할이 다릅니다."
             ),
         ],
     )
@@ -728,6 +790,12 @@ def _evidence_plain(validated: ValidatedInput, calc: CalcBreakdown) -> list[Evid
                 f"1회 발주 약 {calc.suggested_order_qty:g}개로 맞춰 두었습니다."
             ),
         ]
+        if calc.capa_capped:
+            capa_points.append(
+                "표시 여유 재고를 공간 상한에 맞춰 다시 계산한 것은 "
+                + "리포트 항등식용이며, 상한 적용 전 목표 서비스 레벨을 "
+                + "그대로 보장한다는 뜻은 아닙니다."
+            )
         capa_summary = "핵심: 창고가 좁아 자주·조금씩 넣는 방식이 맞습니다"
     else:
         capa_points = [
@@ -802,6 +870,12 @@ def _evidence_technical(
                 + f"{calc.logistics_buffer_units:.1f}개. "
                 + f"KB 검색: {kb.search_query}."
             ),
+            (
+                "역할 분리: SS_stat = 수요 불확실(sigma 또는 vol proxy)*sqrt(LT)*Z; "
+                "B = 구조적 납품·하역 지연일*D_eff. 접근성 성분은 engine에서 "
+                "한 번만 합산(KB residual에 미중복). 보수 합산 가능 -> "
+                "CAPA·다회 발주가 물리 재고를 다시 제한."
+            ),
         ],
     )
 
@@ -827,16 +901,19 @@ def _evidence_technical(
                 f"turnover_weight={scores.turnover_weight}."
             ),
             _ss_formula_technical(calc, scores),
-            (
-                f"ROP = D {calc.daily_demand:g} * LT "
-                f"{calc.standard_lead_time_days:g} + SS "
-                f"{calc.store_safety_stock:.1f}. "
-                f"pattern={calc.order_day_pattern} "
-                f"({'auto' if calc.order_pattern_auto else 'fixed'}) · "
-                f"{calc.order_frequency_label} · Q≈{calc.suggested_order_qty:g}."
-            ),
+            _rop_formula_technical(calc),
         ],
     )
+    if calc.effective_demand_clamped:
+        rop_block.points.append(
+            (
+                f"D_eff 전역 밴드 적용: uncapped "
+                f"{calc.effective_daily_demand_uncapped:g} → clamped "
+                f"{calc.effective_daily_demand:g} "
+                f"(허용 {0.5 * calc.daily_demand:g}~{2.0 * calc.daily_demand:g}, "
+                f"0.5xD~2.0xD)."
+            ),
+        )
 
     if calc.multi_order_suggestion:
         if calc.capa_capped:
@@ -846,15 +923,20 @@ def _evidence_technical(
                     f"{calc.recommended_rop_raw:.1f} → MaxCap "
                     f"{calc.max_rop_cap} 고정. "
                     f"effective SS={calc.store_safety_stock:.1f} "
-                    f"(항등 ROP=D*LT+SS 유지)."
+                    f"(항등 ROP=D_eff*LT+SS 유지; 표시용 역산)."
                 ),
                 (
                     f"Q={calc.suggested_order_qty:g} "
                     f"(cycle={calc.order_cycle_days:g}d · {calc.order_days_label}). "
                     f"다회 소량 발주 경로 활성."
                 ),
+                (
+                    "CAPA 캡은 목표 서비스 레벨(CSL) 등가가 아님. "
+                    "공간 제약으로 이론 SS를 줄이고 발주 빈도로 상쇄하는 "
+                    "운영 trade-off."
+                ),
             ]
-            capa_summary = "수용 한도 초과 → 다회 소량 발주 전환"
+            capa_summary = "수용 한도 초과 → 다회 소량 발주 전환 (SL trade-off)"
         else:
             # ROP fits MaxCap but Q was reduced to the stock ceiling.
             capa_points = [
@@ -978,7 +1060,8 @@ def _one_liner_technical(summary: StoreSummary, calc: CalcBreakdown) -> str:
         if calc.capa_capped and calc.max_rop_cap is not None:
             capa_tail = (
                 f" CAPA가 협소해 raw ROP를 MaxCap {calc.max_rop_cap:g} 이하로 맞췄고, "
-                f"한 번에 쌓기보다 다회·소량 발주로 운영하는 것이 안전합니다."
+                f"한 번에 쌓기보다 다회·소량 발주로 운영하는 것이 안전합니다. "
+                f"표시 SS 재계산은 항등식 유지용이며 캡 전 CSL 등가가 아닙니다."
             )
         else:
             capa_tail = (
@@ -998,7 +1081,26 @@ def render(validated: ValidatedInput, calc: CalcBreakdown) -> RecommendationResu
     summary = _summary(validated, calc)
     guidance = list(validated.guidance)
     if calc.geo.enabled and calc.geo.used_fallback:
+        guidance.append(
+            "계산 경로: 지도 보강 실패 또는 키 없음 → 행정동·상권 결정론 "
+            + "경로로 전환했습니다 (geo.used_fallback=true). 응답은 정상 완료됩니다.",
+        )
         guidance.extend(calc.geo.notes)
+    if calc.geo.event_scan_enabled or calc.geo.competition_scan_enabled:
+        guidance.append(
+            "행사·경쟁·주변 유동은 주소 기준 정적 스냅샷입니다. "
+            + "요일·계절 변동은 일평균 소진·서비스 레벨·(선택) 실측 표준편차로 조정하세요.",
+        )
+    if calc.effective_demand_clamped:
+        guidance.append(
+            "유효 일 소진(D_eff)이 안전 밴드(입력 D의 0.5~2.0배)로 제한되었습니다 "
+            + f"({calc.effective_daily_demand_uncapped:g} → {calc.effective_daily_demand:g}).",
+        )
+    if calc.capa_capped:
+        guidance.append(
+            "CAPA 상한으로 ROP·표시 안전재고를 낮췄습니다. "
+            + "이는 목표 서비스 레벨 유지가 아니라 공간 제약 하의 발주 빈도 trade-off입니다.",
+        )
     if calc.ss_mode == "measured_sigma":
         guidance.append(
             "일 수요 표준편차(sigma) 실측값이 반영되어 변동 점수 proxy 대신 "

@@ -79,7 +79,8 @@ def test_mismatch_guidance_prefers_size_and_ticket() -> None:
     assert any("규모" in g for g in validated.guidance)
     assert any("객단가" in g for g in validated.guidance)
     result = run(params)
-    assert result.guidance == validated.guidance
+    # Engine may append CAPA / geo / D_eff guidance beyond input validation.
+    assert all(g in result.guidance for g in validated.guidance)
     # CAPA for cv_xs is tight → multi-order path more likely
     assert result.calc.scores.capa_score == 1
 
@@ -109,6 +110,89 @@ def test_capa_cap_triggers_multi_order() -> None:
         d_eff * result.calc.standard_lead_time_days + result.calc.store_safety_stock,
         abs=0.02,
     )
+    # Critic guard: CAPA is an SL trade-off, not CSL preservation.
+    assert result.calc.multi_order_suggestion is not None
+    assert "trade-off" in result.calc.multi_order_suggestion or "타협" in (
+        result.calc.multi_order_suggestion or ""
+    )
+    assert any("서비스 레벨" in g or "trade-off" in g for g in result.guidance)
+    capa_plain = next(b for b in result.evidence if b.id == "capa_filter")
+    plain_joined = " ".join(capa_plain.points)
+    assert "서비스 레벨" in plain_joined or "항등" in plain_joined
+    capa_tech = next(b for b in result.evidence_technical if b.id == "capa_filter")
+    tech_joined = " ".join(capa_tech.points)
+    assert "trade-off" in tech_joined or "CSL" in tech_joined
+
+
+def test_effective_demand_global_band_clamps_extreme_multipliers() -> None:
+    """Engine clamps D_eff to [0.5D, 2.0D] even if geo multipliers are extreme."""
+    from app.pipeline.types import GeoEnrichment
+
+    validated = validate_parameters(
+        {
+            **BASE,
+            "use_precise_location": True,
+            "store_address": "서울 마포구 양화로 45",
+            "daily_demand": 20,
+        },
+    )
+    # Extreme event mult beyond module-level +35% design.
+    high = analyze(
+        validated,
+        geo_override=GeoEnrichment(
+            enabled=True,
+            used_fallback=False,
+            provider="test",
+            event_demand_multiplier=3.0,
+            competition_scan_enabled=False,
+            competition_demand_factor=1.0,
+        ),
+    )
+    assert high.effective_daily_demand_uncapped == pytest.approx(60.0)
+    assert high.effective_daily_demand == pytest.approx(40.0)  # 2.0 * D
+    assert high.effective_demand_clamped is True
+
+    low = analyze(
+        validated,
+        geo_override=GeoEnrichment(
+            enabled=True,
+            used_fallback=False,
+            provider="test",
+            event_demand_multiplier=1.0,
+            competition_scan_enabled=True,
+            competition_demand_factor=0.1,
+            competition_intensity=1.0,
+        ),
+    )
+    assert low.effective_daily_demand_uncapped == pytest.approx(2.0)
+    assert low.effective_daily_demand == pytest.approx(10.0)  # 0.5 * D
+    assert low.effective_demand_clamped is True
+
+    # Within-band composition must not clamp.
+    mid = analyze(
+        validated,
+        geo_override=GeoEnrichment(
+            enabled=True,
+            used_fallback=False,
+            provider="test",
+            event_demand_multiplier=1.2,
+            competition_scan_enabled=True,
+            competition_demand_factor=0.8,
+            competition_intensity=0.5,
+        ),
+    )
+    assert mid.effective_daily_demand == pytest.approx(20 * 1.2 * 0.8)
+    assert mid.effective_demand_clamped is False
+
+
+def test_ss_buffer_role_separation_in_technical_evidence() -> None:
+    result = run(BASE)
+    lt_tech = next(b for b in result.evidence_technical if b.id == "lt_access")
+    joined = " ".join(lt_tech.points)
+    assert "SS_stat" in joined or "역할 분리" in joined
+    assert "한 번" in joined or "미중복" in joined
+    lt_plain = next(b for b in result.evidence if b.id == "lt_access")
+    assert any("역할" in p or "나눠" in p for p in lt_plain.points)
 
 
 def test_main_road_has_lower_logistics_buffer_than_indoor() -> None:
@@ -253,6 +337,48 @@ def test_evidence_is_input_specific_not_fixed_doc_example() -> None:
     assert result.comparison_technical is not None
     tech_blob = " ".join(p for b in result.evidence_technical for p in b.points)
     assert "Z" in tech_blob or "CAPA" in tech_blob or "sqrt" in tech_blob
+
+
+def test_technical_and_plain_evidence_use_d_eff_when_adjusted() -> None:
+    """ROP/SS/logistics copy must cite D_eff when competition/event adjust demand."""
+    from app.pipeline.output.recommendation import render
+    from app.pipeline.types import CompetitionCompetitor, GeoEnrichment
+
+    validated = validate_parameters(
+        {
+            **BASE,
+            "use_precise_location": True,
+            "store_address": "서울 마포구 양화로 45",
+            "consider_competition_saturation": True,
+        },
+    )
+    geo = GeoEnrichment(
+        enabled=True,
+        used_fallback=False,
+        provider="test",
+        foot_traffic_index=0.2,
+        competition_scan_enabled=True,
+        competition_intensity=0.5,
+        competition_demand_factor=0.8,
+        competitors=[
+            CompetitionCompetitor(
+                name="CU 테스트",
+                kind="convenience",
+                tier="direct",
+                distance_m=90.0,
+                weight=0.5,
+            ),
+        ],
+    )
+    calc = analyze(validated, geo_override=geo)
+    result = render(validated, calc)
+    tech_blob = " ".join(p for b in result.evidence_technical for p in b.points)
+    plain_blob = " ".join(p for b in result.evidence for p in b.points)
+    d_eff = calc.effective_daily_demand
+    assert abs(d_eff - calc.daily_demand) > 1e-9
+    assert f"D_eff {d_eff:g}" in tech_blob or f"D_eff={d_eff:g}" in tech_blob
+    # Logistics / SS plain should not claim base D when D_eff differs.
+    assert "보정 후 일 소진(D_eff)" in plain_blob or f"{d_eff:g}" in plain_blob
 
 
 def test_analyze_formula_rop_identity() -> None:

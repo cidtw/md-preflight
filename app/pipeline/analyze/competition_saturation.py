@@ -196,9 +196,15 @@ _KIND_PATTERNS: list[tuple[CompetitorKind, re.Pattern[str]]] = [
             re.I,
         ),
     ),
+    # Unmanned specialty before hyper: bare "할인점" alone is not a hypermarket.
+    (
+        "unmanned_specialty",
+        re.compile(r"무인|아이스크림|세계과자", re.I),
+    ),
     (
         "hypermarket",
-        re.compile(r"이마트|홈플러스|롯데마트|대형마트|할인점|하이퍼", re.I),
+        # Require chain/size anchors — bare "할인점" mis-tags unmanned specialty.
+        re.compile(r"이마트|홈플러스|롯데마트|대형마트|하이퍼", re.I),
     ),
     (
         "food_mart",
@@ -207,10 +213,6 @@ _KIND_PATTERNS: list[tuple[CompetitorKind, re.Pattern[str]]] = [
     (
         "traditional_market",
         re.compile(r"시장|재래시장|전통시장|골목시장", re.I),
-    ),
-    (
-        "unmanned_specialty",
-        re.compile(r"무인|아이스크림|세계과자|할인점", re.I),
     ),
     (
         "convenience",
@@ -236,6 +238,9 @@ def classify_competitor(
     text = name.strip()
     if not text:
         return default_kind
+    # Explicit unmanned priority (e.g. "무인 아이스크림 할인점").
+    if re.search(r"무인", text, re.I):
+        return "unmanned_specialty"
     for kind, pattern in _KIND_PATTERNS:
         if pattern.search(text):
             # Avoid classifying pure "마트" hyper hits as small_super when query is MT1.
@@ -245,8 +250,6 @@ def classify_competitor(
                 "ssm",
                 "food_mart",
             }:
-                continue
-            if kind == "unmanned_specialty" and "할인점" in text and default_kind == "hypermarket":
                 continue
             return kind
     if query_hint:

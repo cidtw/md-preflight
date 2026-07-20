@@ -22,7 +22,8 @@ const SCENARIOS = [
     intensityHelp: {
       low: "약함: 경쟁 영향이 작아 수요 이탈이 적습니다.",
       high: "강함: 경쟁이 세져 내 매장 유효 수요가 크게 줄 수 있습니다.",
-      meaning: "슬라이더↑ → 내 매장 유효 수요↓ (최대 약 −28%), 발주량·ROP 재조정 필요",
+      meaning:
+        "슬라이더↑ → 일 소진 수요 이탈(최대 약 −28%) · 경쟁 스캔 계수와 별개 충격, 발주량·ROP 재조정",
     },
   },
   {
@@ -199,7 +200,13 @@ export function clearCompetitionSimCache() {
   lastSimState = null;
 }
 
-function renderSimResult(data, expert) {
+/**
+ * Render simulation API payload to HTML (exported for smoke tests).
+ * @param {object} data
+ * @param {boolean} expert
+ * @returns {string}
+ */
+export function renderSimResult(data, expert) {
   const b = data.baseline;
   const s = data.shocked;
   const delta = data.own_sales_index_delta_pct;
@@ -276,6 +283,8 @@ function renderSimResult(data, expert) {
             <td><strong>${fmt(s.competition_demand_factor, 3)}</strong></td>
           </tr>`;
 
+  const advicePanel = renderDeclineAdvicePanel(data);
+
   return `
     <div class="verdict sim-verdict">${escapeHtml(summary)}</div>
     <p class="sim-competitor">${escapeHtml(data.competitor_response_note)}</p>
@@ -294,7 +303,70 @@ function renderSimResult(data, expert) {
     <p class="sim-sales-delta ${deltaCls}">
       매출(유효 수요) 지수 변화: <strong>${delta > 0 ? "+" : ""}${fmt(delta, 1)}%</strong>
     </p>
+    ${advicePanel}
   `;
+}
+
+/**
+ * Sales-decline AI / fallback advice panel (API fields → UI).
+ * @param {object} data
+ * @returns {string}
+ */
+export function renderDeclineAdvicePanel(data) {
+  if (!data?.sales_decline || !data?.ai_advice) return "";
+  const badge = data.ai_used
+    ? `<span class="sim-ai-badge is-ai">AI 맞춤</span>`
+    : `<span class="sim-ai-badge is-fallback">로컬 폴백</span>`;
+  const note = data.ai_note
+    ? `<p class="sim-ai-note mute">${escapeHtml(data.ai_note)}</p>`
+    : "";
+  return `
+    <section class="sim-ai-panel" data-testid="sim-decline-advice">
+      <header class="sim-ai-head">
+        <h3 class="sim-ai-title">매출 하락 대응 방안</h3>
+        ${badge}
+      </header>
+      ${note}
+      <div class="sim-ai-body">${lightMarkdownToHtml(data.ai_advice)}</div>
+    </section>
+  `;
+}
+
+/** Minimal safe markdown → HTML for advice (bold, headings, lists, breaks). */
+function lightMarkdownToHtml(md) {
+  const lines = String(md || "").split("\n");
+  const out = [];
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (!line.trim()) {
+      out.push("<br/>");
+      continue;
+    }
+    if (/^###\s+/.test(line)) {
+      out.push(`<h4 class="sim-ai-h">${inlineMd(line.replace(/^###\s+/, ""))}</h4>`);
+      continue;
+    }
+    if (/^>\s?/.test(line)) {
+      out.push(`<p class="sim-ai-quote">${inlineMd(line.replace(/^>\s?/, ""))}</p>`);
+      continue;
+    }
+    if (/^[-*]\s+/.test(line)) {
+      out.push(`<div class="sim-ai-li">• ${inlineMd(line.replace(/^[-*]\s+/, ""))}</div>`);
+      continue;
+    }
+    if (/^\d+\.\s+/.test(line)) {
+      out.push(`<div class="sim-ai-li">${inlineMd(line)}</div>`);
+      continue;
+    }
+    out.push(`<p class="sim-ai-p">${inlineMd(line)}</p>`);
+  }
+  return out.join("\n");
+}
+
+function inlineMd(text) {
+  // Escape first, then restore simple **bold** markers.
+  const esc = escapeHtml(text);
+  return esc.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 }
 
 function fmt(n, digits = 1) {

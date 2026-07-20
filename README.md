@@ -109,6 +109,7 @@ app/web/          # 폼 → 로딩 → 리포트
 | 문서 | 경로 |
 |------|------|
 | **파이프라인 공식 정본** | [`docs/redesign/pipeline.md`](docs/redesign/pipeline.md) |
+| **발표 Critic Q&A** | [`docs/redesign/critic-qa.md`](docs/redesign/critic-qa.md) |
 | 아키텍처 요약 | [`docs/architecture.md`](docs/architecture.md) |
 | 서비스 플로우 | `2026-07-14-New-Service-Flow.md` |
 | 재설계 판 | `docs/redesign/` |

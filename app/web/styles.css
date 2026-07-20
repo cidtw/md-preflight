@@ -656,6 +656,39 @@ select option {
   padding-left: 1.1rem;
 }
 
+/* Calculation path transparency (geo vs dong fallback) */
+.path-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  width: 100%;
+  margin: 0 0 var(--s-sm);
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  font-size: 13px;
+  line-height: 1.35;
+  border: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+.path-badge strong {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.path-badge.path-fallback {
+  background: var(--warning-soft);
+  color: var(--warning-deep);
+  border-color: transparent;
+}
+.path-badge.path-geo {
+  border-color: color-mix(in srgb, var(--accent, #2563eb) 28%, var(--hairline));
+}
+.path-badge.path-dong {
+  opacity: 0.95;
+}
+
 /* stat tiles — equal size */
 .stat-grid {
   display: grid;
@@ -1221,6 +1254,64 @@ table.cmp td strong {
 .sim-sales-delta {
   font-size: 14px;
   margin-top: var(--s-sm);
+}
+.sim-ai-panel {
+  margin-top: var(--s-md);
+  padding: var(--s-md);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 88%, var(--accent, #3b82f6) 12%);
+}
+.sim-ai-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-sm);
+  margin-bottom: var(--s-sm);
+}
+.sim-ai-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+.sim-ai-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.sim-ai-badge.is-ai {
+  background: color-mix(in srgb, #22c55e 22%, transparent);
+  color: var(--body);
+}
+.sim-ai-badge.is-fallback {
+  background: color-mix(in srgb, #f59e0b 22%, transparent);
+  color: var(--body);
+}
+.sim-ai-note {
+  margin: 0 0 var(--s-sm);
+  font-size: 12px;
+}
+.sim-ai-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--body);
+}
+.sim-ai-body .sim-ai-h {
+  margin: 0.75em 0 0.35em;
+  font-size: 14px;
+  font-weight: 650;
+}
+.sim-ai-body .sim-ai-p,
+.sim-ai-body .sim-ai-li,
+.sim-ai-body .sim-ai-quote {
+  margin: 0.25em 0;
+}
+.sim-ai-body .sim-ai-quote {
+  color: var(--mute);
+  font-size: 13px;
+  border-left: 3px solid var(--hairline);
+  padding-left: 0.6em;
 }
 
 /* ---------- demo scenarios (welcome) ---------- */

@@ -25,7 +25,7 @@ from app.pipeline.region_catalog import region_prefix
 
 logger = logging.getLogger(__name__)
 
-_HTTP_TIMEOUT_S = 2.5
+_HTTP_TIMEOUT_S = 1.5
 _MAX_RESULTS = 12
 _PROVIDER_UA = "md-preflight-rop/0.3"
 

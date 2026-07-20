@@ -10,6 +10,8 @@ from app.pipeline.demo_anchor_survey import (
     _dong_from_address,
     _infer_accessibility,
     _infer_trade_area,
+    _is_noise_poi,
+    reclassify_store_channel,
     surveyed_store_to_parameters,
 )
 
@@ -25,6 +27,34 @@ def test_classify_sm_ssm_and_hyper() -> None:
     assert _classify_sm_ssm("GS25 테스트", "편의점") is None
     assert _classify_hyper("이마트 화정점", "대형마트") is True
     assert _classify_hyper("홈플러스 익스프레스 행신", "슈퍼") is False
+
+
+def test_classify_lotte_super_fresh_is_ssm_not_hyper() -> None:
+    name = "롯데슈퍼프레시 고양삼송점"
+    cat = "가정,생활 > 슈퍼마켓 > 대형슈퍼 > 롯데슈퍼프레시"
+    assert _classify_hyper(name, cat) is False
+    assert _classify_sm_ssm(name, cat) == "ssm"
+    assert reclassify_store_channel(name, cat, current="hypermarket") == "ssm"
+
+
+def test_classify_iga_is_supermarket_not_convenience() -> None:
+    name = "IGA마트 고양동세로점"
+    cat = "가정,생활 > 편의점 > IGA마트"
+    assert _classify_sm_ssm(name, cat) == "supermarket"
+    assert reclassify_store_channel(name, cat, current="convenience") == "supermarket"
+
+
+def test_classify_noise_pois_dropped() -> None:
+    fixtures = [
+        ("큐사랑 삼송이마트에브리데이점", "가정,생활 > 미용 > 미용실"),
+        ("슈퍼해피독 강아지유치원 & 호텔", "가정,생활 > 반려동물 > 반려견놀이터"),
+        ("롯데슈퍼 고양삼송점 전기차충전소", "교통,수송 > 자동차 > 전기차 충전소"),
+        ("롯데슈퍼 고양삼송점 주차장", "교통,수송 > 교통시설 > 주차장"),
+        ("슈퍼드라이 롯데몰은평점", "가정,생활 > 패션 > 의류판매"),
+    ]
+    for name, cat in fixtures:
+        assert _is_noise_poi(name, cat) is True, name
+        assert reclassify_store_channel(name, cat) is None, name
 
 
 def test_infer_accessibility_and_trade() -> None:

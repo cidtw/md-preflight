@@ -61,6 +61,8 @@ StoreChannel = Literal["convenience", "supermarket", "ssm", "hypermarket"]
 _SSM_NAME_MARKERS: Final[tuple[str, ...]] = (
     "이마트에브리데이",
     "이마트 에브리데이",
+    "롯데슈퍼프레시",
+    "롯데 슈퍼 프레시",
     "롯데슈퍼",
     "롯데 슈퍼",
     "홈플러스 익스프레스",
@@ -72,7 +74,6 @@ _SSM_NAME_MARKERS: Final[tuple[str, ...]] = (
     "농협하나로",
     "하나로마트",
     "홈플러스 미니",
-    "코스트코",  # usually hyper; filtered elsewhere
 )
 
 _HYPER_NAME_MARKERS: Final[tuple[str, ...]] = (
@@ -84,6 +85,49 @@ _HYPER_NAME_MARKERS: Final[tuple[str, ...]] = (
     "농협하나로클럽",
     "메가마트",
     "탑마트",
+)
+
+# POI noise that keyword "슈퍼/마트" or chain substrings often pull in.
+_NOISE_NAME_MARKERS: Final[tuple[str, ...]] = (
+    "주차장",
+    "전기차",
+    "충전소",
+    "미용실",
+    "헤어샵",
+    "네일",
+    "반려동물",
+    "애견",
+    "강아지",
+    "반려견",
+    "슈퍼드라이",
+    "의류",
+    "패션",
+)
+
+_NOISE_CATEGORY_MARKERS: Final[tuple[str, ...]] = (
+    "주차장",
+    "전기차",
+    "충전소",
+    "미용",
+    "헤어",
+    "반려동물",
+    "패션",
+    "의류",
+    "교통,수송",
+    "카페",
+    "음식점",
+)
+
+# Require at least one retail cue in category for generic 슈퍼/마트 hits.
+_RETAIL_CATEGORY_MARKERS: Final[tuple[str, ...]] = (
+    "슈퍼",
+    "마트",
+    "편의점",
+    "대형마트",
+    "할인점",
+    "유통",
+    "쇼핑",
+    "가정,생활",
 )
 
 _SM_KEYWORD_QUERIES: Final[tuple[str, ...]] = (
@@ -385,12 +429,42 @@ def _contains_any(text: str, markers: tuple[str, ...]) -> bool:
     return any(m in text for m in markers)
 
 
+def _is_noise_poi(name: str, category_name: str) -> bool:
+    """Parking, EV chargers, salons, pet hotels, fashion, etc."""
+    blob = f"{name} {category_name}"
+    if _contains_any(name, _NOISE_NAME_MARKERS):
+        return True
+    if _contains_any(category_name, _NOISE_CATEGORY_MARKERS):
+        # Keep real retail if category is mixed (rare); noise categories dominate.
+        return True
+    # "큐사랑 …이마트에브리데이점" beauty shops attached to SSM name
+    return "미용" in blob and "슈퍼" not in category_name and "마트" not in category_name
+
+
+def _is_true_convenience_chain(name: str) -> bool:
+    return bool(
+        re.search(
+            r"(GS25|CU|씨유|세븐일레븐|이마트24|미니스톱|7-?ELEVEN)",
+            name,
+            re.I,
+        ),
+    )
+
+
 def _classify_sm_ssm(name: str, category_name: str) -> StoreChannel | None:
     blob = f"{name} {category_name}"
-    # Drop pure convenience / cafe noise
-    if "편의점" in category_name or re.search(
-        r"(GS25|CU|세븐일레븐|이마트24|미니스톱)",
+    if _is_noise_poi(name, category_name):
+        return None
+    # IGA is supermarket retail, not convenience (Kakao often tags CS2).
+    if re.search(r"IGA\s*마트|IGA마트|\bIGA\b", name, re.I):
+        return "supermarket"
+    # Drop pure convenience chains (not IGA / independent marts).
+    if _is_true_convenience_chain(name):
+        return None
+    if "편의점" in category_name and not re.search(
+        r"IGA|슈퍼|마트",
         name,
+        re.I,
     ):
         return None
     top = category_name.split(">")[0] if category_name else ""
@@ -402,6 +476,7 @@ def _classify_sm_ssm(name: str, category_name: str) -> StoreChannel | None:
         _contains_any(blob, _HYPER_NAME_MARKERS)
         and "익스프레스" not in blob
         and "에브리데이" not in blob
+        and "프레시" not in blob
         and "슈퍼" not in name
     ):
         return None
@@ -409,16 +484,68 @@ def _classify_sm_ssm(name: str, category_name: str) -> StoreChannel | None:
         return "ssm"
     if "기업형" in blob or "SSM" in blob.upper():
         return "ssm"
-    if "슈퍼" in blob or "마트" in category_name:
+    # Generic 슈퍼/마트: require a retail category cue.
+    if "슈퍼" in name or "수퍼" in name or "마트" in name:
+        if category_name and not _contains_any(category_name, _RETAIL_CATEGORY_MARKERS):
+            return None
+        return "supermarket"
+    if "슈퍼" in category_name or "마트" in category_name:
         return "supermarket"
     return None
 
 
 def _classify_hyper(name: str, category_name: str) -> bool:
+    """True hypermarkets only — SSM brands (프레시/에브리데이/롯데슈퍼) excluded."""
     blob = f"{name} {category_name}"
-    if "익스프레스" in blob or "에브리데이" in blob or "더프레시" in blob:
+    if _is_noise_poi(name, category_name):
         return False
-    return "편의점" not in category_name
+    if "편의점" in category_name:
+        return False
+    # SSM / neighborhood formats mis-tagged under MT1
+    ssm_exclusions = (
+        "익스프레스",
+        "에브리데이",
+        "더프레시",
+        "슈퍼프레시",
+        "롯데슈퍼",
+        "GS더프레시",
+        "지에스더프레시",
+    )
+    if any(x in blob for x in ssm_exclusions):
+        return False
+    # Bare "프레시" (not warehouse) → not hyper
+    if "프레시" in blob and "트레이더스" not in blob:
+        return False
+    # Prefer known hyper anchors or explicit large-mart category
+    if _contains_any(blob, _HYPER_NAME_MARKERS):
+        return True
+    return "대형마트" in category_name or "하이퍼" in blob
+
+
+def reclassify_store_channel(
+    name: str,
+    category_name: str,
+    *,
+    current: StoreChannel | None = None,
+) -> StoreChannel | None:
+    """Re-map a POI to a retail channel, or None to drop as non-retail noise.
+
+    Used for live survey and offline snapshot cleanup (no Kakao required).
+    """
+    if _is_noise_poi(name, category_name):
+        return None
+    sm = _classify_sm_ssm(name, category_name)
+    if sm is not None:
+        return sm
+    if _classify_hyper(name, category_name):
+        return "hypermarket"
+    if _is_true_convenience_chain(name) or (
+        "편의점" in category_name and not re.search(r"IGA", name, re.I)
+    ):
+        return "convenience"
+    if current == "convenience" and not _is_noise_poi(name, category_name):
+        return "convenience"
+    return None
 
 
 def normalize_location_dong(label: str) -> str:
@@ -744,14 +871,16 @@ def survey_anchor_stores(
             continue
         name = str(f.get("name") or "")
         cat = str(f.get("cat") or "")
+        if _is_noise_poi(name, cat):
+            continue
         sm_ch = _classify_sm_ssm(name, cat)
-        if sm_ch is not None and not re.search(
-            r"(GS25|CU|세븐일레븐|이마트24|미니스톱|씨유)",
-            name,
-        ):
+        if sm_ch is not None:
             raw_by_id[pid] = (sm_ch, f)
-        else:
+        elif _is_true_convenience_chain(name) or "편의점" in cat:
             raw_by_id[pid] = ("convenience", f)
+        else:
+            # Unknown CS2 — skip non-retail hangers-on
+            continue
 
     # 2) Hyper MT1 within 10km
     for doc in _paginate_category(
@@ -764,7 +893,19 @@ def survey_anchor_stores(
     ):
         f = _doc_fields(doc)
         pid = str(f.get("place_id") or f.get("name") or "")
-        if not _classify_hyper(str(f.get("name") or ""), str(f.get("cat") or "")):
+        hname = str(f.get("name") or "")
+        hcat = str(f.get("cat") or "")
+        if _is_noise_poi(hname, hcat):
+            continue
+        # SSM formats often appear under MT1 — re-route to SM/SSM, not hyper.
+        sm_from_mt1 = _classify_sm_ssm(hname, hcat)
+        if sm_from_mt1 is not None:
+            dist_v = f.get("dist")
+            dist = float(dist_v) if isinstance(dist_v, (int, float)) else 0.0
+            if dist <= RADIUS_SM_SSM_M:
+                raw_by_id[pid] = (sm_from_mt1, f)
+            continue
+        if not _classify_hyper(hname, hcat):
             continue
         dist_v = f.get("dist")
         dist = float(dist_v) if isinstance(dist_v, (int, float)) else 0.0
@@ -788,10 +929,14 @@ def survey_anchor_stores(
             dist = float(dist_v) if isinstance(dist_v, (int, float)) else 0.0
             if dist > RADIUS_SM_SSM_M:
                 continue
+            kname = str(f.get("name") or "")
+            kcat = str(f.get("cat") or "")
+            if _is_noise_poi(kname, kcat):
+                continue
             # do not overwrite convenience/hyper already set
             if pid in raw_by_id and raw_by_id[pid][0] in ("convenience", "hypermarket"):
                 continue
-            channel = _classify_sm_ssm(str(f.get("name") or ""), str(f.get("cat") or ""))
+            channel = _classify_sm_ssm(kname, kcat)
             if channel is None:
                 continue
             raw_by_id[pid] = (channel, f)
@@ -851,14 +996,42 @@ def save_survey_snapshot(result: AnchorSurveyResult, path: Path | None = None) -
 
 
 def _normalize_snapshot_stores(result: AnchorSurveyResult) -> AnchorSurveyResult:
-    """Fix legacy snapshot labels (e.g. 경기도 경기 …) without re-survey."""
+    """Fix labels, reclassify channels, drop POI noise — no live Kakao needed."""
     fixed: list[SurveyedStore] = []
     for store in result.stores:
+        channel = reclassify_store_channel(
+            store.name,
+            store.category_name,
+            current=store.channel,
+        )
+        if channel is None:
+            continue
+        updates: dict[str, object] = {}
         dong = normalize_location_dong(store.location_dong)
         if dong != store.location_dong:
-            store = store.model_copy(update={"location_dong": dong})
+            updates["location_dong"] = dong
+        if channel != store.channel:
+            updates["channel"] = channel
+            defaults = _channel_defaults(channel)
+            updates["store_size"] = defaults["store_size"]
+            updates["avg_ticket"] = defaults["avg_ticket"]
+            updates["product_name"] = defaults["product_name"]
+            updates["daily_demand"] = defaults["daily_demand"]
+            updates["standard_lead_time_days"] = defaults["standard_lead_time_days"]
+            updates["service_level"] = defaults["service_level"]
+        if updates:
+            store = store.model_copy(update=updates)
         fixed.append(store)
-    return result.model_copy(update={"stores": fixed})
+    counts: dict[str, int] = {}
+    for s in fixed:
+        counts[s.channel] = counts.get(s.channel, 0) + 1
+    notes = list(result.notes)
+    if counts != result.counts:
+        notes = [
+            *notes,
+            f"스냅샷 정규화: 채널 재분류·소음 제거 후 {len(fixed)}개 · {counts}",
+        ]
+    return result.model_copy(update={"stores": fixed, "counts": counts, "notes": notes})
 
 
 def load_survey_snapshot(path: Path | None = None) -> AnchorSurveyResult | None:

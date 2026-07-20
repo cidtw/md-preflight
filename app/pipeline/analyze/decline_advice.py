@@ -5,14 +5,17 @@ evaluate/simulation parameters and calculated levers — never from design-doc
 example prose alone.
 """
 
+# urllib response types are untyped (Any); keep reportAny off for this adapter only.
+# pyright: reportAny=false, reportUnknownVariableType=false, reportUnknownMemberType=false
+
 from __future__ import annotations
 
 import json
 import logging
 import urllib.error
 import urllib.request
-from collections.abc import Mapping
-from typing import Any
+from collections.abc import Callable, Mapping
+from typing import Protocol
 
 from app.pipeline.domain_catalog import (
     ACCESSIBILITY,
@@ -115,8 +118,8 @@ def build_decline_user_prompt(
     intensity: float,
     delta_pct: float,
     plain_summary: str,
-    baseline: Mapping[str, Any],
-    shocked: Mapping[str, Any],
+    baseline: Mapping[str, object],
+    shocked: Mapping[str, object],
 ) -> str:
     """Fill the fixed template with real store + simulation numbers."""
     p = parameters
@@ -139,6 +142,16 @@ def build_decline_user_prompt(
     if not p.get("use_precise_location"):
         address = "미사용(행정동 경로)"
 
+    daily_base = _side_float(baseline, "daily_demand")
+    if daily_base <= 0:
+        daily_base = _f(p, "daily_demand", 0.0)
+    lead = _side_float(baseline, "standard_lead_time_days")
+    if lead <= 0:
+        lead = _f(p, "standard_lead_time_days", 2.0)
+    daily_after = _side_float(shocked, "effective_daily_demand")
+    if daily_after <= 0:
+        daily_after = _side_float(shocked, "daily_demand")
+
     return _USER_PROMPT_TEMPLATE.format(
         product_name=product,
         store_type_label=store_type,
@@ -148,23 +161,23 @@ def build_decline_user_prompt(
         accessibility_label=access,
         trade_area_label=trade,
         store_address=address,
-        daily_demand=_f(p, "daily_demand", float(baseline.get("daily_demand") or 0)),
+        daily_demand=daily_base,
         service_level_label=sl,
-        lead_time=float(baseline.get("standard_lead_time_days") or _f(p, "standard_lead_time_days", 2)),
-        rop_now=float(baseline.get("recommended_rop") or 0),
-        ss_now=float(baseline.get("store_safety_stock") or 0),
-        q_now=float(baseline.get("suggested_order_qty") or 0),
+        lead_time=lead,
+        rop_now=_side_float(baseline, "recommended_rop"),
+        ss_now=_side_float(baseline, "store_safety_stock"),
+        q_now=_side_float(baseline, "suggested_order_qty"),
         order_days_label=order_days,
-        comp_factor_now=float(baseline.get("competition_demand_factor") or 1),
+        comp_factor_now=_side_float(baseline, "competition_demand_factor", 1.0),
         scenario_label=scenario_label,
         intensity_pct=max(0.0, min(1.0, intensity)) * 100,
         delta_pct=delta_pct,
-        daily_after=float(shocked.get("effective_daily_demand") or shocked.get("daily_demand") or 0),
-        rop_after=float(shocked.get("recommended_rop") or 0),
-        ss_after=float(shocked.get("store_safety_stock") or 0),
-        q_after=float(shocked.get("suggested_order_qty") or 0),
-        lt_after=float(shocked.get("standard_lead_time_days") or 0),
-        comp_factor_after=float(shocked.get("competition_demand_factor") or 1),
+        daily_after=daily_after,
+        rop_after=_side_float(shocked, "recommended_rop"),
+        ss_after=_side_float(shocked, "store_safety_stock"),
+        q_after=_side_float(shocked, "suggested_order_qty"),
+        lt_after=_side_float(shocked, "standard_lead_time_days"),
+        comp_factor_after=_side_float(shocked, "competition_demand_factor", 1.0),
         plain_summary=plain_summary,
     )
 
@@ -199,6 +212,31 @@ def fallback_decline_advice(
     )
 
 
+class ChatFn(Protocol):
+    def __call__(
+        self,
+        *,
+        api_key: str,
+        system: str,
+        user: str,
+        model: str,
+    ) -> str: ...
+
+
+def _side_float(side: Mapping[str, object], key: str, default: float = 0.0) -> float:
+    raw = side.get(key, default)
+    if isinstance(raw, bool):
+        return default
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    if isinstance(raw, str):
+        try:
+            return float(raw)
+        except ValueError:
+            return default
+    return default
+
+
 def call_xai_chat(
     *,
     api_key: str,
@@ -228,8 +266,8 @@ def call_xai_chat(
         },
     )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read()
-    data: object = json.loads(raw.decode("utf-8"))
+        raw_bytes = bytes(resp.read())
+    data: object = json.loads(raw_bytes.decode("utf-8"))
     if not isinstance(data, dict):
         msg = "Unexpected xAI response type"
         raise TypeError(msg)
@@ -259,11 +297,11 @@ def generate_decline_advice(
     intensity: float,
     delta_pct: float,
     plain_summary: str,
-    baseline: Mapping[str, Any],
-    shocked: Mapping[str, Any],
+    baseline: Mapping[str, object],
+    shocked: Mapping[str, object],
     api_key: str | None,
     model: str = DEFAULT_MODEL,
-    chat_fn: Any | None = None,
+    chat_fn: ChatFn | Callable[..., str] | None = None,
 ) -> tuple[str, bool, str | None]:
     """Return (advice_markdown, ai_used, error_note)."""
     user_prompt = build_decline_user_prompt(
@@ -278,12 +316,12 @@ def generate_decline_advice(
     if not api_key:
         text = fallback_decline_advice(
             delta_pct=delta_pct,
-            rop_now=float(baseline.get("recommended_rop") or 0),
-            rop_after=float(shocked.get("recommended_rop") or 0),
-            ss_now=float(baseline.get("store_safety_stock") or 0),
-            ss_after=float(shocked.get("store_safety_stock") or 0),
-            q_now=float(baseline.get("suggested_order_qty") or 0),
-            q_after=float(shocked.get("suggested_order_qty") or 0),
+            rop_now=_side_float(baseline, "recommended_rop"),
+            rop_after=_side_float(shocked, "recommended_rop"),
+            ss_now=_side_float(baseline, "store_safety_stock"),
+            ss_after=_side_float(shocked, "store_safety_stock"),
+            q_now=_side_float(baseline, "suggested_order_qty"),
+            q_after=_side_float(shocked, "suggested_order_qty"),
         )
         return text, False, "XAI_API_KEY 미설정 — 폴백 가이드 사용"
 
@@ -307,11 +345,11 @@ def generate_decline_advice(
         logger.warning("decline AI advice failed: %s", exc)
         text = fallback_decline_advice(
             delta_pct=delta_pct,
-            rop_now=float(baseline.get("recommended_rop") or 0),
-            rop_after=float(shocked.get("recommended_rop") or 0),
-            ss_now=float(baseline.get("store_safety_stock") or 0),
-            ss_after=float(shocked.get("store_safety_stock") or 0),
-            q_now=float(baseline.get("suggested_order_qty") or 0),
-            q_after=float(shocked.get("suggested_order_qty") or 0),
+            rop_now=_side_float(baseline, "recommended_rop"),
+            rop_after=_side_float(shocked, "recommended_rop"),
+            ss_now=_side_float(baseline, "store_safety_stock"),
+            ss_after=_side_float(shocked, "store_safety_stock"),
+            q_now=_side_float(baseline, "suggested_order_qty"),
+            q_after=_side_float(shocked, "suggested_order_qty"),
         )
         return text, False, f"AI 호출 실패 — 폴백 사용: {exc}"

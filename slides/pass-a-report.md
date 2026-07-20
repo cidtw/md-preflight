@@ -2,18 +2,18 @@
 
 VERDICT: PASS
 Confidence: High
-Evidence: slides/.slides-grab/gate-preview/slide-01.png, slides/.slides-grab/gate-preview/slide-02.png, slide-01.png, slide-02.png, slide-03.png, slide-04.png, slide-05.png, slide-06.png, slide-07.png, slide-08.png, slide-09.png, slide-10.png, slide-11.png, slide-12.png, slide-13.png, slide-14.png
-Slide fingerprints: slide-01.html: 4eb65787608acdffab84fdcb41463095ea07d2eab7f226bf985460581b4a319c, slide-02.html: dd154caea48fc56035d8cb2c7485d40ad73ca56f731a8f387cff14ab4fb7fdf3, slide-03.html: 00c76fb010d79ecfd6cc75a094542ce0cd8a410fb6380d2490460b82e86273e2, slide-04.html: 3ce579204daf688c41997d990247e79dcc2eac776f11c647894fe2465d0d4ccf, slide-05.html: eb1370e003d5e7a8d7d6355968f1c4d96c4bcb91d5ef62c389867bd5c9967672, slide-06.html: c22def1e36ae82bc0cc0313e82c0b6ee2ef81ba0187a15f85402dd71db060cc2, slide-07.html: e23709203f0e64b76908207b768535ea24f21c3edcb5b403f92db010bab8c918, slide-08.html: 761dc966d956fc7859747645c7ec6ea882dfac8d28b0a7a445f24cad54b8ba0c, slide-09.html: 814c850be788f4e69c41fc999046e4d0f303481e1d970516a69ae9b5775ef67a, slide-10.html: e9de90a4c8e8d3fbb9f213b564e7ad74eee6ea146a0c989a89510ca72c61e44c, slide-11.html: 1b952cea0e3c61b5907ce33735ea12c2529ae7d7d3e16976a294ffba58f96b85, slide-12.html: 284c0d37dc4bf4836d2f5e87158fe9d56f99301a755d3cae2916fa0cfb909211, slide-13.html: 67b2be2a4540fce506fc39f6a2e9eda429e7f2a36d06ed794dfac9da23c9845c, slide-14.html: c84e38259a6ad7ad3fce65972716d0c93578612958a971fe8f28a3372540ec9d
+Evidence: slides/gate-preview/slide-01.png, slides/gate-preview/slide-02.png, slides/gate-preview/slide-03.png, slides/gate-preview/slide-04.png, slides/gate-preview/slide-05.png, slides/gate-preview/slide-06.png, slides/gate-preview/slide-07.png, slides/gate-preview/slide-08.png, slides/gate-preview/slide-09.png, slides/gate-preview/slide-10.png, slides/gate-preview/slide-11.png, slides/gate-preview/slide-12.png, slides/gate-preview/slide-13.png, slides/gate-preview/slide-14.png
+Slide fingerprints: slide-01.html: 85008390ed9d8edf382c247b55ad50d99bf9725088cbba9a7df7dc43cb9ad43e, slide-02.html: 2715dec64c8dddd08ee3d728187bfb7eda981d089f5b4d66566dae0a2e1a789f, slide-03.html: bf63681b64b18a9df5badb943510e0e76fe376dab536d79c82f18606f978a3fc, slide-04.html: 78260db753ba3b368104f2d3fbdf0075434049ea5d5ba0afeb124dba5feadaa1, slide-05.html: 3ad7940a678a851c00842755691d6e8ca3bbb59ea4c08bb72d195f880fcd8b24, slide-06.html: 8a8dfbf17f071402f372230ba74e755524d8a2872b6bc993906fd65733944d59, slide-07.html: 7ddd0d864e1e36014f34ffb1a3efb2cdf0cd78313324eae40528d75c6c7d07a4, slide-08.html: 2a407c44d25b26cedcbae8d3fa590d4e53ca2a42238939269b1065c1e858bdd7, slide-09.html: 1c7ce0fe7f7e65a2558efe2523acff6756df0b1a0adc3985f6b9f2c70ffb33d1, slide-10.html: 89bcc46ad84ee9ecb604db91e26c9d3c9d284f6ab2f1acf4a897f25797efc8e3, slide-11.html: 7676e8c79774f3e1f0d0766675d3274da5196c6dddfd6cd39fc32c611613492b, slide-12.html: 11437e29436b7a3bc49bc47bd328561a295449bebcc280f8ed6f11a81ee3a02a, slide-13.html: 5e3abdb5faf22d0425e47eb4f1f8b5acd4cb72574c4efd7f56cbe6d80d5c88a7, slide-14.html: c61082cd39ccc2f037005adef1734f379739054198cd361cf22119417b873285
 Unresolved Critical: 0
 Blocking findings: None
 
 ## Checks
-- [x] System consistency: PASS — warm white #F5F5F0 + near-black #1A1A1A, Pretendard only across 14 slides
-- [x] Color discipline: PASS — tokens from executive-minimal only (#F5F5F0, #E8E8E3, #1A1A1A, #666666, #999999, #D4D4D0)
-- [x] AI slop tropes: PASS — no full-slide gradients, no left-border accent cards, no emoji icons, no Inter/Roboto
-- [x] Content discipline: PASS — pytest series 150/12/30/32/46 from dev journal only
+- [x] System consistency: PASS — executive-minimal tokens, Pretendard, shared header/footer after layout reflow; grids use height:auto so trailing copy no longer collides with footer
+- [x] Color discipline: PASS — #F5F5F0 / #E8E8E3 / #1A1A1A / #666 / #999 / #D4D4D0 only
+- [x] AI slop tropes: PASS — no gradients, left-border cards, emoji icons, or generic font stacks
+- [x] Content discipline: PASS — numbers and claims unchanged from outline; only layout reflow
 
 ## Findings
 | Slide | Finding | Severity | Fix | Status |
 |-------|---------|----------|-----|--------|
-| slide-07 | Architecture uses three text cards instead of tldraw asset | Note | Optional tldraw later | tracked |
+| slide-07/09/10 | Footer text was overlapping body copy due to height:100% grids | Major | height:auto + main flex column + footer flex-shrink | resolved |

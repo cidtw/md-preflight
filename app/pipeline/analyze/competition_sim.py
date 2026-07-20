@@ -20,6 +20,7 @@ from app.pipeline.analyze.decline_advice import generate_decline_advice
 from app.pipeline.analyze.engine import analyze
 from app.pipeline.input.template import validate_parameters
 from app.pipeline.types import CalcBreakdown, GeoEnrichment, ParameterValue
+
 SimScenario = Literal[
     "own_service_up",
     "competitor_pressure",
@@ -109,11 +110,15 @@ def _apply_scenario(
             "서비스 레벨·재고 방어를 올려 품절 감소 → 일부 수요를 되찾는 시나리오"
         )
     elif scenario == "competitor_pressure":
-        # Market saturation: demand leaks to competitors.
+        # Pure demand-leak shock (max -28%). Do NOT also force competition scan:
+        # stacking leak * live competition_factor overstates decline vs UI copy.
+        # Competition context is inherited from baseline params / geo_override only.
         leak = 1.0 - 0.28 * i  # up to -28%
         out["daily_demand"] = round(max(0.1, demand * leak), 4)
-        out["consider_competition_saturation"] = True
-        note = "경쟁 매장이 공격적으로 재고·프로모션을 강화해 수요가 빠져나가는 시나리오"
+        note = (
+            "경쟁 매장이 공격적으로 재고·프로모션을 강화해 수요가 빠져나가는 시나리오 "
+            "(일 소진 이탈만 충격 · 경쟁 포화 계수는 현재 설정 유지)"
+        )
     elif scenario == "own_lt_stress":
         # Contract LT lengthens (stress) — ops pain; mild demand leak from stockouts.
         out["standard_lead_time_days"] = round(max(0.5, lt * (1.0 + 0.5 * i)), 2)

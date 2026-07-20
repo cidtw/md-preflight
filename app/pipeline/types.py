@@ -156,7 +156,10 @@ class CalcBreakdown(BaseModel):
     rop_delta: float
     daily_demand: float
     # After optional event uplift and/or competition saturation (else == daily_demand).
+    # Product of multipliers is clamped to [D_EFF_MIN_FRAC, D_EFF_MAX_FRAC] * D in engine.
     effective_daily_demand: float = 0.0
+    effective_daily_demand_uncapped: float = 0.0
+    effective_demand_clamped: bool = False
     event_demand_uplift_frac: float = 0.0
     competition_intensity: float = 0.0
     competition_demand_factor: float = 1.0

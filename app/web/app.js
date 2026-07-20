@@ -742,6 +742,27 @@ function renderResult(payload, expertOverride) {
           .join("")}</ul></div>`
       : "";
 
+  const geo = payload.calc?.geo;
+  let pathBadgeHtml = "";
+  if (geo && geo.enabled) {
+    if (geo.used_fallback) {
+      pathBadgeHtml = `<div class="path-badge path-fallback" role="status">
+        <strong>계산 경로</strong>
+        <span>지도 보강 실패 → 행정동·상권 결정론 (used_fallback)</span>
+      </div>`;
+    } else {
+      pathBadgeHtml = `<div class="path-badge path-geo" role="status">
+        <strong>계산 경로</strong>
+        <span>상세 주소 · 지도 POI 보강 반영</span>
+      </div>`;
+    }
+  } else if (geo) {
+    pathBadgeHtml = `<div class="path-badge path-dong" role="status">
+      <strong>계산 경로</strong>
+      <span>행정동·상권 파라미터 (상세 주소 미사용)</span>
+    </div>`;
+  }
+
   const s = payload.summary;
   const addressRow =
     s.use_precise_location && s.store_address
@@ -812,6 +833,7 @@ function renderResult(payload, expertOverride) {
 
   resultPanel.innerHTML = `
     <div class="result-head">
+      ${pathBadgeHtml}
       <label class="expert-toggle">
         <input type="checkbox" id="expert-mode" ${expert ? "checked" : ""} />
         <span>

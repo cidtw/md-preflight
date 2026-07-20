@@ -54,6 +54,21 @@ def test_classify_competitor_kinds() -> None:
     )
 
 
+def test_classify_unmanned_discount_not_hypermarket() -> None:
+    """Bare 할인점 + 무인 must not land as hypermarket (inflates tier weight)."""
+    assert (
+        classify_competitor("무인 아이스크림 할인점", default_kind="hypermarket")
+        == "unmanned_specialty"
+    )
+    assert (
+        classify_competitor("무인 세계과자 전문점", default_kind="convenience")
+        == "unmanned_specialty"
+    )
+    # Known hyper anchors still classify as hyper even if default differs.
+    assert classify_competitor("이마트 마포점", default_kind="other_retail") == "hypermarket"
+    assert classify_competitor("롯데마트 잠실", default_kind="hypermarket") == "hypermarket"
+
+
 def test_score_competitors_near_direct_lowers_demand() -> None:
     comps = [
         CompetitionCompetitor(
@@ -194,5 +209,18 @@ def test_engine_event_and_competition_compose() -> None:
         competition_demand_factor=0.8,
     )
     calc = analyze(validated, geo_override=geo)
-    # D * 1.2 * 0.8 = D * 0.96
+    # D * 1.2 * 0.8 = D * 0.96 (inside 0.5x-2.0x global band)
     assert abs(calc.effective_daily_demand - 20 * 1.2 * 0.8) < 1e-6
+    assert calc.effective_demand_clamped is False
+    assert abs(calc.effective_daily_demand_uncapped - calc.effective_daily_demand) < 1e-6
+
+    from app.pipeline.output.recommendation import render
+
+    report = render(validated, calc)
+    geo_plain = next(b for b in report.evidence if b.id == "geo_poi")
+    plain = " ".join(geo_plain.points)
+    assert "집적" in plain
+    geo_tech = next(b for b in report.evidence_technical if b.id == "geo_poi")
+    tech = " ".join(geo_tech.points)
+    assert "agglomeration" in tech.lower() or "leak" in tech.lower()
+    assert any("스냅샷" in g for g in report.guidance)

@@ -29,6 +29,12 @@ from app.pipeline.domain_catalog import (
 )
 from app.pipeline.types import CalcBreakdown, GeoEnrichment, ValidatedInput
 
+# Global band on D_eff after event x competition (and future multipliers).
+# Module-level event (+35%) / competition (-40%) already stay inside this band;
+# the clamp is a safety net if geo multipliers or future stages expand.
+D_EFF_MIN_FRAC = 0.5
+D_EFF_MAX_FRAC = 2.0
+
 
 def _as_float(value: object, default: float) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -142,7 +148,11 @@ def analyze(
     comp_intensity = (
         float(geo.competition_intensity) if geo.competition_scan_enabled else 0.0
     )
-    effective_demand = round(daily_demand * mult * comp_factor, 4)
+    uncapped_demand = round(daily_demand * mult * comp_factor, 4)
+    lo = round(daily_demand * D_EFF_MIN_FRAC, 4)
+    hi = round(daily_demand * D_EFF_MAX_FRAC, 4)
+    effective_demand = round(min(hi, max(lo, uncapped_demand)), 4)
+    demand_clamped = abs(effective_demand - uncapped_demand) > 1e-9
     event_uplift_frac = round(max(0.0, mult - 1.0), 4)
     competition_cut_frac = round(max(0.0, 1.0 - comp_factor), 4)
 
@@ -254,7 +264,10 @@ def analyze(
             multi_order = (
                 f"매장·창고 공간이 넉넉하지 않습니다. {rop_part}"
                 f"{qty_part}"
-                f"대신 '{days_label}'처럼 자주 조금씩 넣는 편이 안전합니다."
+                f"대신 '{days_label}'처럼 자주 조금씩 넣는 편이 안전합니다. "
+                f"공간 상한으로 한 번에 쌓는 재고를 줄이면 이론상 품절 여유"
+                f"(서비스 레벨)는 다소 줄 수 있어, 발주 횟수로 상쇄하는 "
+                f"운영 타협(trade-off)입니다."
             )
 
     return CalcBreakdown(
@@ -276,6 +289,8 @@ def analyze(
         rop_delta=round(recommended_rop - standard_rop, 2),
         daily_demand=daily_demand,
         effective_daily_demand=effective_demand,
+        effective_daily_demand_uncapped=uncapped_demand,
+        effective_demand_clamped=demand_clamped,
         event_demand_uplift_frac=event_uplift_frac,
         competition_intensity=round(comp_intensity, 4),
         competition_demand_factor=round(comp_factor, 4),

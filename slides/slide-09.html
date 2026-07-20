@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  
   <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -14,40 +15,34 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
-body.dark { background: #1A1A1A; color: #F5F5F0; }
 .eyebrow {
   font-size: 10pt; font-weight: 600; color: #666666;
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-body.dark .eyebrow { color: #999999; }
 h1 {
-  font-size: 24pt; font-weight: 700; letter-spacing: -0.02em;
-  line-height: 1.28; word-break: keep-all; margin-top: 10pt;
+  font-size: 22pt; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.28; word-break: keep-all; margin-top: 8pt;
 }
-body.dark h1 { color: #F5F5F0; }
 .key {
-  font-size: 13.5pt; font-weight: 500; color: #666666;
-  line-height: 1.45; margin-top: 8pt; word-break: keep-all; max-width: 580pt;
+  font-size: 12pt; font-weight: 500; color: #666666;
+  line-height: 1.4; margin-top: 0; word-break: keep-all; max-width: 640pt; flex-shrink: 0;
 }
-body.dark .key { color: #B0B0B0; }
-.main { flex: 1; margin-top: 16pt; min-height: 0; }
+.main { flex: 1; margin-top: 12pt; min-height: 0; display: flex; flex-direction: column; gap: 10pt; overflow: hidden; }
 .footer {
   display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid #D4D4D0; padding-top: 10pt; margin-top: auto;
-  font-size: 10pt; color: #999999;
+  font-size: 10pt; color: #999999; flex-shrink: 0;
 }
-body.dark .footer { border-top-color: #333; color: #888; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; height: 100%; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt; height: 100%; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; height: auto; align-content: start; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start; }
 .card {
-  background: #E8E8E3; border-radius: 6pt; padding: 14pt 16pt;
-  display: flex; flex-direction: column; gap: 6pt;
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 5pt;
+  height: auto; min-height: 0;
 }
-body.dark .card { background: #2A2A2A; }
 .card h3 { font-size: 12pt; font-weight: 700; word-break: keep-all; }
 .card p, .card li { font-size: 11pt; color: #666666; line-height: 1.4; word-break: keep-all; }
-body.dark .card p, body.dark .card li { color: #B0B0B0; }
-.card ul { margin-left: 12pt; }
+.card ul { margin-left: 12pt; list-style: disc; }
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .stat {
   background: #E8E8E3; border-radius: 6pt; padding: 14pt 12pt;
@@ -64,9 +59,7 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   content: ""; position: absolute; left: 0; top: 7pt;
   width: 5pt; height: 5pt; border-radius: 50%; background: #1A1A1A;
 }
-.flow {
-  display: flex; align-items: stretch; gap: 8pt; height: 100%;
-}
+.flow { display: flex; align-items: stretch; gap: 8pt; height: auto; }
 .flow-step {
   flex: 1; background: #E8E8E3; border-radius: 6pt; padding: 14pt;
   display: flex; flex-direction: column; gap: 8pt;
@@ -74,10 +67,10 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .flow-step .num {
   font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
 }
-.flow-step h3 { font-size: 14pt; font-weight: 700; word-break: keep-all; }
+.flow-step h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
 .flow-step p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
 .arrow { display: flex; align-items: center; color: #999; font-size: 16pt; font-weight: 300; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 8pt; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6pt; margin-top: 0; flex-shrink: 0; }
 .chip {
   font-size: 10pt; font-weight: 600; padding: 4pt 10pt;
   border-radius: 999pt; background: #1A1A1A; color: #F5F5F0;
@@ -85,8 +78,8 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
 .chip.ghost { background: transparent; border: 1px solid #D4D4D0; color: #1A1A1A; }
 .formula {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11pt; line-height: 1.55; background: #E8E8E3;
-  border-radius: 6pt; padding: 12pt 14pt; word-break: break-all;
+  font-size: 10.5pt; line-height: 1.5; background: #E8E8E3;
+  border-radius: 6pt; padding: 12pt 14pt; word-break: break-word;
 }
 .steps { display: flex; flex-direction: column; gap: 7pt; }
 .step {
@@ -97,36 +90,74 @@ body.dark .card p, body.dark .card li { color: #B0B0B0; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11pt; font-weight: 700;
 }
-.step p { font-size: 12pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
-.col-title { font-size: 11pt; font-weight: 700; color: #666; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt; }
+.step p { font-size: 11.5pt; line-height: 1.4; word-break: keep-all; padding-top: 3pt; }
+.col-title {
+  font-size: 11pt; font-weight: 700; color: #666;
+  letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6pt;
+}
+.muted { color: #666666; }
+.strong { font-weight: 700; color: #1A1A1A; }
+.agenda-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10pt 24pt;
+  list-style: none; height: auto; align-content: start;
+}
+.agenda-grid li {
+  display: grid; grid-template-columns: 28pt 1fr; gap: 10pt;
+  padding: 10pt 0; border-bottom: 1px solid #E0E0DA;
+  align-items: center;
+}
+.agenda-grid .n {
+  font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;
+}
+.agenda-grid .t { font-size: 13pt; font-weight: 600; word-break: keep-all; line-height: 1.35; }
+.timeline {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; height: auto; align-content: start;
+}
+.tl {
+  background: #E8E8E3; border-radius: 6pt; padding: 12pt 14pt;
+  display: flex; flex-direction: column; gap: 6pt;
+  height: auto; min-height: 0;
+}
+.tl .phase {
+  font-size: 10pt; font-weight: 700; color: #666; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tl h3 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+.tl p { font-size: 11pt; color: #666; line-height: 1.4; word-break: keep-all; }
+.chart-wrap { width: 100%; height: 170pt; position: relative; }
+
 </style>
 </head>
 <body>
 
   <div>
-    <div class="eyebrow">Location signals</div>
-    <h1>구조 유동(POI)과 임시 유동(행사 시설)을 나눈다</h1>
-    
+    <div class="eyebrow">Geo Signals</div>
+    <h1 style="font-size:16pt;">상세 주소가 있으면 구조 유동, 임시 유동, 경쟁 포화를 옵션으로 나눈다</h1>
   </div>
-
-  <div class="main grid-2">
-    <div class="card">
-      <h3>구조 FTI · 주소 시</h3>
-      <ul>
-        <li>반경 ~500m POI · soft_sat</li>
-        <li>카테고리 N캡 · CS2 저가중</li>
-        <li>실패 시 행정동 fallback</li>
-      </ul>
+  <div class="main">
+    <div class="grid-3">
+      <div class="card">
+        <div class="col-title">구조 FTI</div>
+        <h3>반경 기본 500m</h3>
+        <p>POI · soft_sat · 카테고리 N캡 · CS2 저가중</p>
+        <p>실패 시 행정동 fallback</p>
+      </div>
+      <div class="card">
+        <div class="col-title">일시 유동 · 옵션</div>
+        <h3>주소 필수 · 200m</h3>
+        <p>경기장·공연장·전시장 프록시</p>
+        <p>D_eff 상방 최대 약 <span class="strong">+35%</span></p>
+      </div>
+      <div class="card">
+        <div class="col-title">경쟁 포화 · 옵션</div>
+        <h3>업종 반경 스캔</h3>
+        <p>intensity → demand factor</p>
+        <p>최대 약 <span class="strong">−40%</span> · Huff 형태 감쇠</p>
+      </div>
     </div>
-    <div class="card">
-      <h3>일시 유동 · 옵션</h3>
-      <ul>
-        <li>정확한 주소 필수 · 반경 200m</li>
-        <li>경기장·공연장·전시장·컨벤션</li>
-        <li>D_eff = D×(1+0.35×uplift)</li>
-        <li>캘린더 없음 → 시설 근접 프록시</li>
-      </ul>
-    </div>
+    <p class="key" style="font-size:11pt;">
+      한계: 실시간 점유·행사 캘린더는 없음. 근접 프록시이며 근거 블록에 명시합니다.
+    </p>
   </div>
 
   <div class="footer">

@@ -1,14 +1,7 @@
-# Design debt — MD Preflight final deck (2026-07-16)
+# Design debt (deferred Minor / Note)
 
-## Deferred (Minor / Note)
-
-| Item | Severity | Notes |
-|------|----------|--------|
-| Architecture slide is 3-card text, not tldraw asset | Note | Acceptable for density; optional tldraw later |
-| Chart colors are mono only | Note | Matches executive-minimal; no brand accent |
-| Cover has no photography | Note | Content-first style intentionally cardless |
-
-## Resolved this regenerate
-
-- Old 7-slide dark deck replaced with 14-slide warm executive-minimal
-- Content aligned to phase IX outline (SS∝D, export, event 200m, pytest 46)
+| Slide | Finding | Severity | Notes |
+|-------|---------|----------|-------|
+| slide-07 | No tldraw architecture diagram asset | Note | Three-card pipeline is clear enough for Stage 2; optional Stage 2.1 |
+| slide-08 | Dense formula mono block | Minor | Prefer larger type or two-line formula if presenting on large stage |
+| slide-12 | Dense demo chain lines | Minor | Intentional SSOT walkthrough density |
