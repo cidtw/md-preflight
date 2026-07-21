@@ -133,7 +133,7 @@ body > .container {
   letter-spacing: -0.6px;
   color: var(--ink);
   margin: 0;
-  max-width: 28rem;
+  max-width: 22em;
   word-break: keep-all;
   overflow-wrap: break-word;
 }
@@ -142,7 +142,6 @@ body > .container {
   line-height: 26px;
   color: var(--body);
   margin: var(--s-sm) 0 0;
-  max-width: 40rem;
   word-break: keep-all;
   overflow-wrap: break-word;
 }
@@ -151,32 +150,39 @@ body > .container {
   font-weight: 500;
 }
 
-/* Welcome hero: natural Korean rhythm via short paragraphs */
+/* Welcome hero: fixed phrase line-breaks (avoid mid-clause wrap on PC) */
 .hero-copy {
-  max-width: 42rem;
+  max-width: 36rem;
 }
 .lede-stack {
   display: grid;
   gap: 0.55em;
   margin-top: var(--s-md);
+  max-width: 36rem;
 }
 .lede-stack > p {
   margin: 0;
   font-size: inherit;
-  line-height: inherit;
+  line-height: 1.65;
   color: inherit;
 }
 .lede-stack > p:first-child {
   color: var(--ink);
   font-weight: 500;
 }
-/* Soft line break for mid+ viewports; stack on narrow phones */
+.lede-body {
+  line-height: 1.7;
+}
+/* Soft line break for mid+ viewports; flow naturally on narrow phones */
 .br-md {
   display: none;
 }
-@media (min-width: 480px) {
+@media (min-width: 640px) {
   .br-md {
     display: block;
+  }
+  .nowrap-md {
+    white-space: nowrap;
   }
 }
 
@@ -1375,11 +1381,11 @@ table.cmp td strong {
 }
 .demo-scenarios-lede {
   display: grid;
-  gap: 0.45em;
+  gap: 0.5em;
   margin: 0 0 var(--s-sm);
-  max-width: 40rem;
+  max-width: 36rem;
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1.65;
   color: var(--body);
   word-break: keep-all;
   overflow-wrap: break-word;
@@ -1391,12 +1397,12 @@ table.cmp td strong {
   color: var(--ink);
   font-weight: 500;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 .demo-scenarios-note {
   color: var(--mute);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 .demo-tech-stack {
   display: flex;
