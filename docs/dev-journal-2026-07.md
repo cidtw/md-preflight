@@ -970,7 +970,8 @@ vercel deploy --prod            # md-preflight.vercel.app
 | 국문 | **발주맞춤** |
 | 영문 | **OrderFit** |
 | 이유 | v1「MD Preflight」(영업 MD·프로모션 사전검수)와 분리 · 자영업·현업 재발주/발주량 서비스 정체성 |
-| 프로덕션 | `https://orderfit.vercel.app` (Vercel project rename) |
+| 프로덕션 | `https://baljumatch.vercel.app` (Vercel project · 로마자 도메인) |
+| 도메인 비고 | `orderfit.vercel.app` 은 타 서비스 점유로 사용 불가 |
 | 레포 | GitHub `md-preflight` 유지 (이력·태그 보존) |
 | 발표 장표·포스터 | 별도 지시 전 **미변경** (라이브 URL만 웹·README·일지 반영) |
 

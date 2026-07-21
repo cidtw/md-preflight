@@ -2,13 +2,13 @@
 # Third-party / local demo smoke for 발주맞춤 · OrderFit.
 # Usage:
 #   ./demo.sh                 # hit local http://127.0.0.1:8000
-#   ./demo.sh --prod          # hit https://orderfit.vercel.app
+#   ./demo.sh --prod          # hit https://baljumatch.vercel.app
 #   BASE_URL=https://… ./demo.sh
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://127.0.0.1:8000}"
 if [[ "${1:-}" == "--prod" ]]; then
-  BASE_URL="https://orderfit.vercel.app"
+  BASE_URL="https://baljumatch.vercel.app"
 fi
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }

@@ -31,7 +31,7 @@ uv run uvicorn app.main:app --reload --port 8000
 # open http://127.0.0.1:8000
 ```
 
-**라이브 (제3자 시연)**: [https://orderfit.vercel.app](https://orderfit.vercel.app)
+**라이브 (제3자 시연)**: [https://baljumatch.vercel.app](https://baljumatch.vercel.app)
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/api/evaluate \

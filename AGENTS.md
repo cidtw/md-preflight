@@ -13,7 +13,7 @@ recommended ROP/SS/Q with evidence. LT stays fixed from contract/standard input.
 v1 promotion preflight is archived:
 `archive/v1-md-preflight/` · git tag `archive/v1-md-preflight`.
 
-**Prod URL**: https://orderfit.vercel.app
+**Prod URL**: https://baljumatch.vercel.app
 
 ## Stack
 

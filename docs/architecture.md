@@ -3,7 +3,7 @@
 > **상태**: Active (국면 VII)  
 > **브랜치**: `pivot/project-direction`  
 > **버전**: 0.3.2-rop  
-> **프로덕션**: https://orderfit.vercel.app · 제품명 **발주맞춤 · OrderFit**
+> **프로덕션**: https://baljumatch.vercel.app · 제품명 **발주맞춤 · OrderFit**
 > **지시 원문**: `2026-07-14-New-Service-Flow.md`  
 > **v1 (프로모션 검수)**: 태그 `archive/v1-md-preflight` · `archive/v1-md-preflight/`
 
@@ -242,7 +242,7 @@ app/
 | 프레임워크 | FastAPI + Pydantic v2 |
 | 의존성 | fastapi, pydantic, pydantic-settings, orjson, uvicorn |
 | 호스팅 | Vercel (`@vercel/python`, `vercel.json` builds) |
-| 프로덕션 URL | https://orderfit.vercel.app |
+| 프로덕션 URL | https://baljumatch.vercel.app |
 | 로컬 | `uv run uvicorn app.main:app --reload --port 8000` |
 | 지도 POI | **Kakao Local REST** (`KAKAO_REST_API_KEY`) — 설정: `docs/setup-kakao-local.md` |
 
