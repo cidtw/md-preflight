@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>D · Content sample</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 720px; overflow: hidden; font-family: Pretendard, "Noto Sans KR", sans-serif; }
+  .slide {
+    width: 1280px; height: 720px;
+    background: #B8C4B8;
+    color: #1A1A1A;
+    position: relative;
+    padding: 40px 48px;
+  }
+  .panel {
+    background: #F8FAF8;
+    border: 1px solid #9AA89A;
+    border-radius: 16px;
+    height: 100%;
+    padding: 36px 40px 28px;
+  }
+  .eyebrow {
+    font-size: 13px; font-weight: 600; color: #3D3D3D;
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-size: 32px; font-weight: 700; margin-bottom: 28px;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .card {
+    background: #fff;
+    border: 1px solid #9AA89A;
+    border-radius: 12px;
+    padding: 24px 20px;
+    min-height: 320px;
+  }
+  .label {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+    color: #3D3D3D; margin-bottom: 12px;
+  }
+  .card h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+  .card p { font-size: 16px; line-height: 1.55; color: #3D3D3D; }
+  .footer {
+    margin-top: 20px; font-size: 13px; color: #3D3D3D;
+  }
+</style>
+</head>
+<body>
+  <div class="slide">
+    <div class="panel">
+      <p class="eyebrow">주요 기능</p>
+      <h1>세 가지만 알면 됩니다</h1>
+      <div class="grid">
+        <div class="card">
+          <div class="label">STEP 01</div>
+          <h2>입력</h2>
+          <p>매장 유형, 규모, 위치, 상권, 하루 판매량을 넣습니다. 전문 용어 없이 선택지로 진행합니다.</p>
+        </div>
+        <div class="card">
+          <div class="label">STEP 02</div>
+          <h2>분석</h2>
+          <p>같은 입력에는 같은 결과가 나옵니다. 왜 이 숫자인지 근거와 함께 보여 줍니다.</p>
+        </div>
+        <div class="card">
+          <div class="label">STEP 03</div>
+          <h2>제안</h2>
+          <p>언제 발주할지, 얼마나 남겨둘지, 한 번에 얼마나 받을지를 표준과 비교해 제안합니다.</p>
+        </div>
+      </div>
+      <div class="footer">후보 D · 세이지 그린 · 차분·신뢰감, 컨설팅/헬스케어형 톤</div>
+    </div>
+  </div>
+</body>
+</html>

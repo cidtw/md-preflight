@@ -974,6 +974,7 @@ vercel deploy --prod            # md-preflight.vercel.app
 | 도메인 비고 | `orderfit.vercel.app` 은 타 서비스 점유로 사용 불가 |
 | 레포 | GitHub `md-preflight` 유지 (이력·태그 보존) |
 | 발표 장표·포스터 | 별도 지시 전 **미변경** (라이브 URL만 웹·README·일지 반영) |
+| 후속 재생성 | 장표/A3에서 **MD Preflight → 발주맞춤 · OrderFit** 만 치환 후 PDF·PPTX 재생성 (레이아웃 유지) |
 
 ---
 

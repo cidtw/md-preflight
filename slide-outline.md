@@ -16,7 +16,7 @@
   - 미채택: `ppt-consulting-precision-grid`, `swiss-international-style`  
   - 이전 중간발표 참고: `ppt-samsung-ir-restrained` (구 7장)
 - **Branch policy**: **`main` = v1 아카이브 (변경 금지)** · 활성 개발·배포 = `pivot/project-direction`
-- **Prod**: https://md-preflight.vercel.app
+- **Prod**: https://baljumatch.vercel.app
 - **Status**: **STAGE 2 DESIGN (2026-07-20)**: 윤문 아웃라인 기준 `slides/slide-01..14.html` 전량 재생성 · validate pass · design-gate Proceed
 - **Quality tip (7/20)**: pytest **85** · ruff · basedpyright 0 · competition_sim smoke
 
@@ -35,7 +35,7 @@
 ### Slide 1 - Cover
 - **Type**: Cover
 - **Title**: 매장 특화 발주 기준 재조정
-- **Subtitle**: MD Preflight: v1 사전검수에서 ROP, 근거, 상권 시뮬까지
+- **Subtitle**: 발주맞춤 · OrderFit: v1 사전검수에서 ROP, 근거, 상권 시뮬까지
 - **Kicker**: 2026.07.01–20 · main 아카이브 → pivot/project-direction · 라이브
 - **Presenter**: 개발 권태원 (SaaS Platformer)
 - **Notes**: “Lead Time은 입력으로 유지합니다. 조정은 ROP, SS, Q, 요일, SL입니다. **근거 L1–L3**, **D_eff 정합**까지 맞춰 두었습니다.”
@@ -91,7 +91,7 @@
   - **비레버**: LT: **입력 유지, 추천으로 바꾸지 않음**
   - **UX**: 위저드 → 로딩 → 리포트 · **일반/전문 토글** · **경쟁 시뮬 패널** · **PDF·MD·CSV·JSON**
   - **데모**: 앵커 census 검증 점포 카드 (정규화 스냅샷)
-  - **라이브**: https://md-preflight.vercel.app
+  - **라이브**: https://baljumatch.vercel.app
 - **Visual**: 3단 플로우 Input → Analyze → Output + “sim / export / dual narrative” 칩
 
 ### Slide 7 - 아키텍처 (3단 파이프라인)
@@ -184,7 +184,7 @@
   피벗 뒤에는 **발주 레버(ROP·SS·Q·SL)** 로 옮겼습니다.  
   문헌 근거와 좁은 시연으로 “이 숫자의 근거”에 답하고,  
   상권·what-if까지 **엔진과 같은 식**으로 맞춰 두었습니다.
-- **Contact**: GitHub `github.com/cidtw/md-preflight` · 브랜치 `pivot/project-direction` · https://md-preflight.vercel.app
+- **Contact**: GitHub `github.com/cidtw/md-preflight` · 브랜치 `pivot/project-direction` · https://baljumatch.vercel.app
 - **Appendix pointers**: `docs/evidence/` · `docs/dev-journal-2026-07.md` · `docs/architecture.md` · `docs/redesign/pipeline.md` · `handoff/2026-07-20-p0-accuracy-ux.md`
 
 ---

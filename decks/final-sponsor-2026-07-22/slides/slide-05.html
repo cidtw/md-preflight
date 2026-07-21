@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>주요 기능</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 720pt; height: 405pt;
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      background: #FAF8F5; color: #2D2A26;
+      overflow: hidden; padding: 28pt 36pt 24pt;
+      display: flex; flex-direction: column;
+    }
+    .top {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 8pt;
+    }
+    .section { font-size: 11pt; font-weight: 600; color: #C45A3B; }
+    .page { font-size: 10pt; color: #6B6560; }
+    h1 {
+      font-size: 18pt; font-weight: 700; letter-spacing: -0.015em;
+      line-height: 1.3; margin-bottom: 14pt; word-break: keep-all;
+    }
+    .grid {
+      display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+      gap: 10pt; flex: 1; min-height: 0; margin-bottom: 10pt;
+    }
+    .card {
+      background: #F0EBE3; border: 1px solid #DDD8D0; border-radius: 12pt;
+      padding: 14pt 14pt; display: flex; flex-direction: column;
+    }
+    .row {
+      display: flex; align-items: center; gap: 8pt; margin-bottom: 8pt;
+    }
+    .n {
+      width: 22pt; height: 22pt; border-radius: 50%;
+      background: #C45A3B; color: #FAF8F5;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11pt; font-weight: 700; flex-shrink: 0;
+    }
+    .card h2 { font-size: 13pt; font-weight: 700; word-break: keep-all; }
+    .card p {
+      font-size: 11.5pt; line-height: 1.45; color: #6B6560; word-break: keep-all;
+    }
+    .footer {
+      margin-top: auto; padding-top: 10pt;
+      font-size: 10pt; color: #6B6560;
+      border-top: 1px solid #DDD8D0;
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <span class="section">Exploration: 주요 기능 톺아보기</span>
+    <span class="page">05 / 08</span>
+  </div>
+  <h1>쉬운 작성, 명료한 결과, 확실한 근거.</h1>
+  <div class="grid">
+    <div class="card">
+      <div class="row"><span class="n">1</span><h2>EASY USAGE & INPUT</h2></div>
+      <p>질의형 입력화면, 전문 용어 없이 매장 조건 입력 가능.</p>
+    </div>
+    <div class="card">
+      <div class="row"><span class="n">2</span><h2>CUSTOM ORDER SUGGESTION</h2></div>
+      <p>매장 기준과 일반 표준을 순차 비교하여 차이점 시각화.</p>
+    </div>
+    <div class="card">
+      <div class="row"><span class="n">3</span><h2>TELL ME WHY THIS NUMBER?</h2></div>
+      <p>결과만 던져주는 것이 아닌,<br />매장 특성이 어떻게 반영되었는지 완결된 문장으로 설명.</p>
+    </div>
+    <div class="card">
+      <div class="row"><span class="n">4</span><h2>EXPORT IT AS REPORT</h2></div>
+      <p>리포트 추출 및 공유 기능 제공,<br />교육·내부 공유·후속 논의 등의 활용에 용이함.</p>
+    </div>
+  </div>
+  <div class="footer">ORIENTATE TO EASY-TO-USE SERVICE</div>
+</body>
+</html>

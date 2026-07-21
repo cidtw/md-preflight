@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>C · Content sample</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 720px; overflow: hidden; font-family: Pretendard, "Noto Sans KR", sans-serif; }
+  .slide {
+    width: 1280px; height: 720px;
+    background: #FAF8F5;
+    color: #2D2A26;
+    position: relative;
+    padding: 52px 64px 40px;
+  }
+  .eyebrow {
+    font-size: 13px; font-weight: 600; color: #C45A3B;
+    letter-spacing: 0.04em; margin-bottom: 12px;
+  }
+  h1 {
+    font-size: 34px; font-weight: 700; margin-bottom: 32px;
+    letter-spacing: -0.015em;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+  .card {
+    background: #F0EBE3;
+    border: 1px solid #DDD8D0;
+    border-radius: 14px;
+    padding: 28px 24px;
+    min-height: 340px;
+  }
+  .n {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #C45A3B; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px; margin-bottom: 18px;
+  }
+  .card h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+  .card p { font-size: 16px; line-height: 1.55; color: #6B6560; }
+  .footer {
+    position: absolute; left: 64px; right: 64px; bottom: 28px;
+    font-size: 13px; color: #6B6560;
+  }
+</style>
+</head>
+<body>
+  <div class="slide">
+    <p class="eyebrow">주요 기능</p>
+    <h1>세 가지만 알면 됩니다</h1>
+    <div class="grid">
+      <div class="card">
+        <div class="n">1</div>
+        <h2>입력</h2>
+        <p>매장 유형, 규모, 위치, 상권, 하루 판매량을 넣습니다. 전문 용어 없이 선택지로 진행합니다.</p>
+      </div>
+      <div class="card">
+        <div class="n">2</div>
+        <h2>분석</h2>
+        <p>같은 입력에는 같은 결과가 나옵니다. 왜 이 숫자인지 근거와 함께 보여 줍니다.</p>
+      </div>
+      <div class="card">
+        <div class="n">3</div>
+        <h2>제안</h2>
+        <p>언제 발주할지, 얼마나 남겨둘지, 한 번에 얼마나 받을지를 표준과 비교해 제안합니다.</p>
+      </div>
+    </div>
+    <div class="footer">후보 C · 따뜻한 크림 톤 · 비전공 청중·교육 현장 친화</div>
+  </div>
+</body>
+</html>

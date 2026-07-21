@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>표지</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 720pt; height: 405pt;
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      background: #FAF8F5; color: #2D2A26;
+      overflow: hidden; position: relative;
+      padding: 40pt 48pt 28pt;
+      display: flex; flex-direction: column;
+    }
+    .accent-bar {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 6pt;
+      background: #C45A3B;
+    }
+    .eyebrow {
+      font-size: 11pt; font-weight: 600; letter-spacing: 0.04em;
+      color: #C45A3B; margin-bottom: 18pt;
+    }
+    h1 {
+      font-size: 32pt; font-weight: 700; letter-spacing: -0.02em;
+      line-height: 1.22; max-width: 560pt; word-break: keep-all;
+    }
+    .sub {
+      margin-top: 14pt; font-size: 14pt; font-weight: 400;
+      color: #6B6560; line-height: 1.5; max-width: 500pt; word-break: keep-all;
+    }
+    .panel {
+      margin-top: 28pt;
+      background: #F0EBE3; border: 1px solid #DDD8D0; border-radius: 10pt;
+      padding: 14pt 18pt; display: flex; gap: 18pt; align-items: center;
+      max-width: 540pt;
+    }
+    .item { font-size: 12pt; font-weight: 600; color: #2D2A26; }
+    .item span {
+      display: block; font-size: 10pt; font-weight: 400;
+      color: #6B6560; margin-top: 3pt;
+    }
+    .dot {
+      width: 5pt; height: 5pt; border-radius: 50%;
+      background: #C45A3B; flex-shrink: 0;
+    }
+    .footer {
+      margin-top: auto;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 10pt; color: #6B6560;
+    }
+  </style>
+</head>
+<body>
+  <div class="accent-bar" aria-hidden="true"></div>
+  <p class="eyebrow">2026.07.24 · 경기도기술학교 북부캠퍼스 · AI SW자동화교육과정</p>
+  <h1>매장마다, 물품마다 다른 발주 기준,<br />몇 가지 정보 입력으로 손쉽게.</h1>
+  <p class="sub">매장·상권 정보로 안전재고와 발주 시점을 제안하는 매장 특화 재고 운영 도구</p>
+  <div class="panel">
+    <div class="item">목적<span>왜 만들었나</span></div>
+    <div class="dot"></div>
+    <div class="item">기능<span>무엇을 하나</span></div>
+    <div class="dot"></div>
+    <div class="item">효과<span>무엇이 좋아지나</span></div>
+    <div class="dot"></div>
+    <div class="item">시연<span>실제로 보는 화면</span></div>
+  </div>
+  <div class="footer">
+    <span>권태원 (taewon1119@gmail.com) | github.com/cidtw</span>
+  </div>
+</body>
+</html>

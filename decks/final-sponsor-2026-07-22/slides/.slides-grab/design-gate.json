@@ -1,0 +1,377 @@
+{
+  "schemaVersion": 2,
+  "verdict": "proceed",
+  "generatedAt": "2026-07-21T14:59:44.196Z",
+  "slideMode": "presentation",
+  "resolution": "1080p",
+  "previewDir": ".slides-grab/gate-preview",
+  "reportPath": ".slides-grab/design-gate-report.md",
+  "passA": {
+    "reportPath": "/Users/urfacekwon/workspace/projects/md-preflight/decks/final-sponsor-2026-07-22/slides/pass-a-report.md",
+    "summary": "# Pass A: System Contract / Constraint Integrity",
+    "verdict": "PASS",
+    "unresolvedCritical": 0,
+    "blockingFindings": [],
+    "checks": [
+      {
+        "name": "System consistency",
+        "status": "pass"
+      },
+      {
+        "name": "Color discipline",
+        "status": "pass"
+      },
+      {
+        "name": "AI slop tropes",
+        "status": "pass"
+      },
+      {
+        "name": "Content discipline",
+        "status": "pass"
+      }
+    ],
+    "evidenceFiles": [
+      "slide-01.png",
+      "slide-02.png",
+      "slide-03.png",
+      "slide-04.png",
+      "slide-05.png",
+      "slide-06.png",
+      "slide-07.png",
+      "slide-08.png"
+    ],
+    "slideFingerprints": [
+      {
+        "file": "slide-01.html",
+        "sha256": "ac47412c4c817c98292ce17b80b5ff4a4cbc39a1e44118d0a2e942da915b475e"
+      },
+      {
+        "file": "slide-02.html",
+        "sha256": "991230b7a611e2e2bde30a9a77dcf2a150dfac44ac23685014c483748688962f"
+      },
+      {
+        "file": "slide-03.html",
+        "sha256": "ddab37287bd2fc293facef3f7249697a41f9c279a39bc045f8dc320909035fbe"
+      },
+      {
+        "file": "slide-04.html",
+        "sha256": "69b636bc614a873dbf431cb79d3cd5d284ea3257b0d136d443e482e8abd4d799"
+      },
+      {
+        "file": "slide-05.html",
+        "sha256": "af05dd9d23c47977be85afea824865893feb1b6c116b51dd23ab5f916bc2222c"
+      },
+      {
+        "file": "slide-06.html",
+        "sha256": "0a11b31e73d55e560fd052d3aeb0648fb7691c075f7146d277d7d2c7c770b9dc"
+      },
+      {
+        "file": "slide-07.html",
+        "sha256": "c4ee92bacc22b771d8ddcf732334627bd47ffdda36c1224a366eee42d9cc1c0c"
+      },
+      {
+        "file": "slide-08.html",
+        "sha256": "07a08e8b5cedf6cd71ea4498df643971f10925d48489fcabcb2fbdcddd588e98"
+      }
+    ]
+  },
+  "passB": {
+    "reportPath": "/Users/urfacekwon/workspace/projects/md-preflight/decks/final-sponsor-2026-07-22/slides/pass-b-report.md",
+    "summary": "# Pass B: Audience Impact / Expressive Readability",
+    "verdict": "PASS",
+    "unresolvedCritical": 0,
+    "blockingFindings": [],
+    "checks": [
+      {
+        "name": "Composition & hierarchy",
+        "status": "pass"
+      },
+      {
+        "name": "Typography & legibility",
+        "status": "pass"
+      },
+      {
+        "name": "Korean/CJK word-break integrity",
+        "status": "pass"
+      },
+      {
+        "name": "Review Litmus",
+        "status": "pass"
+      }
+    ],
+    "evidenceFiles": [
+      "slide-01.png",
+      "slide-02.png",
+      "slide-03.png",
+      "slide-04.png",
+      "slide-05.png",
+      "slide-06.png",
+      "slide-07.png",
+      "slide-08.png"
+    ],
+    "slideFingerprints": [
+      {
+        "file": "slide-01.html",
+        "sha256": "ac47412c4c817c98292ce17b80b5ff4a4cbc39a1e44118d0a2e942da915b475e"
+      },
+      {
+        "file": "slide-02.html",
+        "sha256": "991230b7a611e2e2bde30a9a77dcf2a150dfac44ac23685014c483748688962f"
+      },
+      {
+        "file": "slide-03.html",
+        "sha256": "ddab37287bd2fc293facef3f7249697a41f9c279a39bc045f8dc320909035fbe"
+      },
+      {
+        "file": "slide-04.html",
+        "sha256": "69b636bc614a873dbf431cb79d3cd5d284ea3257b0d136d443e482e8abd4d799"
+      },
+      {
+        "file": "slide-05.html",
+        "sha256": "af05dd9d23c47977be85afea824865893feb1b6c116b51dd23ab5f916bc2222c"
+      },
+      {
+        "file": "slide-06.html",
+        "sha256": "0a11b31e73d55e560fd052d3aeb0648fb7691c075f7146d277d7d2c7c770b9dc"
+      },
+      {
+        "file": "slide-07.html",
+        "sha256": "c4ee92bacc22b771d8ddcf732334627bd47ffdda36c1224a366eee42d9cc1c0c"
+      },
+      {
+        "file": "slide-08.html",
+        "sha256": "07a08e8b5cedf6cd71ea4498df643971f10925d48489fcabcb2fbdcddd588e98"
+      }
+    ]
+  },
+  "gateValidation": {
+    "status": "passed",
+    "failures": [],
+    "passA": {
+      "label": "Pass A",
+      "verdict": "PASS",
+      "confidence": "High",
+      "unresolvedCritical": 0,
+      "blockingFindings": [],
+      "checks": [
+        {
+          "name": "System consistency",
+          "status": "pass"
+        },
+        {
+          "name": "Color discipline",
+          "status": "pass"
+        },
+        {
+          "name": "AI slop tropes",
+          "status": "pass"
+        },
+        {
+          "name": "Content discipline",
+          "status": "pass"
+        }
+      ],
+      "evidenceFiles": [
+        "slide-01.png",
+        "slide-02.png",
+        "slide-03.png",
+        "slide-04.png",
+        "slide-05.png",
+        "slide-06.png",
+        "slide-07.png",
+        "slide-08.png"
+      ],
+      "slideFingerprints": [
+        {
+          "file": "slide-01.html",
+          "sha256": "ac47412c4c817c98292ce17b80b5ff4a4cbc39a1e44118d0a2e942da915b475e"
+        },
+        {
+          "file": "slide-02.html",
+          "sha256": "991230b7a611e2e2bde30a9a77dcf2a150dfac44ac23685014c483748688962f"
+        },
+        {
+          "file": "slide-03.html",
+          "sha256": "ddab37287bd2fc293facef3f7249697a41f9c279a39bc045f8dc320909035fbe"
+        },
+        {
+          "file": "slide-04.html",
+          "sha256": "69b636bc614a873dbf431cb79d3cd5d284ea3257b0d136d443e482e8abd4d799"
+        },
+        {
+          "file": "slide-05.html",
+          "sha256": "af05dd9d23c47977be85afea824865893feb1b6c116b51dd23ab5f916bc2222c"
+        },
+        {
+          "file": "slide-06.html",
+          "sha256": "0a11b31e73d55e560fd052d3aeb0648fb7691c075f7146d277d7d2c7c770b9dc"
+        },
+        {
+          "file": "slide-07.html",
+          "sha256": "c4ee92bacc22b771d8ddcf732334627bd47ffdda36c1224a366eee42d9cc1c0c"
+        },
+        {
+          "file": "slide-08.html",
+          "sha256": "07a08e8b5cedf6cd71ea4498df643971f10925d48489fcabcb2fbdcddd588e98"
+        }
+      ]
+    },
+    "passB": {
+      "label": "Pass B",
+      "verdict": "PASS",
+      "confidence": "High",
+      "unresolvedCritical": 0,
+      "blockingFindings": [],
+      "checks": [
+        {
+          "name": "Composition & hierarchy",
+          "status": "pass"
+        },
+        {
+          "name": "Typography & legibility",
+          "status": "pass"
+        },
+        {
+          "name": "Korean/CJK word-break integrity",
+          "status": "pass"
+        },
+        {
+          "name": "Review Litmus",
+          "status": "pass"
+        }
+      ],
+      "evidenceFiles": [
+        "slide-01.png",
+        "slide-02.png",
+        "slide-03.png",
+        "slide-04.png",
+        "slide-05.png",
+        "slide-06.png",
+        "slide-07.png",
+        "slide-08.png"
+      ],
+      "slideFingerprints": [
+        {
+          "file": "slide-01.html",
+          "sha256": "ac47412c4c817c98292ce17b80b5ff4a4cbc39a1e44118d0a2e942da915b475e"
+        },
+        {
+          "file": "slide-02.html",
+          "sha256": "991230b7a611e2e2bde30a9a77dcf2a150dfac44ac23685014c483748688962f"
+        },
+        {
+          "file": "slide-03.html",
+          "sha256": "ddab37287bd2fc293facef3f7249697a41f9c279a39bc045f8dc320909035fbe"
+        },
+        {
+          "file": "slide-04.html",
+          "sha256": "69b636bc614a873dbf431cb79d3cd5d284ea3257b0d136d443e482e8abd4d799"
+        },
+        {
+          "file": "slide-05.html",
+          "sha256": "af05dd9d23c47977be85afea824865893feb1b6c116b51dd23ab5f916bc2222c"
+        },
+        {
+          "file": "slide-06.html",
+          "sha256": "0a11b31e73d55e560fd052d3aeb0648fb7691c075f7146d277d7d2c7c770b9dc"
+        },
+        {
+          "file": "slide-07.html",
+          "sha256": "c4ee92bacc22b771d8ddcf732334627bd47ffdda36c1224a366eee42d9cc1c0c"
+        },
+        {
+          "file": "slide-08.html",
+          "sha256": "07a08e8b5cedf6cd71ea4498df643971f10925d48489fcabcb2fbdcddd588e98"
+        }
+      ]
+    }
+  },
+  "slideFingerprints": [
+    {
+      "file": "slide-01.html",
+      "sha256": "ac47412c4c817c98292ce17b80b5ff4a4cbc39a1e44118d0a2e942da915b475e"
+    },
+    {
+      "file": "slide-02.html",
+      "sha256": "991230b7a611e2e2bde30a9a77dcf2a150dfac44ac23685014c483748688962f"
+    },
+    {
+      "file": "slide-03.html",
+      "sha256": "ddab37287bd2fc293facef3f7249697a41f9c279a39bc045f8dc320909035fbe"
+    },
+    {
+      "file": "slide-04.html",
+      "sha256": "69b636bc614a873dbf431cb79d3cd5d284ea3257b0d136d443e482e8abd4d799"
+    },
+    {
+      "file": "slide-05.html",
+      "sha256": "af05dd9d23c47977be85afea824865893feb1b6c116b51dd23ab5f916bc2222c"
+    },
+    {
+      "file": "slide-06.html",
+      "sha256": "0a11b31e73d55e560fd052d3aeb0648fb7691c075f7146d277d7d2c7c770b9dc"
+    },
+    {
+      "file": "slide-07.html",
+      "sha256": "c4ee92bacc22b771d8ddcf732334627bd47ffdda36c1224a366eee42d9cc1c0c"
+    },
+    {
+      "file": "slide-08.html",
+      "sha256": "07a08e8b5cedf6cd71ea4498df643971f10925d48489fcabcb2fbdcddd588e98"
+    }
+  ],
+  "localAssetFingerprints": [
+    {
+      "file": "./assets/demo-walkthrough.mp4",
+      "sha256": "c61829ae6fcc2501be45baab256c465aa74a28eef77bf2fb1c8450794f3cc1ef"
+    },
+    {
+      "file": "./assets/demo-poster.png",
+      "sha256": "35e9b605e11236541c14bec80a074f0b307086d7af4dca5a5e1ae94296211f92"
+    }
+  ],
+  "passReportFingerprints": [
+    {
+      "file": "pass-a-report.md",
+      "sha256": "2791861e049f481527e2ba05c1af1d101818bcefbe8703f5047e1915f5dc4bd4"
+    },
+    {
+      "file": "pass-b-report.md",
+      "sha256": "7178bd891e7dafae8b653a863ed41c8d8c783dee791f8215aeb7816d65f6311a"
+    }
+  ],
+  "previewFingerprints": [
+    {
+      "file": ".slides-grab/gate-preview/slide-01.png",
+      "sha256": "0fe5d0df2114959835b1815375bdeb0c2b617ff983f9a6e0ef9def33ebb5a219"
+    },
+    {
+      "file": ".slides-grab/gate-preview/slide-02.png",
+      "sha256": "9b71687c062478f885b800003d2e1351b87f4efd0b62317d694b940aff47caeb"
+    },
+    {
+      "file": ".slides-grab/gate-preview/slide-03.png",
+      "sha256": "aacd038f8a334bfbb32d18b30e3c3f221274d1f9210d38990d58e7952e1c3e58"
+    },
+    {
+      "file": ".slides-grab/gate-preview/slide-04.png",
+      "sha256": "e5420acd3b09579bcce0b5744f7a7d1bba44242e710cc4481f00c3c0f2bae4e4"
+    },
+    {
+      "file": ".slides-grab/gate-preview/slide-05.png",
+      "sha256": "44469b8c90a5de9a9c0f199b97c6a7a574a82ccf02ba79a8c10e5c0229cedb32"
+    },
+    {
+      "file": ".slides-grab/gate-preview/slide-06.png",
+      "sha256": "4bb7c268c14c0eeaf10408f46f3e28b2b7f0da313366259f4676711e338de170"
+    },
+    {
+      "file": ".slides-grab/gate-preview/slide-07.png",
+      "sha256": "bddd257b59df6bc4329eb21945bb560f39f94c4602cd318ff1c36e0f15f2e145"
+    },
+    {
+      "file": ".slides-grab/gate-preview/slide-08.png",
+      "sha256": "4e19e9d12d68983df2f86d6dbbe44ad9a56f5eb240c7aa2fa061e0e397437b53"
+    }
+  ]
+}

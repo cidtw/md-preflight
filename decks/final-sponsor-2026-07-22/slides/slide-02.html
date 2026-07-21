@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>한 장으로 보는 프로젝트</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 720pt; height: 405pt;
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      background: #FAF8F5; color: #2D2A26;
+      overflow: hidden; padding: 28pt 36pt 24pt;
+      display: flex; flex-direction: column;
+    }
+    .top {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 8pt;
+    }
+    .section { font-size: 11pt; font-weight: 600; color: #C45A3B; letter-spacing: 0.03em; }
+    .page { font-size: 10pt; color: #6B6560; }
+    h1 {
+      font-size: 20pt; font-weight: 700; letter-spacing: -0.015em;
+      line-height: 1.3; margin-bottom: 16pt; word-break: keep-all;
+    }
+    .grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12pt;
+      flex: 1; min-height: 0; align-content: start;
+    }
+    .card {
+      background: #F0EBE3; border: 1px solid #DDD8D0; border-radius: 12pt;
+      padding: 18pt 14pt; min-height: 220pt;
+      display: flex; flex-direction: column;
+    }
+    .n {
+      width: 28pt; height: 28pt; border-radius: 50%;
+      background: #C45A3B; color: #FAF8F5;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13pt; font-weight: 700; margin-bottom: 12pt;
+    }
+    .card h2 {
+      font-size: 14pt; font-weight: 700; margin-bottom: 8pt; word-break: keep-all;
+    }
+    .card p {
+      font-size: 12pt; line-height: 1.5; color: #6B6560; word-break: keep-all;
+    }
+    .footer {
+      margin-top: auto; padding-top: 12pt;
+      font-size: 10pt; color: #6B6560;
+      border-top: 1px solid #DDD8D0;
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <span class="section">들어가며: 이 서비스는 무엇일까요?</span>
+    <span class="page">02 / 08</span>
+  </div>
+  <h1>초보 유통, 물류업 소상공인들을 위한 "매장 맞춤 발주 도우미"</h1>
+  <div class="grid">
+    <div class="card">
+      <div class="n">1</div>
+      <h2>무엇을?</h2>
+      <p>매장 입지와 상권 특성을 반영해,<br />언제·얼마나 발주할지 기준 재조정.</p>
+    </div>
+    <div class="card">
+      <div class="n">2</div>
+      <h2>왜 필요한가요?</h2>
+      <p>매장마다 다른 입지조건, <br />따라서 매장 조건에 맞는 개별화 필요.</p>
+    </div>
+    <div class="card">
+      <div class="n">3</div>
+      <h2>뭘 얻을 수 있나요?</h2>
+      <p>정보 입력 시 발주 시점·안전재고·1회 발주량을 표준과 비교해 제안</p>
+    </div>
+  </div>
+  <div class="footer">맞춤 기준 · 근거 포함 · 바로 시연 가능</div>
+</body>
+</html>

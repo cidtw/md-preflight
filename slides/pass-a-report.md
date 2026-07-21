@@ -2,18 +2,18 @@
 
 VERDICT: PASS
 Confidence: High
-Evidence: slides/gate-preview/slide-01.png, slides/gate-preview/slide-02.png, slides/gate-preview/slide-03.png, slides/gate-preview/slide-04.png, slides/gate-preview/slide-05.png, slides/gate-preview/slide-06.png, slides/gate-preview/slide-07.png, slides/gate-preview/slide-08.png, slides/gate-preview/slide-09.png, slides/gate-preview/slide-10.png, slides/gate-preview/slide-11.png, slides/gate-preview/slide-12.png, slides/gate-preview/slide-13.png, slides/gate-preview/slide-14.png
-Slide fingerprints: slide-01.html: 85008390ed9d8edf382c247b55ad50d99bf9725088cbba9a7df7dc43cb9ad43e, slide-02.html: 2715dec64c8dddd08ee3d728187bfb7eda981d089f5b4d66566dae0a2e1a789f, slide-03.html: bf63681b64b18a9df5badb943510e0e76fe376dab536d79c82f18606f978a3fc, slide-04.html: 78260db753ba3b368104f2d3fbdf0075434049ea5d5ba0afeb124dba5feadaa1, slide-05.html: 3ad7940a678a851c00842755691d6e8ca3bbb59ea4c08bb72d195f880fcd8b24, slide-06.html: 8a8dfbf17f071402f372230ba74e755524d8a2872b6bc993906fd65733944d59, slide-07.html: 7ddd0d864e1e36014f34ffb1a3efb2cdf0cd78313324eae40528d75c6c7d07a4, slide-08.html: 2a407c44d25b26cedcbae8d3fa590d4e53ca2a42238939269b1065c1e858bdd7, slide-09.html: 1c7ce0fe7f7e65a2558efe2523acff6756df0b1a0adc3985f6b9f2c70ffb33d1, slide-10.html: 89bcc46ad84ee9ecb604db91e26c9d3c9d284f6ab2f1acf4a897f25797efc8e3, slide-11.html: 7676e8c79774f3e1f0d0766675d3274da5196c6dddfd6cd39fc32c611613492b, slide-12.html: 11437e29436b7a3bc49bc47bd328561a295449bebcc280f8ed6f11a81ee3a02a, slide-13.html: 5e3abdb5faf22d0425e47eb4f1f8b5acd4cb72574c4efd7f56cbe6d80d5c88a7, slide-14.html: c61082cd39ccc2f037005adef1734f379739054198cd361cf22119417b873285
+Evidence: slides/.slides-grab/gate-preview/slide-01.png, slides/.slides-grab/gate-preview/slide-02.png, slides/.slides-grab/gate-preview/slide-03.png, slides/.slides-grab/gate-preview/slide-04.png, slides/.slides-grab/gate-preview/slide-05.png, slides/.slides-grab/gate-preview/slide-06.png, slides/.slides-grab/gate-preview/slide-07.png, slides/.slides-grab/gate-preview/slide-08.png, slides/.slides-grab/gate-preview/slide-09.png, slides/.slides-grab/gate-preview/slide-10.png, slides/.slides-grab/gate-preview/slide-11.png, slides/.slides-grab/gate-preview/slide-12.png, slides/.slides-grab/gate-preview/slide-13.png, slides/.slides-grab/gate-preview/slide-14.png
+Slide fingerprints: slide-01.html: 803d6f4532976e7f0b4d56275c9bbbb7cfaed64be63ed68409a0e255212d3694, slide-02.html: e9acb2ab59d6e975a6ecb415b2ed7166c682a7d85d5b40d6ecedab2abe7ae8a1, slide-03.html: 22b2eb3f9519fa2c44b3c5a1745d2eeebc4b31cb090918d2f681410643de0bcd, slide-04.html: 97d95ad81e790b4d577298b9b79429bf409d45ce1243554b3b28e66936fb85cf, slide-05.html: 61eef40fcb70e112e972b5e510d7969632221bd1a30627728bb1d43762bbb881, slide-06.html: baab693b9fcd1d4f2a2946f5e53ad15e13ef68259404887828ba6a2ae883d572, slide-07.html: 1e0b427332ca55777392d8945e58e114be10ad82f12b6c2344f33a56ddaaf584, slide-08.html: 78069eeeb51079ea0dfa3515fb84c83a1c65c0ee8f93b223d585aef06058b567, slide-09.html: c4be4b4bc8dae0c2bbbbb76b870a58e34d45bcdc9eb3f337f410f47ca7b86ba0, slide-10.html: 3af6b999e4cef86016f7ef49c64b4275657ffad875e6a88567230035e454ae17, slide-11.html: bd09f1b2215342f982ed0bf1630075a14c0784915bb0a5464711a76e31f88dbb, slide-12.html: 193c42383e3ccaf0250618afa9c16bc371571badaf0b52c9ae7a80624a763892, slide-13.html: d487b96638f6ae1e25c4f68c6dc81fe26cddb6b26cf6f454acb16a30ebc476a5, slide-14.html: 3aec26e81368f8a792a2cf3d45836830684be9cb36313dfc1705dbc178d46ad7
 Unresolved Critical: 0
 Blocking findings: None
 
 ## Checks
-- [x] System consistency: PASS — executive-minimal tokens, Pretendard, shared header/footer after layout reflow; grids use height:auto so trailing copy no longer collides with footer
-- [x] Color discipline: PASS — #F5F5F0 / #E8E8E3 / #1A1A1A / #666 / #999 / #D4D4D0 only
-- [x] AI slop tropes: PASS — no gradients, left-border cards, emoji icons, or generic font stacks
-- [x] Content discipline: PASS — numbers and claims unchanged from outline; only layout reflow
+- [x] System consistency: PASS — layout/tokens unchanged; brand string only
+- [x] Color discipline: PASS — palette unchanged
+- [x] AI slop tropes: PASS — no redesign
+- [x] Content discipline: PASS — MD Preflight → 발주맞춤 · OrderFit only
 
 ## Findings
 | Slide | Finding | Severity | Fix | Status |
 |-------|---------|----------|-----|--------|
-| slide-07/09/10 | Footer text was overlapping body copy due to height:100% grids | Major | height:auto + main flex column + footer flex-shrink | resolved |
+| slide-01 | No blocking findings | Note | None | tracked |

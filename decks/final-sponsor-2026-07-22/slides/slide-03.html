@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>왜 필요한가</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 720pt; height: 405pt;
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      background: #FAF8F5; color: #2D2A26;
+      overflow: hidden; padding: 28pt 36pt 24pt;
+      display: flex; flex-direction: column;
+    }
+    .top {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 8pt;
+    }
+    .section { font-size: 11pt; font-weight: 600; color: #C45A3B; }
+    .page { font-size: 10pt; color: #6B6560; }
+    h1 {
+      font-size: 18pt; font-weight: 700; letter-spacing: -0.015em;
+      line-height: 1.35; margin-bottom: 16pt; word-break: keep-all; max-width: 640pt;
+    }
+    .cols {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14pt;
+      flex: 1; min-height: 0; align-content: start;
+    }
+    .panel {
+      background: #F0EBE3; border: 1px solid #DDD8D0; border-radius: 12pt;
+      padding: 18pt 16pt; min-height: 210pt;
+    }
+    .panel.accent {
+      background: #FFFFFF;
+      border-color: #C45A3B;
+      box-shadow: inset 0 0 0 1.5pt #C45A3B;
+    }
+    .label {
+      font-size: 11pt; font-weight: 700; letter-spacing: 0.04em;
+      color: #6B6560; margin-bottom: 8pt;
+    }
+    .panel.accent .label { color: #C45A3B; }
+    .panel h2 {
+      font-size: 14pt; font-weight: 700; margin-bottom: 12pt;
+      line-height: 1.35; word-break: keep-all;
+    }
+    .panel ul { list-style: none; display: flex; flex-direction: column; gap: 8pt; }
+    .panel li {
+      font-size: 12pt; line-height: 1.5; color: #6B6560;
+      padding-left: 14pt; position: relative; word-break: keep-all;
+    }
+    .panel li::before {
+      content: ""; position: absolute; left: 0; top: 7pt;
+      width: 5pt; height: 5pt; border-radius: 50%; background: #DDD8D0;
+    }
+    .panel.accent li::before { background: #C45A3B; }
+    .footer {
+      margin-top: auto; padding-top: 12pt;
+      font-size: 10pt; color: #6B6560;
+      border-top: 1px solid #DDD8D0;
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <span class="section">Immersion: 이 서비스가 필요한 이유?</span>
+    <span class="page">03 / 08</span>
+  </div>
+  <h1>업계 평균만 따라가면, 품절 혹은 과잉이 무조건 발생함.</h1>
+  <div class="cols">
+    <div class="panel">
+      <p class="label">PROBLEM</p>
+      <h2>일표준만으로는 부족해요</h2>
+      <ul>
+        <li>매장별 입지·규모·고객 패턴이 다름에도 발주 패턴은 동일한 경우가 있음.</li>
+        <li>영업관리 담당자도 “왜 이 숫자인지” 종종 설명하기 어려워함.</li>
+      </ul>
+    </div>
+    <div class="panel accent">
+      <p class="label">SOLUTION</p>
+      <h2>매장별 맞춤 발주 및 확실한 근거 제공</h2>
+      <ul>
+        <li>매장 정보만 입력하면 점포 최적화 발주 기준을 제안함.</li>
+        <li>계산 근거까지 보여주어 빠른 이해와 적용 가능.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer">매장 조건에 맞춘 발주 기준</div>
+</body>
+</html>

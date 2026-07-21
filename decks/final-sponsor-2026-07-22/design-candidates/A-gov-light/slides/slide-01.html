@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>A · 정부 라이트 네이비 — Cover</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 720px; overflow: hidden; font-family: Pretendard, "Noto Sans KR", sans-serif; }
+  .slide {
+    width: 1280px; height: 720px;
+    background: #E7F1FA;
+    color: #1C2848;
+    position: relative;
+    padding: 56px 64px 48px;
+  }
+  .frame {
+    position: absolute; inset: 28px;
+    border: 1.5px solid #002060;
+    pointer-events: none;
+  }
+  .ribbon {
+    position: absolute; top: 48px; right: 48px;
+    width: 88px; height: 88px;
+    background: #fff;
+    border-left: 10px solid #002060;
+  }
+  .eyebrow {
+    font-size: 15px; font-weight: 600; letter-spacing: 0.08em;
+    color: #0F41BD; margin-bottom: 28px;
+  }
+  h1 {
+    font-size: 52px; font-weight: 800; letter-spacing: -0.02em;
+    line-height: 1.2; color: #172A88; max-width: 920px;
+  }
+  .sub {
+    margin-top: 20px; font-size: 22px; font-weight: 500;
+    color: #3C4860; line-height: 1.45; max-width: 860px;
+  }
+  .chips { display: flex; gap: 10px; margin-top: 36px; }
+  .chip {
+    background: #fff; border: 1px solid #C5D3E2;
+    padding: 10px 16px; border-radius: 6px;
+    font-size: 15px; font-weight: 600; color: #1C2848;
+  }
+  .chip.primary { background: #002060; color: #fff; border-color: #002060; }
+  .footer {
+    position: absolute; left: 64px; right: 64px; bottom: 48px;
+    display: flex; justify-content: space-between;
+    font-size: 14px; color: #6B7787; border-top: 1px solid #C5D3E2; padding-top: 16px;
+  }
+  .badge {
+    position: absolute; top: 56px; left: 64px;
+    font-size: 13px; font-weight: 700; color: #002060;
+    letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+  <div class="slide">
+    <div class="frame"></div>
+    <div class="ribbon"></div>
+    <div style="height: 72px"></div>
+    <p class="eyebrow">2026.07.22 · 최종 발표 · 경기도기술학교 북부캠퍼스</p>
+    <h1>매장마다 다른 발주 기준,<br/>한 번에 맞춥니다</h1>
+    <p class="sub">매장·상권 정보를 넣으면 안전재고와 발주 시점을 자동으로 제안하는<br/>매장 특화 재고 운영 도구</p>
+    <div class="chips">
+      <span class="chip primary">목적 · 기능 · 효과</span>
+      <span class="chip">6분 브리핑</span>
+      <span class="chip">시연 가능</span>
+    </div>
+    <div class="footer">
+      <span>권태원 · 발주맞춤 · OrderFit</span>
+      <span>후보 A · ppt-msit-ai-three-powers</span>
+    </div>
+  </div>
+</body>
+</html>

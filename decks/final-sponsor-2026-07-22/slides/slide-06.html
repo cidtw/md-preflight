@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>기술 스택과 데이터 흐름</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 720pt; height: 405pt;
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      background: #FAF8F5; color: #2D2A26;
+      overflow: hidden; padding: 24pt 32pt 20pt;
+      display: flex; flex-direction: column;
+    }
+    .top {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 6pt;
+    }
+    .section { font-size: 11pt; font-weight: 600; color: #C45A3B; }
+    .page { font-size: 10pt; color: #6B6560; }
+    h1 {
+      font-size: 17pt; font-weight: 700; letter-spacing: -0.015em;
+      line-height: 1.3; margin-bottom: 12pt; word-break: keep-all;
+    }
+    .pipeline {
+      display: grid;
+      grid-template-columns: 1fr 14pt 1fr 14pt 1fr 14pt 1fr 14pt 1fr;
+      gap: 0; align-items: stretch; margin-bottom: 12pt;
+    }
+    .node {
+      background: #F0EBE3; border: 1px solid #DDD8D0; border-radius: 8pt;
+      padding: 8pt 6pt; text-align: center; min-height: 56pt;
+      display: flex; flex-direction: column; justify-content: center; gap: 3pt;
+    }
+    .node .t {
+      font-size: 10pt; font-weight: 700; color: #2D2A26;
+      word-break: keep-all; line-height: 1.25;
+    }
+    .node .s {
+      font-size: 8.5pt; color: #6B6560; line-height: 1.3; word-break: keep-all;
+    }
+    .node.hl {
+      background: #C45A3B; border-color: #C45A3B;
+    }
+    .node.hl .t, .node.hl .s { color: #FAF8F5; }
+    .node.hl .s { opacity: 0.9; }
+    .arr {
+      display: flex; align-items: center; justify-content: center;
+      color: #C45A3B; font-size: 12pt; font-weight: 700;
+    }
+    .stack-title {
+      font-size: 10pt; font-weight: 700; color: #C45A3B;
+      margin-bottom: 6pt;
+    }
+    .chips {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6pt;
+      margin-bottom: 10pt;
+    }
+    .chip {
+      background: #FFFFFF; border: 1px solid #DDD8D0; border-radius: 8pt;
+      padding: 7pt 8pt;
+    }
+    .chip .k {
+      font-size: 9pt; font-weight: 700; color: #C45A3B; margin-bottom: 2pt;
+    }
+    .chip .v {
+      font-size: 10pt; font-weight: 700; color: #2D2A26; margin-bottom: 2pt;
+      word-break: keep-all;
+    }
+    .chip .d {
+      font-size: 8.5pt; color: #6B6560; line-height: 1.3; word-break: keep-all;
+    }
+    .note {
+      font-size: 10pt; color: #6B6560; line-height: 1.4; word-break: keep-all;
+      background: #F0EBE3; border: 1px solid #DDD8D0; border-radius: 8pt;
+      padding: 8pt 10pt; margin-bottom: 8pt;
+    }
+    .footer {
+      margin-top: auto; padding-top: 8pt;
+      font-size: 10pt; color: #6B6560;
+      border-top: 1px solid #DDD8D0;
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <span class="section">OVERVIEW: 기술 스택 및 데이터 흐름</span>
+    <span class="page">06 / 08</span>
+  </div>
+  <h1>화면 → 서버 → 계산 → 결과.<br /> 사용된 기술 스택이 한 줄로 이어지는 막힘 없는 플로우.</h1>
+
+  <div class="pipeline" aria-label="데이터 흐름">
+    <div class="node">
+      <div class="t">Browser</div>
+      <div class="s">Input & Demo Cards</div>
+    </div>
+    <div class="arr">→</div>
+    <div class="node hl">
+      <div class="t">FastAPI</div>
+      <div class="s">Vercel Distribution</div>
+    </div>
+    <div class="arr">→</div>
+    <div class="node">
+      <div class="t">Pydantic</div>
+      <div class="s">Input Validation</div>
+    </div>
+    <div class="arr">→</div>
+    <div class="node hl">
+      <div class="t">Pipeline</div>
+      <div class="s">Input·Analysis·Result</div>
+    </div>
+    <div class="arr">→</div>
+    <div class="node">
+      <div class="t">Report UI</div>
+      <div class="s">Easy Explanation · Reasons</div>
+    </div>
+  </div>
+
+  <p class="stack-title">역할별 기술 스택</p>
+  <div class="chips">
+    <div class="chip">
+      <div class="k">Display</div>
+      <div class="v">HTML · CSS · JS</div>
+      <div class="d">Input Wizard · Result Page</div>
+    </div>
+    <div class="chip">
+      <div class="k">Server</div>
+      <div class="v">FastAPI · Python</div>
+      <div class="d">Process Request · API</div>
+    </div>
+    <div class="chip">
+      <div class="k">Calculation</div>
+      <div class="v">3-Level Pipeline</div>
+      <div class="d">Same Input = Same Result</div>
+    </div>
+    <div class="chip">
+      <div class="k">Assist · Distribution</div>
+      <div class="v">Kakao Rest API · Vercel</div>
+      <div class="d">Assist GeoData · Release to Web</div>
+    </div>
+  </div>
+
+  <p class="note">품질은 pytest·ruff로 자동 검사하고 Kakao REST API Key가 없어도 저장본으로 시연 가능.</p>
+  <div class="footer">WebView + Python Server, Fixed Rule of Calculation</div>
+</body>
+</html>
