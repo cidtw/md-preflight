@@ -76,23 +76,29 @@
             <button type="button" class="btn btn-primary" id="welcome-start">시작하기</button>
           </div>
 
-          <div class="demo-scenarios" aria-label="시연용 앵커 전수조사 매장">
-            <p class="demo-scenarios-kicker">시연 · 세솔로 25 앵커 전수조사</p>
+          <div class="demo-scenarios" aria-label="시연용 주변 매장 조사">
+            <p class="demo-scenarios-kicker">시연 · 세솔로 25 주변 매장</p>
             <p class="demo-scenarios-lede">
-              기준 주소 <strong>경기도 고양시 덕양구 세솔로 25</strong>에서
-              Kakao Local로 편의점(1km) · 슈퍼/SSM(3km) · 대형마트(10km)를 전수 조사한
-              매장입니다. 입지·상권·유동 요소는 주변 POI로 추론합니다. (POS 실측 아님)
+              기준 주소 <strong>경기도 고양시 덕양구 세솔로 25</strong> 주변의
+              편의점(1km) · 슈퍼/SSM(3km) · 대형마트(10km)를 조사한 매장입니다.
+              입지·상권·유동은 주변 시설 정보로 추정합니다. (POS 실측 아님)
             </p>
+            <div class="demo-tech-stack" aria-label="시연에 사용한 기술">
+              <span class="demo-tech-chip">Kakao Local API</span>
+              <span class="demo-tech-chip">FastAPI · Python</span>
+              <span class="demo-tech-chip">Vercel</span>
+              <span class="demo-tech-chip">주변 시설 기반 입지 추정</span>
+            </div>
             <p id="verified-store-meta" class="demo-scenarios-meta mute" hidden></p>
             <div id="verified-store-filters" class="demo-store-filters" hidden></div>
             <div id="verified-store-list" class="demo-scenario-list demo-scenario-list-dense"></div>
           </div>
 
           <div class="demo-scenarios demo-scenarios-explore" aria-label="탐색용 더미 시나리오">
-            <p class="demo-scenarios-kicker">탐색 · 더미 / 지도 API</p>
+            <p class="demo-scenarios-kicker">탐색 · 더미 / 지도 검색</p>
             <p class="demo-scenarios-lede">
-              기존 지역·주소 선택과 동일 계열의 탐색용 프리셋입니다. Kakao 점포 검색은
-              위저드에서 「정확한 위치」를 켠 뒤에도 가능합니다. 시연 서사 본체는 아닙니다.
+              행정동·주소 입력을 시험해 보는 탐색용 프리셋입니다. 지도 점포 검색은
+              위저드에서 「정확한 위치」를 켠 뒤에도 가능합니다. 시연 본편은 아닙니다.
             </p>
             <div id="demo-scenario-list" class="demo-scenario-list"></div>
           </div>
@@ -163,6 +169,45 @@
           >
             개발자에게 제안하기
           </a>
+        </div>
+      </section>
+
+      <!-- Education program attribution (welcome only) -->
+      <section id="sponsor-credit" class="sponsor-credit" aria-label="주관·후원 기관">
+        <div class="sponsor-credit-inner">
+          <p class="sponsor-credit-kicker">교육과정 프로젝트</p>
+          <p class="sponsor-credit-text">
+            본 서비스는
+            <strong>2026년 경기도기술학교 북부캠퍼스 AI기반 SW자동화 과정</strong>의
+            일환으로 제작되었습니다. 경기도기술학교 · 경기도일자리재단 · 고양특례시
+            주관·후원.
+          </p>
+          <div class="sponsor-logos">
+            <img
+              class="sponsor-logo"
+              src="/static/logos/gts-logo.png"
+              alt="경기도기술학교"
+              width="160"
+              height="36"
+              loading="lazy"
+            />
+            <img
+              class="sponsor-logo"
+              src="/static/logos/gjf-logo.png"
+              alt="경기도일자리재단"
+              width="160"
+              height="36"
+              loading="lazy"
+            />
+            <img
+              class="sponsor-logo"
+              src="/static/logos/goyang-logo.png"
+              alt="고양특례시"
+              width="160"
+              height="43"
+              loading="lazy"
+            />
+          </div>
         </div>
       </section>
     </main>

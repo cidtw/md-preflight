@@ -1334,10 +1334,29 @@ table.cmp td strong {
   color: var(--mute);
 }
 .demo-scenarios-lede {
-  margin: 0 0 var(--s-md);
+  margin: 0 0 var(--s-sm);
   font-size: 14px;
   line-height: 1.5;
   color: var(--body);
+}
+.demo-tech-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 var(--s-md);
+}
+.demo-tech-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+  color: var(--mute);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.1px;
 }
 .demo-scenarios-meta {
   margin: 0 0 var(--s-sm);
@@ -1370,21 +1389,26 @@ table.cmp td strong {
   grid-template-columns: 1fr 1fr;
   gap: var(--s-sm);
 }
+/* PC: show ~2 full card rows before scroll (avoid mid-card cut-off). */
 .demo-scenario-list-dense {
-  max-height: 420px;
+  max-height: min(72vh, 760px);
   overflow: auto;
-  padding-right: 4px;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
+  scroll-padding-block: 8px;
 }
 .demo-card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   text-align: left;
-  padding: var(--s-md);
+  padding: 12px 14px;
   border: 1px solid var(--hairline);
   border-radius: var(--r-md);
   background: var(--surface-1);
   color: inherit;
+  min-height: 0;
   transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
 .demo-card-verified {
@@ -1433,18 +1457,31 @@ table.cmp td strong {
   font-size: 12px;
   font-weight: 500;
   color: var(--ok-deep);
+  line-height: 1.4;
 }
 .demo-card-blurb {
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.45;
   color: var(--body);
 }
 .demo-card-highlight {
-  margin-top: 2px;
+  margin-top: 1px;
   font-size: 12px;
   line-height: 1.4;
   color: var(--primary);
   font-weight: 500;
+}
+.demo-card-highlight-label {
+  display: inline-block;
+  margin-right: 2px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: 1px;
 }
 .demo-card-note {
   font-size: 11px;
@@ -1455,7 +1492,7 @@ table.cmp td strong {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: var(--s-xs);
+  margin-top: 4px;
 }
 .demo-card-actions .btn {
   height: 32px;
@@ -1470,6 +1507,72 @@ table.cmp td strong {
 .demo-card-actions .btn-ghost:hover {
   border-color: var(--hairline-strong);
   color: var(--ink);
+}
+
+/* ---------- sponsor / education credit (welcome) ---------- */
+.sponsor-credit {
+  margin-top: var(--s-md);
+  padding: var(--s-lg) var(--s-md);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+}
+.sponsor-credit-inner {
+  max-width: 40rem;
+  margin: 0 auto;
+  text-align: center;
+  display: grid;
+  gap: var(--s-sm);
+  justify-items: center;
+}
+.sponsor-credit-kicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.sponsor-credit-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--body);
+  max-width: 36rem;
+}
+.sponsor-credit-text strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.sponsor-logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px 28px;
+  margin-top: var(--s-xs);
+  padding-top: var(--s-sm);
+  width: 100%;
+  border-top: 1px solid var(--hairline);
+}
+.sponsor-logo {
+  display: block;
+  height: 36px;
+  width: auto;
+  max-width: min(160px, 28vw);
+  object-fit: contain;
+  opacity: 0.92;
+}
+html[data-theme="dark"] .sponsor-logo {
+  /* Logos are dark-on-light brand marks — lift slightly on dark canvas. */
+  filter: brightness(1.08) contrast(1.02);
+  opacity: 0.95;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 6px;
+  padding: 6px 10px;
+  height: 44px;
+  max-width: min(168px, 30vw);
+  box-sizing: content-box;
 }
 
 /* ---------- responsive ---------- */
@@ -1497,6 +1600,16 @@ table.cmp td strong {
   }
   .demo-scenario-list {
     grid-template-columns: 1fr;
+  }
+  .demo-scenario-list-dense {
+    max-height: min(65vh, 560px);
+  }
+  .sponsor-logo {
+    height: 30px;
+    max-width: min(130px, 40vw);
+  }
+  html[data-theme="dark"] .sponsor-logo {
+    height: 36px;
   }
   .store-picker-regions {
     grid-template-columns: 1fr;

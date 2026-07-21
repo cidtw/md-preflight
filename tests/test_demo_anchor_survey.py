@@ -4,15 +4,19 @@ from __future__ import annotations
 
 from app.pipeline.demo_anchor_survey import (
     DEFAULT_ANCHOR_ADDRESS,
+    AnchorSurveyResult,
     SurveyedStore,
     _classify_hyper,
     _classify_sm_ssm,
     _dong_from_address,
+    _fti_plain_label,
     _infer_accessibility,
     _infer_trade_area,
     _is_noise_poi,
+    _useful_context_notes,
     reclassify_store_channel,
     surveyed_store_to_parameters,
+    surveyed_to_demo_cards,
 )
 
 
@@ -104,3 +108,65 @@ def test_surveyed_store_to_parameters() -> None:
     assert p["use_precise_location"] is True
     assert p["store_address"] == "경기 고양시 덕양구 세솔로 10"
     assert p["store_type"] == "convenience"
+
+
+def test_fti_and_context_note_helpers() -> None:
+    assert "유동 보통" in _fti_plain_label(0.45)
+    assert "유동 많음" in _fti_plain_label(0.6)
+    notes = _useful_context_notes(
+        [
+            "앵커 기준 직선거리 약 167m",
+            "주변 유동 신호 중상 (proxy FTI≈0.53)",
+            "교육시설 밀집",
+            "주거 단지 키워드",
+        ],
+    )
+    assert notes == ["교육시설 밀집", "주거 단지 키워드"]
+
+
+def test_surveyed_to_demo_cards_use_plain_korean() -> None:
+    store = SurveyedStore(
+        id="anchor-plain",
+        place_id="9",
+        name="테스트슈퍼",
+        channel="supermarket",
+        distance_m=167,
+        road_address="경기 고양시 덕양구 동세로 22",
+        location_dong="경기도 고양시 덕양구 동산동",
+        trade_area="residential",
+        accessibility="main_road",
+        store_size="sm",
+        avg_ticket="t_8k_15k",
+        product_name="상온 라면",
+        daily_demand=18,
+        standard_lead_time_days=2,
+        foot_traffic_index=0.53,
+        context_notes=[
+            "앵커 기준 직선거리 약 167m",
+            "교육시설 밀집",
+            "주거 단지 키워드",
+        ],
+        inference_summary="legacy english junk residential main_road FTI",
+    )
+    cards = surveyed_to_demo_cards(
+        AnchorSurveyResult(
+            anchor_address=DEFAULT_ANCHOR_ADDRESS,
+            stores=[store],
+        ),
+    )
+    assert len(cards) == 1
+    card = cards[0]
+    label = str(card["storeLabel"])
+    blurb = str(card["blurb"])
+    highlight = str(card["highlight"])
+    note = str(card["verificationNote"])
+    assert "main_road" not in label
+    assert "residential" not in blurb
+    assert "FTI≈" not in highlight
+    assert "D=" not in highlight
+    assert "앵커 주소 전수조사" not in note
+    assert "Kakao" not in note
+    assert "대로변" in label
+    assert "주거지" in blurb or "주거지" in highlight
+    assert "일 소진" in highlight
+    assert "교육시설 밀집" in note

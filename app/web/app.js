@@ -350,12 +350,15 @@ function buildDemoCard(scenario, tier) {
   const note = scenario.verificationNote
     ? `<span class="demo-card-note">${escapeHtml(scenario.verificationNote)}</span>`
     : "";
+  const highlight = scenario.highlight
+    ? `<span class="demo-card-highlight"><span class="demo-card-highlight-label">한눈에</span> ${escapeHtml(scenario.highlight)}</span>`
+    : "";
   card.innerHTML = `
       ${badge}
       <span class="demo-card-title">${escapeHtml(scenario.title)}</span>
       ${storeLine}
       <span class="demo-card-blurb">${escapeHtml(scenario.blurb)}</span>
-      <span class="demo-card-highlight">볼 포인트 · ${escapeHtml(scenario.highlight)}</span>
+      ${highlight}
       ${note}
       <div class="demo-card-actions">
         <button type="button" class="btn btn-primary" data-demo-action="run">
@@ -478,8 +481,8 @@ async function loadLiveVerifiedStores() {
   if (verifiedStoreMeta) {
     verifiedStoreMeta.hidden = false;
     verifiedStoreMeta.textContent = liveVerifiedStores.length
-      ? `조사 매장 ${liveVerifiedStores.length}곳 · 세솔로 25 앵커 · Kakao Local 전수조사`
-      : "조사 결과 없음 — 스냅샷/API 키를 확인하세요.";
+      ? `조사 매장 ${liveVerifiedStores.length}곳 · 세솔로 25 기준 주변 조사`
+      : "조사 결과 없음 — 스냅샷 또는 지도 API 설정을 확인하세요.";
   }
 }
 
@@ -531,8 +534,10 @@ function showStep(index) {
   form.hidden = isWelcome;
   wizardNav.hidden = isWelcome;
   stepProgress.hidden = isWelcome;
-  // Roadmap dummy only on landing welcome (hidden during wizard / loading / result).
+  // Roadmap + sponsor credit only on landing welcome.
   if (comingSoon) comingSoon.hidden = !isWelcome;
+  const sponsorCredit = document.getElementById("sponsor-credit");
+  if (sponsorCredit) sponsorCredit.hidden = !isWelcome;
 
   for (const step of STEPS) {
     if (step.id === "welcome") continue;

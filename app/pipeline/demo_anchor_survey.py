@@ -1078,8 +1078,50 @@ def surveyed_store_to_parameters(store: SurveyedStore) -> dict[str, ParameterVal
     }
 
 
+def _fti_plain_label(fti: float) -> str:
+    """Short plain-language foot-traffic band for demo cards."""
+    if fti >= 0.55:
+        band = "유동 많음"
+    elif fti >= 0.35:
+        band = "유동 보통"
+    elif fti > 0:
+        band = "유동 적음"
+    else:
+        band = "유동 추정 없음"
+    return f"{band}({fti:.2f})"
+
+
+def _access_short_ko(accessibility: str) -> str:
+    return {
+        "main_road": "대로변",
+        "alley": "이면도로·골목",
+        "indoor": "건물 내",
+    }.get(accessibility, accessibility)
+
+
+def _useful_context_notes(notes: Sequence[str], *, limit: int = 2) -> list[str]:
+    """Drop distance/FTI jargon already shown elsewhere on the card."""
+    skip_prefixes = ("앵커 기준", "주변 유동 신호")
+    out: list[str] = []
+    for note in notes:
+        text = note.strip()
+        if not text:
+            continue
+        if any(text.startswith(p) for p in skip_prefixes):
+            continue
+        # Strip internal "proxy FTI≈…" parentheticals if any remain.
+        cleaned = re.sub(r"\s*\(proxy FTI≈[^)]*\)", "", text).strip()
+        if cleaned:
+            out.append(cleaned)
+        if len(out) >= limit:
+            break
+    return out
+
+
 def surveyed_to_demo_cards(result: AnchorSurveyResult) -> list[dict[str, object]]:
-    """UI-oriented cards for verified demo list."""
+    """UI-oriented cards for verified demo list (plain Korean, no stack noise)."""
+    from app.pipeline.domain_catalog import ACCESSIBILITY, TRADE_AREA
+
     cards: list[dict[str, object]] = []
     channel_ko = {
         "convenience": "편의점",
@@ -1095,28 +1137,30 @@ def surveyed_to_demo_cards(result: AnchorSurveyResult) -> list[dict[str, object]
             "ssm": "3km",
             "hypermarket": "10km",
         }[store.channel]
+        trade_ko = TRADE_AREA.get(store.trade_area, store.trade_area)
+        access_short = _access_short_ko(store.accessibility)
+        access_full = ACCESSIBILITY.get(store.accessibility, access_short)
+        fti_plain = _fti_plain_label(store.foot_traffic_index)
+        place = store.location_dong or store.address_display or "주소 미상"
+        useful_notes = _useful_context_notes(store.context_notes)
         cards.append(
             {
                 "id": store.id,
                 "tier": "verified",
                 "title": f"{store.name}",
                 "storeLabel": (
-                    f"{channel_ko[store.channel]} · 앵커 {store.distance_m:.0f}m "
-                    f"(조사 반경 {radius_label}) · {store.accessibility}"
+                    f"{channel_ko[store.channel]} · 기준 주소에서 약 {store.distance_m:.0f}m"
+                    f" · 조사 반경 {radius_label} · {access_short}"
                 ),
-                "blurb": store.inference_summary,
+                "blurb": (
+                    f"{place} · {trade_ko} · {access_full} · {fti_plain}"
+                ),
                 "highlight": (
-                    f"{channel_ko[store.channel]} · {store.trade_area} · "
-                    f"FTI≈{store.foot_traffic_index:.2f} · "
-                    f"{store.product_name} D={store.daily_demand:g}"
+                    f"{trade_ko} · {fti_plain} · "
+                    f"{store.product_name} 일 소진 약 {store.daily_demand:g}개"
                 ),
                 "verificationNote": (
-                    "앵커 주소 전수조사(Kakao) · "
-                    + (
-                        " · ".join(store.context_notes[:3])
-                        if store.context_notes
-                        else "입지 추론"
-                    )
+                    " · ".join(useful_notes) if useful_notes else "주변 시설로 입지·상권 추정"
                 ),
                 "expected": {},
                 "parameters": params,

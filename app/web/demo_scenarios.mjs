@@ -40,8 +40,8 @@ export const DEMO_SCENARIOS = [
     id: "explore-admin-dong",
     tier: "explore",
     title: "탐색 · 행정동만 (지도 없음)",
-    blurb: "정확한 위치 없이 행정동·상권 점수만 쓰는 경로 확인.",
-    highlight: "use_precise_location=false",
+    blurb: "정확한 주소 없이 행정동·상권만으로 점수를 매기는 경로입니다.",
+    highlight: "지도 위치 미사용 · 행정동 기반",
     parameters: {
       product_name: "냉장 간편식",
       store_type: "convenience",
@@ -63,9 +63,9 @@ export const DEMO_SCENARIOS = [
   {
     id: "explore-anchor-precise",
     tier: "explore",
-    title: "탐색 · 앵커 주소 직접 입력",
-    blurb: "세솔로 25를 매장 주소로 두고 geo/경쟁 옵션을 시험.",
-    highlight: "precise + 선택 옵션",
+    title: "탐색 · 기준 주소 직접 입력",
+    blurb: "세솔로 25를 매장 주소로 두고 유동·경쟁 옵션을 시험합니다.",
+    highlight: "정확한 위치 · 선택 옵션 포함",
     parameters: {
       product_name: "냉장 간편식 도시락",
       store_type: "convenience",
@@ -88,8 +88,8 @@ export const DEMO_SCENARIOS = [
     id: "mismatch-guidance",
     tier: "explore",
     title: "탐색 · 유형·규모 불일치",
-    blurb: "더미 불일치 guidance 확인용.",
-    highlight: "guidance · size 우선",
+    blurb: "매장 유형과 규모가 어긋날 때 안내 문구가 나오는지 확인합니다.",
+    highlight: "불일치 안내 · 규모 선택 우선",
     parameters: {
       product_name: "즉석밥",
       store_type: "convenience",
