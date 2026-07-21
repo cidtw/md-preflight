@@ -133,16 +133,51 @@ body > .container {
   letter-spacing: -0.6px;
   color: var(--ink);
   margin: 0;
+  max-width: 28rem;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .lede {
   font-size: 16px;
   line-height: 26px;
   color: var(--body);
   margin: var(--s-sm) 0 0;
+  max-width: 40rem;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .lede strong {
   color: var(--ink);
   font-weight: 500;
+}
+
+/* Welcome hero: natural Korean rhythm via short paragraphs */
+.hero-copy {
+  max-width: 42rem;
+}
+.lede-stack {
+  display: grid;
+  gap: 0.55em;
+  margin-top: var(--s-md);
+}
+.lede-stack > p {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+.lede-stack > p:first-child {
+  color: var(--ink);
+  font-weight: 500;
+}
+/* Soft line break for mid+ viewports; stack on narrow phones */
+.br-md {
+  display: none;
+}
+@media (min-width: 480px) {
+  .br-md {
+    display: block;
+  }
 }
 
 /* ---------- top nav ---------- */
@@ -250,14 +285,19 @@ body > .container {
 }
 
 .bullet-list {
-  margin: var(--s-lg) 0;
+  margin: var(--s-lg) 0 0;
   padding-left: 1.2rem;
   color: var(--body);
   font-size: 14px;
   line-height: 22px;
+  max-width: 40rem;
+  word-break: keep-all;
 }
 .bullet-list li {
   margin-bottom: var(--s-xs);
+}
+.bullet-list li:last-child {
+  margin-bottom: 0;
 }
 
 .actions-row {
@@ -1326,7 +1366,7 @@ table.cmp td strong {
   border-top: 1px dashed var(--hairline);
 }
 .demo-scenarios-kicker {
-  margin: 0 0 var(--s-xxs);
+  margin: 0 0 var(--s-xs);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1334,10 +1374,29 @@ table.cmp td strong {
   color: var(--mute);
 }
 .demo-scenarios-lede {
+  display: grid;
+  gap: 0.45em;
   margin: 0 0 var(--s-sm);
+  max-width: 40rem;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--body);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.demo-scenarios-lede > p {
+  margin: 0;
+}
+.demo-scenarios-scope {
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.demo-scenarios-note {
+  color: var(--mute);
+  font-size: 13px;
+  line-height: 1.5;
 }
 .demo-tech-stack {
   display: flex;

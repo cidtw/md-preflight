@@ -481,8 +481,8 @@ async function loadLiveVerifiedStores() {
   if (verifiedStoreMeta) {
     verifiedStoreMeta.hidden = false;
     verifiedStoreMeta.textContent = liveVerifiedStores.length
-      ? `조사 매장 ${liveVerifiedStores.length}곳 · 세솔로 25 기준 주변 조사`
-      : "조사 결과 없음 — 스냅샷 또는 지도 API 설정을 확인하세요.";
+      ? `불러온 매장 ${liveVerifiedStores.length}곳 · 세솔로 25 주변`
+      : "조사 결과가 없습니다. 스냅샷 또는 지도 API 설정을 확인해 주세요.";
   }
 }
 
