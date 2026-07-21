@@ -17,14 +17,16 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
-    app_name: str = "MD Preflight ROP"
-    app_version: str = "0.3.6-rop"
+    app_name: str = "발주맞춤 · OrderFit"
+    app_version: str = "0.4.0-orderfit"
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
             "http://localhost:8000",
             "http://127.0.0.1:8000",
+            "https://orderfit.vercel.app",
+            # Legacy alias while DNS/bookmarks catch up
             "https://md-preflight.vercel.app",
         ],
     )

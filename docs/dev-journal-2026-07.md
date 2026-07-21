@@ -963,6 +963,17 @@ vercel deploy --prod            # md-preflight.vercel.app
 | 시연 블록 | 기준 주소 / 조사 범위 / 한계 문구를 분리해 가독성 개선 |
 | 발표·포스터 | **미변경** (웹 카피·일지만) |
 
+### 후속 (같은 날) — 제품명 재브랜딩
+
+| 항목 | 내용 |
+|------|------|
+| 국문 | **발주맞춤** |
+| 영문 | **OrderFit** |
+| 이유 | v1「MD Preflight」(영업 MD·프로모션 사전검수)와 분리 · 자영업·현업 재발주/발주량 서비스 정체성 |
+| 프로덕션 | `https://orderfit.vercel.app` (Vercel project rename) |
+| 레포 | GitHub `md-preflight` 유지 (이력·태그 보존) |
+| 발표 장표·포스터 | 별도 지시 전 **미변경** (라이브 URL만 웹·README·일지 반영) |
+
 ---
 
 ## 5. 발표용 스토리 스크립트

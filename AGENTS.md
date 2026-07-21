@@ -2,13 +2,18 @@
 
 ## Project Summary
 
-Store-specific **Lead Time / Re-Order Point** adjustment service.
-Users submit store, trade-area, and product demand parameters; a deterministic
-pipeline scores logistics CAPA and demand volatility, matches a knowledge base,
-and returns recommended LT/ROP with evidence.
+**Product**: **발주맞춤 · OrderFit** (repo/history may still say `md-preflight`).
+
+Store-specific **Re-Order Point / order-quantity** guide for shop owners and
+field operators (not the v1 MD promotion preflight). Users submit store,
+trade-area, and product demand parameters; a deterministic pipeline scores
+logistics CAPA and demand volatility, matches a knowledge base, and returns
+recommended ROP/SS/Q with evidence. LT stays fixed from contract/standard input.
 
 v1 promotion preflight is archived:
 `archive/v1-md-preflight/` · git tag `archive/v1-md-preflight`.
+
+**Prod URL**: https://orderfit.vercel.app
 
 ## Stack
 

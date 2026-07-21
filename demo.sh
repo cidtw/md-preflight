@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# Third-party / local demo smoke for MD Preflight ROP.
+# Third-party / local demo smoke for 발주맞춤 · OrderFit.
 # Usage:
 #   ./demo.sh                 # hit local http://127.0.0.1:8000
-#   ./demo.sh --prod          # hit https://md-preflight.vercel.app
+#   ./demo.sh --prod          # hit https://orderfit.vercel.app
 #   BASE_URL=https://… ./demo.sh
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://127.0.0.1:8000}"
 if [[ "${1:-}" == "--prod" ]]; then
-  BASE_URL="https://md-preflight.vercel.app"
+  BASE_URL="https://orderfit.vercel.app"
 fi
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 ok() { printf '  ✓ %s\n' "$*"; }
 fail() { printf '  ✗ %s\n' "$*" >&2; exit 1; }
 
-bold "MD Preflight ROP demo smoke → ${BASE_URL}"
+bold "발주맞춤 · OrderFit demo smoke → ${BASE_URL}"
 
 health="$(curl -fsS -m 20 "${BASE_URL}/api/health")"
 ver="$(printf '%s' "$health" | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d.get("status")=="ok" and d.get("service")=="rop-adjust"; print(d.get("version","?"))')" \

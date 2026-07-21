@@ -1,7 +1,9 @@
-# MD Preflight — 매장 특화 ROP 재조정
+# 발주맞춤 · OrderFit — 매장 맞춤 재발주점
 
+> **제품명**: **발주맞춤** (EN: **OrderFit**) — 자영업·현업을 위한 재발주점(ROP)·발주량 가이드  
 > **현재**: 매장·상권 파라미터 → 내부 점수·KB 매칭 → **ROP·안전재고·발주 레버 리포트**  
 > **LT**는 품목 계약/표준 입력으로 **유지**(출력에서 변동 추천 없음) · 물류 리스크는 **버퍼 재고**로 전환  
+> **코드/레포 이력명**: `md-preflight` (v1 프로모션 사전검수 아카이브 유지)  
 > **v1** (프로모션 사전검수): [`archive/v1-md-preflight/`](archive/v1-md-preflight/) · 태그 `archive/v1-md-preflight`
 
 FastAPI · Pydantic · 모듈형 3단 파이프라인
@@ -29,7 +31,7 @@ uv run uvicorn app.main:app --reload --port 8000
 # open http://127.0.0.1:8000
 ```
 
-**라이브 (제3자 시연)**: [https://md-preflight.vercel.app](https://md-preflight.vercel.app)
+**라이브 (제3자 시연)**: [https://orderfit.vercel.app](https://orderfit.vercel.app)
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/api/evaluate \

@@ -183,7 +183,7 @@ def test_index_page(client: TestClient) -> None:
     assert 'data-theme-btn="system"' in response.text
     assert "top-nav" in response.text
     assert "site-footer" in response.text
-    assert "MD Preflight – Find ROP" in response.text  # noqa: RUF001
+    assert "발주맞춤 · OrderFit" in response.text
     assert "coming-soon" in response.text
     assert "개발자에게 제안하기" in response.text
     assert "taewon1119@gmail.com" in response.text

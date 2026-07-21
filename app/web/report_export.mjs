@@ -121,7 +121,7 @@ export function buildMarkdown(payload, { expert = false } = {}) {
   lines.push(
     `---`,
     ``,
-    `*MD Preflight ROP · template ${payload.template_id} v${payload.template_version}*`,
+    `*발주맞춤 · OrderFit · template ${payload.template_id} v${payload.template_version}*`,
     ``,
   );
   return lines.join("\n");
@@ -264,7 +264,7 @@ export function buildPrintableHtml(payload, { expert = false } = {}) {
   ${layersHtml}
   <h2>근거</h2>
   ${evidenceHtml}
-  <p class="foot">MD Preflight ROP · ${escape(payload.template_id)} v${escape(payload.template_version)}</p>
+  <p class="foot">발주맞춤 · OrderFit · ${escape(payload.template_id)} v${escape(payload.template_version)}</p>
 </body>
 </html>`;
 }
