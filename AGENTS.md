@@ -1,5 +1,11 @@
 # Project Agent Instructions
 
+## Status — ARCHIVED (2026-07-22)
+
+This project is **officially closed** and frozen as a **public GitHub archive**.
+Do **not** add features, open workstreams, or treat the live demo as supported.
+See `ARCHIVE.md` and the banner in `README.md`.
+
 ## Project Summary
 
 **Product**: **발주맞춤 · OrderFit** (repo/history may still say `md-preflight`).
@@ -13,7 +19,9 @@ recommended ROP/SS/Q with evidence. LT stays fixed from contract/standard input.
 v1 promotion preflight is archived:
 `archive/v1-md-preflight/` · git tag `archive/v1-md-preflight`.
 
-**Prod URL**: https://baljumatch.vercel.app
+Pivot branch at close: `pivot/project-direction`.
+
+**Prod URL (reference only)**: https://baljumatch.vercel.app
 
 ## Stack
 
@@ -30,8 +38,9 @@ FastAPI, Pydantic, Python 3.11+, ruff, basedpyright, pytest.
 
 ## Before Editing
 
-- Check `git status` (redesign work on `pivot/project-direction`).
-- Read `2026-07-14-New-Service-Flow.md` and `docs/redesign/pipeline.md`.
+- **Default: do not edit.** Project is archived (2026-07-22).
+- If the user explicitly requests a one-off fix or unarchive: check `git status`,
+  read `ARCHIVE.md`, then `docs/redesign/pipeline.md`.
 - Do not hard-code design-doc example narratives into output.
 - Prefer size/ticket over store_type when they conflict (emit guidance).
 - Extend via pipeline stages; do not restore v1 packages without request.

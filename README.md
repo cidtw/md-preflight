@@ -1,12 +1,21 @@
 # 발주맞춤 · OrderFit — 매장 맞춤 재발주점
 
+> **⚠️ ARCHIVED · 공식 마감 (2026-07-22)**  
+> `pivot/project-direction` 피벗 개발을 포함한 본 프로젝트는 **2026-07-22** 부로 공식적으로 종료되었습니다.  
+> GitHub **public archive** 로 동결합니다. 이슈·PR·추가 커밋은 받지 않습니다.  
+> 시연 URL·로컬 실행은 참고용이며, 운영 지원은 없습니다.
+
 > **제품명**: **발주맞춤** (EN: **OrderFit**) — 자영업·현업을 위한 재발주점(ROP)·발주량 가이드  
-> **현재**: 매장·상권 파라미터 → 내부 점수·KB 매칭 → **ROP·안전재고·발주 레버 리포트**  
+> **상태**: 매장·상권 파라미터 → 내부 점수·KB 매칭 → **ROP·안전재고·발주 레버 리포트** (동결)  
 > **LT**는 품목 계약/표준 입력으로 **유지**(출력에서 변동 추천 없음) · 물류 리스크는 **버퍼 재고**로 전환  
 > **코드/레포 이력명**: `md-preflight` (v1 프로모션 사전검수 아카이브 유지)  
-> **v1** (프로모션 사전검수): [`archive/v1-md-preflight/`](archive/v1-md-preflight/) · 태그 `archive/v1-md-preflight`
+> **활성 브랜치(마감 시점)**: `pivot/project-direction` · **v1 동결**: `main` @ tag `archive/v1-md-preflight`  
+> **v1** (프로모션 사전검수): [`archive/v1-md-preflight/`](archive/v1-md-preflight/) · 태그 `archive/v1-md-preflight`  
+> **기간**: 2026-07-02 ~ 2026-07-22
 
 FastAPI · Pydantic · 모듈형 3단 파이프라인
+
+자세한 마감 기록: [`ARCHIVE.md`](ARCHIVE.md)
 
 ---
 
