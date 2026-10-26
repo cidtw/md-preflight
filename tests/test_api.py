@@ -174,6 +174,11 @@ def test_index_page(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "ROP" in response.text
+    # 3D 60-day backtest stage & report
+    assert 'id="story"' in response.text
+    assert 'id="c"' in response.text
+    assert 'id="dock"' in response.text
+    assert "60일 사후 검증 리플레이" in response.text
     # Multi-session wizard shell
     assert "step-welcome" in response.text
     assert "매장 기본 정보" in response.text

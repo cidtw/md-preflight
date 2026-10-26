@@ -936,6 +936,7 @@ function renderResult(payload, expertOverride) {
   `;
   resultPanel.hidden = false;
   if (comingSoon) comingSoon.hidden = true;
+  resultPanel.scrollIntoView?.({ behavior: "smooth", block: "start" });
   document.getElementById("again-btn")?.addEventListener("click", () => {
     resultPanel.hidden = true;
     inputPanel.hidden = false;

@@ -2,14 +2,18 @@
 <html lang="ko" data-theme="light" data-theme-pref="system">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta
       name="description"
       content="발주맞춤(OrderFit) — 매장 유형·규모·상권·접근성으로 재발주점(ROP)·여유 재고·발주량·발주 주기를 다시 잡고 근거를 보여 줍니다."
     />
-    <meta name="theme-color" content="#0070f3" />
+    <meta name="theme-color" content="#0a9d77" />
     <title>발주맞춤 · OrderFit — 매장 맞춤 재발주점</title>
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap"
+    />
     <link rel="stylesheet" href="/static/styles.css" />
     <script>
       (function () {
@@ -31,29 +35,311 @@
     </script>
   </head>
   <body>
-    <header class="top-nav">
-      <div class="nav-inner">
-        <button type="button" class="wordmark" id="nav-home" aria-label="홈으로">
-          <span class="wordmark-dot" aria-hidden="true"></span>
-          발주맞춤 · OrderFit
-        </button>
-        <div class="nav-right">
-          <div class="theme-toggle" role="group" aria-label="화면 테마">
-            <button type="button" class="theme-btn" data-theme-btn="light" title="라이트" aria-label="라이트">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-            </button>
-            <button type="button" class="theme-btn" data-theme-btn="dark" title="다크" aria-label="다크">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z"/></svg>
-            </button>
-            <button type="button" class="theme-btn" data-theme-btn="system" title="시스템" aria-label="시스템">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+    <div id="story">
+      <div class="stage">
+        <canvas id="c" aria-hidden="true"></canvas>
+        <div class="tags" id="tags" aria-hidden="true"></div>
+
+        <header class="bar top-nav">
+          <button type="button" class="logo wordmark" id="nav-home" aria-label="홈으로">
+            <svg viewBox="0 0 28 28" fill="none" aria-hidden="true">
+              <rect width="28" height="28" rx="8" fill="var(--ink)" />
+              <path
+                d="M5 20 L11 20 L11 9 L15 9 L15 20 L16 20 L16 13 L23 13"
+                stroke="var(--fit)"
+                stroke-width="2.4"
+                stroke-linejoin="round"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span>발주맞춤 <small>ORDERFIT</small></span>
+          </button>
+          <div class="nav-right">
+            <div class="theme-toggle" role="group" aria-label="화면 테마">
+              <button
+                type="button"
+                class="theme-btn"
+                data-theme-btn="light"
+                title="라이트"
+                aria-label="라이트"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="4" />
+                  <path
+                    d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="theme-btn"
+                data-theme-btn="dark"
+                title="다크"
+                aria-label="다크"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                >
+                  <path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="theme-btn"
+                data-theme-btn="system"
+                title="시스템"
+                aria-label="시스템"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="4" width="18" height="12" rx="2" />
+                  <path d="M8 20h8M12 16v4" />
+                </svg>
+              </button>
+            </div>
+            <button
+              class="icon-btn"
+              id="themeBtn"
+              type="button"
+              aria-label="화면 테마 바꾸기"
+            >
+              ◐
             </button>
           </div>
-        </div>
-      </div>
-    </header>
+        </header>
 
-    <main class="container">
+        <div class="copy" id="copy">
+          <div class="step on" data-s="0">
+            <p class="eyebrow">60일 사후 검증 리플레이</p>
+            <h1>같은 수요,<br />다른 발주 기준</h1>
+            <p class="lede">
+              표준 방식과 발주맞춤이 똑같은 60일치 판매를 만났을 때 재고가 어떻게 달라지는지
+              보세요. <b>스크롤하면 시간이 흐릅니다.</b>
+            </p>
+            <p class="hint">↓ 아래로 스크롤</p>
+          </div>
+          <div class="step" data-s="1">
+            <p class="eyebrow">
+              <span class="sw" style="background: var(--std)"></span>표준 방식
+            </p>
+            <h2>평균만 맞추면, 튀는 날 바닥납니다</h2>
+            <p class="lede">
+              리드타임 동안의 평균 수요(<b id="t1rop">0개</b>)에서 발주하면 안전재고가
+              없습니다. 수요가 평균을 넘는 날이 오면 재고가 0이 됩니다.
+            </p>
+            <div class="nums">
+              <div>
+                <b id="t1so" style="color: var(--alarm)">0일</b><span>지금까지 품절</span>
+              </div>
+            </div>
+          </div>
+          <div class="step" data-s="2">
+            <p class="eyebrow">
+              <span class="sw" style="background: var(--fit)"></span>발주맞춤
+            </p>
+            <h2>흔들림만큼 더 두고 발주합니다</h2>
+            <p class="lede">
+              상권·접근성·서비스 레벨로 안전재고 <b id="t2ss">0개</b>를 더해 재발주점을
+              <b id="t2rop">0개</b>로 잡습니다. 같은 기간 결과입니다.
+            </p>
+            <div class="nums">
+              <div class="good"><b id="t2so">0일</b><span>지금까지 품절</span></div>
+            </div>
+          </div>
+          <div class="step" data-s="3">
+            <p class="eyebrow">60일 결과</p>
+            <h2>품절은 줄고, 재고는 이만큼 늡니다</h2>
+            <div class="nums">
+              <div><b id="t3so"></b><span>품절 일수</span></div>
+              <div class="good"><b id="t3fill"></b><span>수요 충족률</span></div>
+              <div><b id="t3inv"></b><span>평균 보유 재고</span></div>
+            </div>
+            <p class="hint">↓ 자세한 리포트</p>
+          </div>
+          <div class="clock" aria-hidden="true">
+            <span id="clkD">D+0</span><i><u id="clkB"></u></i><span>D+60</span>
+          </div>
+        </div>
+
+        <aside class="dock" id="dock" data-open="false" aria-label="매장 조건">
+          <button
+            class="dock-head"
+            id="dockToggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="dockBody"
+          >
+            <span class="dh-l"
+              ><small>재발주점</small><b id="dRop">0</b><em>개</em></span
+            >
+            <span class="dh-r"
+              ><span>안전재고 <b id="dSs">0</b></span
+              ><span>1회 발주 <b id="dQ">0</b></span></span
+            >
+            <span class="chev">조건 바꾸기</span>
+          </button>
+          <form class="dock-body" id="dockBody" onsubmit="return false">
+            <fieldset class="field">
+              <legend>시연 시나리오</legend>
+              <div class="seg pre" id="presets"></div>
+            </fieldset>
+            <fieldset class="field">
+              <legend>매장 유형</legend>
+              <div class="seg" id="sStore"></div>
+            </fieldset>
+            <fieldset class="field">
+              <legend>상권</legend>
+              <div class="seg" id="sArea"></div>
+            </fieldset>
+            <fieldset class="field">
+              <legend>접근성</legend>
+              <div class="seg" id="sAcc"></div>
+            </fieldset>
+            <div class="field">
+              <label for="rD">일평균 소진량 <output id="oD"></output></label>
+              <input type="range" id="rD" min="2" max="120" step="1" />
+            </div>
+            <div class="field">
+              <label for="rL">표준 리드타임 <output id="oL"></output></label>
+              <input type="range" id="rL" min="1" max="7" step="1" />
+            </div>
+            <fieldset class="field">
+              <legend>서비스 레벨</legend>
+              <div class="seg" id="sSl"></div>
+            </fieldset>
+            <p class="note">
+              서비스 레벨은 발주 사이에 재고가 바닥나지 않을 확률입니다. 값을 바꾸면 무대의
+              곡선이 바로 다시 그려집니다.
+            </p>
+          </form>
+        </aside>
+      </div>
+    </div>
+
+    <section class="report" id="report" aria-label="60일 사후 검증 리포트">
+      <section class="sec">
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <p class="eyebrow">사후 검증</p>
+          <h2>같은 60일, 두 기준의 성적표</h2>
+        </div>
+        <div class="cmp">
+          <div class="m">
+            <span>품절 일수</span>
+            <div class="pair">
+              <div>
+                표준<span class="bar"><i id="bSo0" style="background: var(--std)"></i></span
+                ><b id="vSo0"></b>
+              </div>
+              <div>
+                발주맞춤<span class="bar"
+                  ><i id="bSo1" style="background: var(--fit)"></i
+                ></span><b id="vSo1"></b>
+              </div>
+            </div>
+          </div>
+          <div class="m">
+            <span>수요 충족률</span>
+            <div class="pair">
+              <div>
+                표준<span class="bar"><i id="bFr0" style="background: var(--std)"></i></span
+                ><b id="vFr0"></b>
+              </div>
+              <div>
+                발주맞춤<span class="bar"
+                  ><i id="bFr1" style="background: var(--fit)"></i
+                ></span><b id="vFr1"></b>
+              </div>
+            </div>
+          </div>
+          <div class="m">
+            <span>평균 보유 재고</span>
+            <div class="pair">
+              <div>
+                표준<span class="bar"><i id="bIv0" style="background: var(--std)"></i></span
+                ><b id="vIv0"></b>
+              </div>
+              <div>
+                발주맞춤<span class="bar"
+                  ><i id="bIv1" style="background: var(--fit)"></i
+                ></span><b id="vIv1"></b>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="note">
+          시연용 시뮬레이션 파형으로 계산했습니다. 실제 서비스는 POS 판매 시계열이 있으면 그
+          값으로 같은 비교를 합니다.
+        </p>
+      </section>
+
+      <section class="sec">
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <p class="eyebrow">추천 근거</p>
+          <h2>이 숫자가 나온 이유</h2>
+        </div>
+        <div class="tabs" role="group" aria-label="설명 방식">
+          <button type="button" aria-pressed="true" data-m="easy">쉬운 설명</button>
+          <button type="button" aria-pressed="false" data-m="pro">전문 해설</button>
+        </div>
+        <p class="reason" id="reason"></p>
+        <button class="btn" type="button" id="copyBtn">리포트 JSON 복사</button>
+      </section>
+
+      <section class="sec">
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <p class="eyebrow">산출 근거 3층</p>
+          <h2>숫자마다 출처가 있습니다</h2>
+        </div>
+        <div class="why" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))">
+          <div class="ev">
+            <span class="lv">L1 · 표준 이론</span>
+            <h3>재발주점 공식</h3>
+            <p>
+              ROP = 리드타임 수요 + 안전재고. 안전재고는 서비스 레벨 z, 수요 변동, 리드타임의
+              제곱근으로 정해집니다.
+            </p>
+          </div>
+          <div class="ev">
+            <span class="lv">L2 · 문헌</span>
+            <h3>재고 관리 교본과 상권 모형</h3>
+            <p>
+              King, APICS·ASCM 지침과 Huff 모형으로 상권별 수요 변동을 가늠합니다.
+            </p>
+          </div>
+          <div class="ev">
+            <span class="lv">L3 · 공학적 대리 지표</span>
+            <h3>입지와 접근성 보정</h3>
+            <p>
+              주변 시설로 추정한 유동과 입고 난이도를 가중치로 반영합니다. POS 실측은
+              아닙니다.
+            </p>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <main class="container" id="analyzer-section">
       <nav id="step-progress" class="step-progress" hidden aria-label="입력 단계">
         <ol id="step-progress-list"></ol>
       </nav>
@@ -61,10 +347,10 @@
       <section id="input-panel" class="panel">
         <div id="step-welcome" class="wizard-step" data-step="welcome">
           <header class="hero-copy">
-            <p class="eyebrow">매장 맞춤 발주 기준</p>
-            <h1 class="display-sm">
+            <p class="eyebrow">매장 맞춤 정밀 진단 엔진</p>
+            <h2 class="display-sm">
               우리 매장에 맞는 발주 기준을<br class="br-md" />다시 잡아 드립니다
-            </h1>
+            </h2>
             <div class="lede lede-stack">
               <p>공급 리드타임은 계약·표준값 그대로 둡니다.</p>
               <p class="lede-body">
@@ -268,6 +554,686 @@
       </div>
     </footer>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+      (function () {
+        var $ = function (s) {
+          return document.querySelector(s);
+        };
+        var STORE = {
+          conv: { label: "편의점", cycle: 2, cv: 0.3 },
+          sup: { label: "슈퍼·SSM", cycle: 3, cv: 0.22 },
+          mart: { label: "대형마트", cycle: 5, cv: 0.15 },
+        };
+        var AREA = {
+          office: { label: "오피스", m: 1 },
+          resid: { label: "주거", m: 0.85 },
+          tour: { label: "관광·행사", m: 1.5 },
+        };
+        var ACC = {
+          indoor: { label: "실내 입점", b: 1 },
+          road: { label: "도로변", b: 1 },
+          alley: { label: "골목·이면", b: 1.15 },
+        };
+        var SL = [
+          { p: "90%", z: 1.28 },
+          { p: "95%", z: 1.645 },
+          { p: "97.5%", z: 1.96 },
+          { p: "99%", z: 2.33 },
+        ];
+        var PRESETS = [
+          { n: "좁은 편의점", s: { store: "conv", area: "office", acc: "alley", d: 12, L: 2, sl: 1 } },
+          { n: "대형마트", s: { store: "mart", area: "resid", acc: "road", d: 90, L: 3, sl: 2 } },
+          { n: "행사 유동", s: { store: "sup", area: "tour", acc: "road", d: 34, L: 2, sl: 3 } },
+        ];
+        var S = { store: "conv", area: "office", acc: "indoor", d: 12, L: 2, sl: 1, mode: "easy" };
+        var DAYS = 60,
+          P = null,
+          SIM = null,
+          listeners = [];
+
+        /* ---------- 계산 ---------- */
+        function calc(s) {
+          var st = STORE[s.store],
+            ar = AREA[s.area],
+            ac = ACC[s.acc],
+            z = SL[s.sl].z;
+          var sigma = s.d * st.cv * ar.m;
+          var ss = Math.ceil(z * sigma * Math.sqrt(s.L) * ac.b);
+          var ltd = s.d * s.L;
+          return {
+            sigma: sigma,
+            z: z,
+            ss: ss,
+            ltd: ltd,
+            rop: Math.ceil(ltd + ss),
+            std: Math.ceil(ltd),
+            q: Math.ceil(s.d * st.cycle),
+            cycle: st.cycle,
+          };
+        }
+        function rng(a) {
+          return function () {
+            a |= 0;
+            a = (a + 0x6d2b79f5) | 0;
+            var t = Math.imul(a ^ (a >>> 15), 1 | a);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+        }
+        function gauss(r) {
+          var u = Math.max(1e-9, r()),
+            v = r();
+          return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+        }
+        function simulate(s, p) {
+          var r = rng(20260722),
+            cv = STORE[s.store].cv * AREA[s.area].m,
+            dem = [],
+            i;
+          for (i = 0; i < DAYS; i++)
+            dem.push(
+              Math.max(0, Math.round(s.d * (i % 7 >= 5 ? 1.15 : 1) * (1 + cv * gauss(r))))
+            );
+          var init = Math.round(p.rop + p.q * 0.5);
+          function run(rop) {
+            var on = init,
+              open = false,
+              arr = 0,
+              hist = [on],
+              pts = [],
+              flag = [],
+              served = 0,
+              tot = 0,
+              so = 0,
+              sum = on;
+            for (var t = 0; t < DAYS; t++) {
+              pts.push(on);
+              if (open && t >= arr) {
+                on += p.q;
+                open = false;
+              }
+              pts.push(on);
+              var dm = dem[t],
+                sold = Math.min(on, dm);
+              on -= sold;
+              served += sold;
+              tot += dm;
+              var f = sold < dm;
+              flag.push(f);
+              if (f) so++;
+              if (!open && on <= rop) {
+                open = true;
+                arr = t + s.L;
+              }
+              hist.push(on);
+              sum += on;
+            }
+            pts.push(on);
+            return {
+              hist: hist,
+              pts: pts,
+              flag: flag,
+              so: so,
+              fill: tot ? served / tot : 1,
+              avg: sum / (DAYS + 1),
+            };
+          }
+          return { std: run(p.std), fit: run(p.rop) };
+        }
+
+        /* ---------- 컨트롤 ---------- */
+        function seg(el, data, key, label) {
+          var box = $(el);
+          Object.keys(data).forEach(function (k) {
+            var b = document.createElement("button");
+            b.type = "button";
+            b.dataset.k = k;
+            b.textContent = label(data[k]);
+            b.addEventListener("click", function () {
+              S[key] = isNaN(+k) ? k : +k;
+              refresh();
+            });
+            box.appendChild(b);
+          });
+        }
+        seg("#sStore", STORE, "store", function (v) {
+          return v.label;
+        });
+        seg("#sArea", AREA, "area", function (v) {
+          return v.label;
+        });
+        seg("#sAcc", ACC, "acc", function (v) {
+          return v.label;
+        });
+        seg("#sSl", SL, "sl", function (v) {
+          return v.p;
+        });
+        PRESETS.forEach(function (p) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.textContent = p.n;
+          b.addEventListener("click", function () {
+            Object.assign(S, p.s);
+            refresh();
+          });
+          $("#presets").appendChild(b);
+        });
+        $("#rD").addEventListener("input", function (e) {
+          S.d = +e.target.value;
+          refresh();
+        });
+        $("#rL").addEventListener("input", function (e) {
+          S.L = +e.target.value;
+          refresh();
+        });
+        document.querySelectorAll(".tabs button").forEach(function (b) {
+          b.addEventListener("click", function () {
+            S.mode = b.dataset.m;
+            refresh();
+          });
+        });
+        $("#dockToggle").addEventListener("click", function () {
+          var d = $("#dock"),
+            o = d.dataset.open !== "true";
+          d.dataset.open = String(o);
+          $("#dockToggle").setAttribute("aria-expanded", String(o));
+          $(".chev").textContent = o ? "닫기" : "조건 바꾸기";
+        });
+        $("#copyBtn").addEventListener("click", function () {
+          var btn = $("#copyBtn"),
+            txt = JSON.stringify(
+              {
+                input: S,
+                recommendation: P,
+                backtest: { standard: stat(SIM.std), recommended: stat(SIM.fit) },
+              },
+              null,
+              2
+            );
+          function done() {
+            btn.textContent = "복사했습니다";
+            setTimeout(function () {
+              btn.textContent = "리포트 JSON 복사";
+            }, 1600);
+          }
+          try {
+            navigator.clipboard.writeText(txt).then(done, function () {});
+          } catch (e) {}
+        });
+        function stat(r) {
+          return {
+            stockout_days: r.so,
+            fill_rate: +r.fill.toFixed(3),
+            avg_inventory: +r.avg.toFixed(1),
+          };
+        }
+        function mark(id, key) {
+          document.querySelectorAll(id + " button").forEach(function (b) {
+            b.setAttribute("aria-pressed", String(b.dataset.k == S[key]));
+          });
+        }
+        function pct(x) {
+          return (x * 100).toFixed(1) + "%";
+        }
+        function bars(id, a, b, fmt) {
+          var mx = Math.max(a, b, 0.0001);
+          $("#b" + id + "0").style.width = (a / mx) * 100 + "%";
+          $("#b" + id + "1").style.width = (b / mx) * 100 + "%";
+          $("#v" + id + "0").textContent = fmt(a);
+          $("#v" + id + "1").textContent = fmt(b);
+        }
+
+        function refresh() {
+          P = calc(S);
+          SIM = simulate(S, P);
+          mark("#sStore", "store");
+          mark("#sArea", "area");
+          mark("#sAcc", "acc");
+          mark("#sSl", "sl");
+          $("#rD").value = S.d;
+          $("#rL").value = S.L;
+          $("#oD").textContent = S.d + "개/일";
+          $("#oL").textContent = S.L + "일";
+          $("#dRop").textContent = P.rop;
+          $("#dSs").textContent = P.ss + "개";
+          $("#dQ").textContent = P.q + "개";
+          $("#t1rop").textContent = P.std + "개";
+          $("#t2rop").textContent = P.rop + "개";
+          $("#t2ss").textContent = P.ss + "개";
+          $("#t3so").textContent = SIM.std.so + "일 → " + SIM.fit.so + "일";
+          $("#t3fill").textContent = pct(SIM.std.fill) + " → " + pct(SIM.fit.fill);
+          $("#t3inv").textContent =
+            SIM.std.avg.toFixed(0) + " → " + SIM.fit.avg.toFixed(0) + "개";
+          bars("So", SIM.std.so, SIM.fit.so, function (v) {
+            return v + "일";
+          });
+          bars("Fr", SIM.std.fill, SIM.fit.fill, pct);
+          bars("Iv", SIM.std.avg, SIM.fit.avg, function (v) {
+            return v.toFixed(0) + "개";
+          });
+          document.querySelectorAll(".tabs button").forEach(function (b) {
+            b.setAttribute("aria-pressed", String(b.dataset.m === S.mode));
+          });
+          var st = STORE[S.store],
+            ar = AREA[S.area],
+            ac = ACC[S.acc];
+          $("#reason").innerHTML =
+            S.mode === "easy"
+              ? "하루 " +
+                S.d +
+                "개가 나가고 물건이 도착하는 데 " +
+                S.L +
+                "일 걸리니, 도착 전까지 " +
+                P.ltd +
+                "개가 필요합니다. " +
+                ar.label +
+                " 상권의 " +
+                st.label +
+                "은 수요가 들쑥날쑥하므로 " +
+                P.ss +
+                "개를 더 두는 것이 안전합니다. 재고가 <b>" +
+                P.rop +
+                "개 이하</b>가 되면 " +
+                P.q +
+                "개를 발주하세요."
+              : "<code>ROP = d·L + z·σd·√L·k</code><br>d=" +
+                S.d +
+                ", L=" +
+                S.L +
+                ", z=" +
+                P.z +
+                "(" +
+                SL[S.sl].p +
+                "), σd=" +
+                P.sigma.toFixed(1) +
+                "(CV " +
+                (st.cv * ar.m).toFixed(2) +
+                "), k=" +
+                ac.b +
+                "<br>SS=" +
+                P.ss +
+                ", ROP=" +
+                P.rop +
+                ", Q=d×" +
+                P.cycle +
+                "일=" +
+                P.q;
+          listeners.forEach(function (f) {
+            f();
+          });
+        }
+
+        /* ---------- 테마 ---------- */
+        var root = document.documentElement,
+          onTheme = null;
+        window.addEventListener("orderfit:themechange", function () {
+          if (onTheme) onTheme();
+        });
+        try {
+          matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+            setTimeout(function () {
+              if (onTheme) onTheme();
+            }, 30);
+          });
+        } catch (e) {}
+
+        /* ---------- 진행도 ---------- */
+        var story = $("#story"),
+          steps = document.querySelectorAll(".step");
+        function progress() {
+          var r = story.getBoundingClientRect(),
+            span = Math.max(1, r.height - innerHeight);
+          return Math.min(1, Math.max(0, -r.top / span));
+        }
+
+        /* ---------- 3D ---------- */
+        function initScene() {
+          var canvas = $("#c"),
+            renderer;
+          try {
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+          } catch (e) {
+            document.body.classList.add("nogl");
+            return;
+          }
+          var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+          renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+          var sc = new THREE.Scene(),
+            cam = new THREE.PerspectiveCamera(32, 1, 0.1, 300);
+          sc.add(new THREE.HemisphereLight(0xffffff, 0x8794a6, 0.75));
+          var dl = new THREE.DirectionalLight(0xffffff, 0.45);
+          dl.position.set(-6, 14, 10);
+          sc.add(dl);
+
+          var K = DAYS * 2 + 1,
+            DX = 0.4,
+            X0 = -(DAYS * DX) / 2,
+            X1 = X0 + DAYS * DX,
+            HMAX = 5.2,
+            DEPTH = 3,
+            ZS = -4.3,
+            ZF = 4.3;
+          var col = {};
+          function css(n) {
+            return new THREE.Color(getComputedStyle(root).getPropertyValue(n).trim());
+          }
+
+          function Lane(z) {
+            var pos = new Float32Array(K * 4 * 3),
+              idx = [],
+              k;
+            for (k = 0; k < K - 1; k++) {
+              var a = k * 4,
+                b = (k + 1) * 4;
+              idx.push(a, a + 1, b, a + 1, b + 1, b, a + 2, a, b + 2, a, b, b + 2);
+            }
+            var g = new THREE.BufferGeometry();
+            g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+            g.setIndex(idx);
+            var m = new THREE.MeshStandardMaterial({
+              roughness: 0.55,
+              metalness: 0.0,
+              flatShading: true,
+              transparent: true,
+              opacity: 0.96,
+            });
+            var mesh = new THREE.Mesh(g, m);
+            sc.add(mesh);
+            var lg = new THREE.BufferGeometry();
+            lg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(K * 3), 3));
+            var line = new THREE.Line(lg, new THREE.LineBasicMaterial());
+            sc.add(line);
+            var ropGeo = new THREE.BufferGeometry().setFromPoints([
+              new THREE.Vector3(X0, 0, 0),
+              new THREE.Vector3(X1, 0, 0),
+            ]);
+            var rop = new THREE.Line(
+              ropGeo,
+              new THREE.LineDashedMaterial({ dashSize: 0.35, gapSize: 0.25 })
+            );
+            rop.computeLineDistances();
+            sc.add(rop);
+            var plate = new THREE.Mesh(
+              new THREE.BoxGeometry(DAYS * DX + 1.4, 0.12, DEPTH + 0.8),
+              new THREE.MeshStandardMaterial({ roughness: 0.9 })
+            );
+            plate.position.set((X0 + X1) / 2, -0.07, z);
+            sc.add(plate);
+            var marks = new THREE.InstancedMesh(
+              new THREE.BoxGeometry(0.2, 1, 0.2),
+              new THREE.MeshStandardMaterial({ roughness: 0.4 }),
+              DAYS
+            );
+            marks.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+            sc.add(marks);
+            return {
+              z: z,
+              pos: pos,
+              g: g,
+              mesh: mesh,
+              lg: lg,
+              line: line,
+              rop: rop,
+              plate: plate,
+              marks: marks,
+              hs: new Float32Array(K),
+              ts: new Float32Array(K),
+              ms: new Float32Array(DAYS),
+              flag: [],
+              ropY: 0,
+              ropT: 0,
+            };
+          }
+          var laneS = Lane(ZS),
+            laneF = Lane(ZF);
+          var head = new THREE.Mesh(
+            new THREE.BoxGeometry(0.04, 6, 17),
+            new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.08, depthWrite: false })
+          );
+          sc.add(head);
+
+          function applyTheme() {
+            col.std = css("--std");
+            col.fit = css("--fit");
+            col.alarm = css("--alarm");
+            col.grid = css("--grid");
+            col.ink = css("--ink");
+            col.surface = css("--surface");
+            col.bg = css("--bg");
+            laneS.mesh.material.color.copy(col.std);
+            laneF.mesh.material.color.copy(col.fit);
+            laneS.line.material.color.copy(col.std).lerp(col.ink, 0.25);
+            laneF.line.material.color.copy(col.fit).lerp(col.ink, 0.15);
+            laneS.rop.material.color.copy(col.ink);
+            laneF.rop.material.color.copy(col.ink);
+            [laneS, laneF].forEach(function (l) {
+              l.plate.material.color.copy(col.surface).lerp(col.grid, 0.35);
+              l.marks.material.color.copy(col.alarm);
+            });
+            head.material.color.copy(col.ink);
+          }
+          applyTheme();
+          onTheme = applyTheme;
+
+          var scale = 1;
+          function retarget() {
+            var mx = 1,
+              k;
+            for (k = 0; k < K; k++) mx = Math.max(mx, SIM.std.pts[k], SIM.fit.pts[k]);
+            mx = Math.max(mx, P.rop);
+            scale = HMAX / (mx * 1.05);
+            [
+              [laneS, SIM.std, P.std],
+              [laneF, SIM.fit, P.rop],
+            ].forEach(function (a) {
+              var l = a[0],
+                r = a[1];
+              for (k = 0; k < K; k++) l.ts[k] = r.pts[k] * scale;
+              l.flag = r.flag;
+              l.ropT = a[2] * scale;
+            });
+          }
+          listeners.push(retarget);
+          retarget();
+
+          var dummy = new THREE.Object3D(),
+            play = 0,
+            playShown = 0;
+          function laneUpdate(l, dt, instant) {
+            var zf = l.z + DEPTH / 2,
+              zb = l.z - DEPTH / 2,
+              p = l.pos,
+              lp = l.lg.attributes.position.array,
+              k,
+              h,
+              x;
+            var f = instant ? 1 : 1 - Math.pow(0.0009, dt);
+            for (k = 0; k < K; k++) {
+              var tg = k >> 1 <= play ? l.ts[k] : 0.02;
+              l.hs[k] += (tg - l.hs[k]) * f;
+              h = l.hs[k];
+              x = X0 + (k >> 1) * DX;
+              var o = k * 12;
+              p[o] = x;
+              p[o + 1] = h;
+              p[o + 2] = zf;
+              p[o + 3] = x;
+              p[o + 4] = 0;
+              p[o + 5] = zf;
+              p[o + 6] = x;
+              p[o + 7] = h;
+              p[o + 8] = zb;
+              p[o + 9] = x;
+              p[o + 10] = 0;
+              p[o + 11] = zb;
+              lp[k * 3] = x;
+              lp[k * 3 + 1] = h + 0.015;
+              lp[k * 3 + 2] = zf + 0.01;
+            }
+            l.g.setDrawRange(0, Math.min(K - 1, (Math.floor(play) + 1) * 2) * 12);
+            l.lg.setDrawRange(0, Math.min(K, (Math.floor(play) + 1) * 2 + 1));
+            l.g.attributes.position.needsUpdate = true;
+            l.lg.attributes.position.needsUpdate = true;
+            l.g.computeVertexNormals();
+            l.g.computeBoundingSphere();
+            l.ropY += (l.ropT - l.ropY) * f;
+            l.rop.position.set(0, l.ropY, zf + 0.03);
+            for (var t = 0; t < DAYS; t++) {
+              var want = l.flag[t] && t + 1 <= play ? 1 : 0;
+              l.ms[t] += (want - l.ms[t]) * f;
+              var s = l.ms[t] * 1.7 + 0.0001;
+              dummy.position.set(X0 + (t + 1) * DX, s / 2, zf + 0.25);
+              dummy.scale.set(1, s, 1);
+              dummy.updateMatrix();
+              l.marks.setMatrixAt(t, dummy.matrix);
+            }
+            l.marks.instanceMatrix.needsUpdate = true;
+          }
+
+          /* 라벨 */
+          var tagBox = $("#tags"),
+            tags = [];
+          function tag(cls, text, fn) {
+            var el = document.createElement("div");
+            el.className = "tag " + cls;
+            el.textContent = text;
+            tagBox.appendChild(el);
+            var o = { el: el, fn: fn };
+            tags.push(o);
+            return o;
+          }
+          var tStd = tag("std", "표준 방식", function () {
+            return [X0 - 0.4, 0.2, ZS + DEPTH / 2];
+          });
+          var tFit = tag("fit", "발주맞춤", function () {
+            return [X0 - 0.4, 0.2, ZF + DEPTH / 2];
+          });
+          var tRopS = tag("std", "ROP", function () {
+            return [X1 + 0.3, laneS.ropY, ZS + DEPTH / 2];
+          });
+          var tRopF = tag("fit", "ROP", function () {
+            return [X1 + 0.3, laneF.ropY, ZF + DEPTH / 2];
+          });
+          var tDay = tag("day", "D+0", function () {
+            return [X0 + playShown * DX, HMAX + 1.4, 0];
+          });
+          [0, 30, 60].forEach(function (d) {
+            tag("ax", "D+" + d, function () {
+              return [X0 + d * DX, -0.2, ZF + DEPTH / 2 + 1.1];
+            });
+          });
+          var W = 1,
+            H = 1,
+            v = new THREE.Vector3();
+          function placeTags() {
+            tRopS.el.textContent = "ROP " + P.std;
+            tRopF.el.textContent = "ROP " + P.rop;
+            tDay.textContent = "D+" + Math.round(playShown);
+            tDay.el.textContent = "D+" + Math.round(playShown);
+            tags.forEach(function (t) {
+              var p = t.fn();
+              v.set(p[0], p[1], p[2]).project(cam);
+              if (v.z > 1) {
+                t.el.style.opacity = 0;
+                return;
+              }
+              var px = (v.x * 0.5 + 0.5) * W,
+                py = (-v.y * 0.5 + 0.5) * H;
+              var w = t.el.offsetWidth,
+                alignRight = t === tStd || t === tFit;
+              t.el.style.transform =
+                "translate(" +
+                Math.round(
+                  alignRight
+                    ? px - w - 4
+                    : px + 6 - (t === tDay || t.el.classList.contains("ax") ? w / 2 + 6 : 0)
+                ) +
+                "px," +
+                Math.round(py - 8) +
+                "px)";
+              t.el.style.opacity = 1;
+            });
+          }
+
+          /* 카메라 */
+          var look = new THREE.Vector3(0, 2.2, 0),
+            eye = new THREE.Vector3(0, 8, 30),
+            mouse = { x: 0, y: 0 },
+            dist = 40,
+            follow = 0.3;
+          function resize() {
+            W = canvas.clientWidth || innerWidth;
+            H = canvas.clientHeight || innerHeight;
+            renderer.setSize(W, H, false);
+            cam.aspect = W / H;
+            cam.updateProjectionMatrix();
+            var wide = W > 900,
+              aspect = W / H;
+            var Wt = wide ? 42 : Math.max(15, Math.min(34, 15 + ((aspect - 0.45) / 0.8) * 19));
+            dist = Wt / (2 * Math.tan((cam.fov * Math.PI) / 360) * aspect);
+            follow = wide ? 0.15 : 1;
+            if (wide) cam.setViewOffset(W, H, 170, -H * 0.17, W, H);
+            else cam.setViewOffset(W, H, 0, -H * 0.07, W, H);
+          }
+          addEventListener("resize", resize);
+          resize();
+          if (!reduce)
+            addEventListener("pointermove", function (e) {
+              mouse.x = e.clientX / innerWidth - 0.5;
+              mouse.y = e.clientY / innerHeight - 0.5;
+            });
+
+          function paintText(pr) {
+            var idx = pr < 0.2 ? 0 : pr < 0.46 ? 1 : pr < 0.72 ? 2 : 3;
+            steps.forEach(function (s, i) {
+              s.classList.toggle("on", i === idx);
+            });
+            var d = Math.floor(playShown),
+              a = 0,
+              b = 0;
+            for (var t = 0; t < d && t < DAYS; t++) {
+              if (SIM.std.flag[t]) a++;
+              if (SIM.fit.flag[t]) b++;
+            }
+            $("#t1so").textContent = a + "일";
+            $("#t2so").textContent = b + "일";
+            $("#clkD").textContent = "D+" + Math.round(playShown);
+            $("#clkB").style.width = (playShown / DAYS) * 100 + "%";
+          }
+
+          var last = performance.now();
+          function frame(now) {
+            requestAnimationFrame(frame);
+            var dt = Math.min(0.05, (now - last) / 1000);
+            last = now;
+            var pr = progress();
+            play = 4 + pr * (DAYS - 4);
+            playShown += (play - playShown) * (reduce ? 1 : 1 - Math.pow(0.004, dt));
+            laneUpdate(laneS, dt, reduce);
+            laneUpdate(laneF, dt, reduce);
+            head.position.set(X0 + playShown * DX, 3.5, 0);
+            var fx = (X0 + playShown * DX) * follow;
+            look.set(fx, 2.3, 0);
+            eye.set(
+              fx - dist * 0.08 + mouse.x * 3,
+              2 + dist * 0.62 - mouse.y * 2,
+              dist * 0.78
+            );
+            cam.position.lerp(eye, reduce ? 1 : 1 - Math.pow(0.02, dt));
+            cam.lookAt(look);
+            renderer.render(sc, cam);
+            placeTags();
+            paintText(pr);
+          }
+          requestAnimationFrame(frame);
+        }
+
+        refresh();
+        if (window.THREE) initScene();
+        else document.body.classList.add("nogl");
+      })();
+    </script>
     <script src="/static/app.js" type="module"></script>
   </body>
 </html>

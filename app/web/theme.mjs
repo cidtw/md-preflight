@@ -32,6 +32,11 @@ export function applyThemePreference(pref) {
     btn.classList.toggle("active", mode === preference);
     btn.setAttribute("aria-pressed", mode === preference ? "true" : "false");
   });
+  window.dispatchEvent(
+    new CustomEvent("orderfit:themechange", {
+      detail: { theme: resolved, pref: preference },
+    })
+  );
   return resolved;
 }
 
@@ -43,6 +48,13 @@ export function initTheme() {
       if (mode) applyThemePreference(mode);
     });
   });
+  const themeBtn = document.getElementById("themeBtn");
+  if (themeBtn) {
+    themeBtn.addEventListener("click", () => {
+      const current = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+      applyThemePreference(current === "dark" ? "light" : "dark");
+    });
+  }
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
     if (readThemePreference() === "system") applyThemePreference("system");
   });
