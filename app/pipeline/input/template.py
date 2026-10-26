@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 
 from app.core.errors import InputValidationError
@@ -209,8 +210,45 @@ def get_template() -> InputTemplate:
                 minimum=0.0,
                 maximum=30.0,
             ),
+            ParameterSpec(
+                key="daily_demand_series",
+                label="일별 판매량 시계열 (POS 실측, 개)",
+                type="string",
+                required=False,
+                description=(
+                    "선택. 최근 7~30일 일별 판매량을 쉼표로 입력(예: 12, 15, 9, 14, 18, 11, 10). "
+                    "입력 시 일평균(D)과 표준편차(sigma)를 자동 실측 산출하고 백테스트합니다."
+                ),
+            ),
         ],
     )
+
+
+def parse_demand_series(raw: str) -> list[float]:
+    """Parse comma/space-separated daily sales series (>= 2 non-negative numbers)."""
+    tokens = [t for t in re.split(r"[\s,;]+", raw.strip()) if t]
+    if len(tokens) < 2:
+        raise InputValidationError(
+            "Parameter 'daily_demand_series' must contain at least 2 daily sales numbers",
+        )
+    values: list[float] = []
+    for tok in tokens:
+        try:
+            val = float(tok)
+        except ValueError as exc:
+            raise InputValidationError(
+                f"Parameter 'daily_demand_series' contains non-numeric token: {tok!r}",
+            ) from exc
+        if val < 0.0 or val > 100000.0:
+            raise InputValidationError(
+                "Parameter 'daily_demand_series' values must be between 0 and 100000",
+            )
+        values.append(val)
+    if sum(values) <= 0.0:
+        raise InputValidationError(
+            "Parameter 'daily_demand_series' must have positive total demand",
+        )
+    return values
 
 
 def _as_number(key: str, value: ParameterValue) -> float:
@@ -318,9 +356,16 @@ def validate_parameters(
                 normalized[key] = _choice(key, value, allowed_map)
         else:
             # Optional strings may be omitted; if present must be non-empty unless blank skip
-            if key == "store_address" and isinstance(value, str) and not value.strip():
+            if (
+                key in {"store_address", "daily_demand_series"}
+                and isinstance(value, str)
+                and not value.strip()
+            ):
                 continue
-            normalized[key] = _as_string(key, value)
+            text = _as_string(key, value)
+            if key == "daily_demand_series":
+                _ = parse_demand_series(text)
+            normalized[key] = text
 
     use_precise = bool(normalized.get("use_precise_location", False))
     guidance_extras: list[str] = []

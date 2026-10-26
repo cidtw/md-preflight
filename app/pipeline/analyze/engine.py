@@ -7,6 +7,9 @@ a new "recommended LT".
 
 from __future__ import annotations
 
+import math
+import statistics
+
 from app.core.config import Settings, get_settings
 from app.pipeline.analyze.event_foot_traffic import blend_fti_with_event
 from app.pipeline.analyze.geo_enrichment import (
@@ -27,7 +30,13 @@ from app.pipeline.domain_catalog import (
     SERVICE_LEVEL,
     SIZE_TO_CHANNEL,
 )
-from app.pipeline.types import CalcBreakdown, GeoEnrichment, ValidatedInput
+from app.pipeline.input.template import parse_demand_series
+from app.pipeline.types import (
+    BacktestMetrics,
+    CalcBreakdown,
+    GeoEnrichment,
+    ValidatedInput,
+)
 
 # Global band on D_eff after event x competition (and future multipliers).
 # Module-level event (+35%) / competition (-40%) already stay inside this band;
@@ -79,6 +88,126 @@ def _resolve_geo(
     )
 
 
+def _simulate_policy(
+    demands: list[float],
+    *,
+    rop: float,
+    order_qty: float,
+    cycle_days: float,
+    lead_time_days: float,
+    is_cold_item: bool,
+) -> tuple[int, float, float, float]:
+    """Replay (R, s, Q) inventory over daily demands.
+
+    Returns (stockout_days, fill_rate, avg_inventory, spoilage_risk_units).
+    """
+    n = len(demands)
+    if n == 0:
+        return 0, 1.0, 0.0, 0.0
+    lt_steps = max(1, math.ceil(lead_time_days))
+    review_step = max(1, round(cycle_days))
+    mean_d = sum(demands) / n
+    on_hand = max(rop, mean_d * lead_time_days)
+    pipeline: dict[int, float] = {}
+    stockout_days = 0
+    total_demand = 0.0
+    total_filled = 0.0
+    inv_sum = 0.0
+    spoilage_units = 0.0
+    shelf_life_cap = mean_d * 3.0
+
+    for day, d in enumerate(demands):
+        arrived = pipeline.pop(day, 0.0)
+        on_hand += arrived
+        if is_cold_item and shelf_life_cap > 0 and on_hand > shelf_life_cap:
+            excess = (on_hand - shelf_life_cap) * 0.25
+            spoilage_units += excess
+            on_hand -= excess
+        filled = min(on_hand, d)
+        if on_hand + 1e-9 < d:
+            stockout_days += 1
+        on_hand = max(0.0, on_hand - d)
+        total_demand += d
+        total_filled += filled
+        inv_sum += on_hand
+
+        in_transit = sum(pipeline.values())
+        inv_pos = on_hand + in_transit
+        if day % review_step == 0 and inv_pos <= rop and order_qty > 0:
+            due = day + lt_steps
+            pipeline[due] = pipeline.get(due, 0.0) + order_qty
+
+    fill_rate = round(total_filled / total_demand, 4) if total_demand > 0 else 1.0
+    avg_inv = round(inv_sum / n, 2)
+    return stockout_days, fill_rate, avg_inv, round(spoilage_units, 2)
+
+
+def run_empirical_backtest(
+    *,
+    observed_series: list[float] | None,
+    effective_demand: float,
+    demand_sigma: float | None,
+    demand_volatility: int,
+    standard_rop: float,
+    recommended_rop: float,
+    std_cycle_days: float,
+    rec_cycle_days: float,
+    std_order_qty: float,
+    rec_order_qty: float,
+    lead_time_days: float,
+    product_name: str,
+) -> BacktestMetrics:
+    """Compare Standard vs Recommended policy over observed or synthetic 14-day demand."""
+    if observed_series and len(observed_series) >= 2:
+        source = "observed_series"
+        demands = list(observed_series)
+        while len(demands) < 14:
+            demands.extend(observed_series)
+        demands = demands[: max(14, len(observed_series))]
+    else:
+        source = "synthetic"
+        sigma = (
+            demand_sigma
+            if demand_sigma is not None
+            else effective_demand * math.sqrt(max(0.2, demand_volatility / 5.0)) * 0.45
+        )
+        # Deterministic 14-day wave with weekend/midweek peaks
+        offsets = (-0.6, -0.3, 0.2, 0.8, 1.3, -0.8, -0.6, -0.4, 0.1, 0.5, 1.1, 1.5, -0.9, -0.5)
+        demands = [max(0.1, round(effective_demand + c * sigma, 2)) for c in offsets]
+
+    cold_keys = ("냉장", "냉동", "유제품", "간편식", "도시락", "신선")
+    is_cold = any(k in product_name for k in cold_keys)
+
+    so_std, fr_std, inv_std, sp_std = _simulate_policy(
+        demands,
+        rop=standard_rop,
+        order_qty=std_order_qty,
+        cycle_days=std_cycle_days,
+        lead_time_days=lead_time_days,
+        is_cold_item=is_cold,
+    )
+    so_rec, fr_rec, inv_rec, sp_rec = _simulate_policy(
+        demands,
+        rop=recommended_rop,
+        order_qty=rec_order_qty,
+        cycle_days=rec_cycle_days,
+        lead_time_days=lead_time_days,
+        is_cold_item=is_cold,
+    )
+    return BacktestMetrics(
+        days=len(demands),
+        source=source,
+        stockout_days_standard=so_std,
+        stockout_days_recommended=so_rec,
+        fill_rate_standard=fr_std,
+        fill_rate_recommended=fr_rec,
+        avg_inventory_standard=inv_std,
+        avg_inventory_recommended=inv_rec,
+        spoilage_risk_units_standard=sp_std,
+        spoilage_risk_units_recommended=sp_rec,
+    )
+
+
 def analyze(
     validated: ValidatedInput,
     *,
@@ -96,6 +225,12 @@ def analyze(
     location_dong = _as_str(p["location_dong"])
     product_name = _as_str(p["product_name"])
     daily_demand = _as_float(p["daily_demand"], 1.0)
+    observed_series: list[float] | None = None
+    series_sigma: float | None = None
+    if "daily_demand_series" in p and _as_str(p["daily_demand_series"]).strip():
+        observed_series = parse_demand_series(_as_str(p["daily_demand_series"]))
+        daily_demand = round(statistics.mean(observed_series), 2)
+        series_sigma = round(statistics.stdev(observed_series), 2)
     service_level = _as_str(p.get("service_level", "sl_95"))
     if service_level not in SERVICE_LEVEL:
         service_level = "sl_95"
@@ -148,6 +283,12 @@ def analyze(
     comp_intensity = (
         float(geo.competition_intensity) if geo.competition_scan_enabled else 0.0
     )
+    # When D comes from an observed POS series, existing local competition is already
+    # embedded in those sales; do not double-discount D by existing competitor saturation.
+    competition_already_in_pos = False
+    if observed_series is not None and geo.competition_scan_enabled and comp_factor < 1.0:
+        comp_factor = 1.0
+        competition_already_in_pos = True
     uncapped_demand = round(daily_demand * mult * comp_factor, 4)
     lo = round(daily_demand * D_EFF_MIN_FRAC, 4)
     hi = round(daily_demand * D_EFF_MAX_FRAC, 4)
@@ -183,12 +324,15 @@ def analyze(
         # Baseline standard stays on unadjusted demand (no temporary event).
         standard_rop = round(daily_demand * fixed_lt + base_safety, 2)
 
-    # R16: optional POS daily demand sigma replaces vol-score proxy (L3).
+    # R16: optional POS daily demand sigma or series replaces vol-score proxy (L3).
     demand_sigma: float | None = None
     ss_mode = "proxy_vol"
     if "demand_sigma_daily" in p:
         demand_sigma = max(0.0, _as_float(p["demand_sigma_daily"], 0.0))
         ss_mode = "measured_sigma"
+    elif series_sigma is not None:
+        demand_sigma = series_sigma
+        ss_mode = "measured_series"
 
     statistical_ss = store_safety_stock(
         safety_z=knowledge.safety_z_factor,
@@ -241,6 +385,25 @@ def analyze(
                 2,
             )
         # Physical stock ceiling also bounds per-receipt order qty (cycle may exceed cover).
+        # If auto cadence chose a cycle whose Q exceeds MaxCap, escalate to daily_flex (1d)
+        # so Q >= D_eff * cycle still holds when possible instead of starving the store.
+        if order_qty > max_cap and pattern_auto and resolved_pattern != "daily_flex":
+            (
+                order_cycle,
+                order_qty,
+                order_label,
+                resolved_pattern,
+                days_label,
+                _,
+            ) = suggest_order_policy(
+                capa_score=scores.capa_score,
+                demand_concentration=scores.demand_concentration,
+                daily_demand=effective_demand,
+                lead_time_days=fixed_lt,
+                order_day_pattern="daily_flex",
+            )
+            pattern_auto = True
+            order_label = f"자동 · {order_label}"
         # Do not floor at 1.0 — low demand can yield max_cap < 1 and that floor would
         # leave Q above MaxCap (review: CAPA Q clamp invariant).
         if order_qty > max_cap:
@@ -269,6 +432,23 @@ def analyze(
                 f"(서비스 레벨)는 다소 줄 수 있어, 발주 횟수로 상쇄하는 "
                 f"운영 타협(trade-off)입니다."
             )
+
+    std_cycle_days = 7.0 if pattern_auto else order_cycle
+    std_order_qty = max(1.0, round(daily_demand * std_cycle_days, 1))
+    backtest = run_empirical_backtest(
+        observed_series=observed_series,
+        effective_demand=effective_demand,
+        demand_sigma=demand_sigma,
+        demand_volatility=scores.demand_volatility,
+        standard_rop=standard_rop,
+        recommended_rop=recommended_rop,
+        std_cycle_days=std_cycle_days,
+        rec_cycle_days=order_cycle,
+        std_order_qty=std_order_qty,
+        rec_order_qty=order_qty,
+        lead_time_days=fixed_lt,
+        product_name=product_name,
+    )
 
     return CalcBreakdown(
         standard_lead_time_days=fixed_lt,
@@ -302,8 +482,11 @@ def analyze(
         order_frequency_label=order_label,
         ss_mode=ss_mode,
         demand_sigma_daily=demand_sigma,
+        demand_series_days=len(observed_series) if observed_series is not None else 0,
+        competition_already_in_pos=competition_already_in_pos,
         logistics_delay_mode=logistics_delay_mode,
         measured_logistics_delay_days=measured_delay,
+        backtest=backtest,
         recommended_rop_raw=raw_rop,
         capa_capped=capa_capped,
         max_rop_cap=max_cap,

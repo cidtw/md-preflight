@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from app.core.config import Settings, get_settings
 from app.pipeline.analyze.decline_advice import generate_decline_advice
 from app.pipeline.analyze.engine import analyze
-from app.pipeline.input.template import validate_parameters
+from app.pipeline.input.template import parse_demand_series, validate_parameters
 from app.pipeline.types import CalcBreakdown, GeoEnrichment, ParameterValue
 
 SimScenario = Literal[
@@ -128,6 +128,15 @@ def _apply_scenario(
         out["daily_demand"] = round(demand * (1.0 + 0.22 * i), 4)
         out["service_level"] = "sl_95"
         note = "입지·운영 개선으로 수요가 반등하는 낙관 시나리오"
+
+    new_demand = float(out.get("daily_demand", demand) or demand)
+    ratio = new_demand / demand if demand > 0 else 1.0
+    raw_series = out.get("daily_demand_series")
+    if isinstance(raw_series, str) and raw_series.strip():
+        series_vals = parse_demand_series(raw_series)
+        out["daily_demand_series"] = ", ".join(
+            f"{max(0.0, round(v * ratio, 4)):g}" for v in series_vals
+        )
     return out, note
 
 
@@ -142,7 +151,7 @@ def run_simulation(
     # Simulation is most meaningful with precise address + competition context,
     # but still runs without it (demand/LT shocks only).
     validated_base = validate_parameters(base_params)
-    base_calc = analyze(validated_base, geo_override=geo_override)
+    base_calc = analyze(validated_base, settings=cfg, geo_override=geo_override)
 
     shocked_params, scenario_note = _apply_scenario(
         base_params,
@@ -150,7 +159,8 @@ def run_simulation(
         intensity=body.intensity,
     )
     validated_shock = validate_parameters(shocked_params)
-    shock_calc = analyze(validated_shock, geo_override=geo_override)
+    shared_geo = geo_override if geo_override is not None else base_calc.geo
+    shock_calc = analyze(validated_shock, settings=cfg, geo_override=shared_geo)
 
     base_side = _side("현재", base_calc)
     shock_side = _side("시나리오", shock_calc)

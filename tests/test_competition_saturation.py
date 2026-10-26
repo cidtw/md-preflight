@@ -121,6 +121,32 @@ def test_score_excludes_self_and_far() -> None:
     assert scored == []
 
 
+def test_score_excludes_noise_and_matching_subject_store_beyond_30m() -> None:
+    comps = [
+        CompetitionCompetitor(
+            name="롯데슈퍼 고양삼송점 주차장",
+            kind="ssm",
+            tier="direct",
+            distance_m=60.0,
+        ),
+        CompetitionCompetitor(
+            name="이마트 화정점",
+            kind="hypermarket",
+            tier="direct",
+            distance_m=85.0,
+        ),
+    ]
+    intensity, factor, scored = score_competitors(
+        comps,
+        decay_m=450.0,
+        max_radius_m=1000,
+        subject_query="이마트 화정점 경기 고양시 덕양구",
+    )
+    assert intensity == 0.0
+    assert factor == 1.0
+    assert scored == []
+
+
 def test_competition_demand_factor_bounds() -> None:
     assert competition_demand_factor(0.0) == 1.0
     assert competition_demand_factor(1.0) == round(1.0 - COMPETITION_DEMAND_MAX_FRAC, 4)

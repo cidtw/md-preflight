@@ -538,6 +538,7 @@ def _scan_competitors(
     store_type: str,
     api_key: str,
     fetch: JsonFetch,
+    subject_query: str = "",
 ) -> tuple[list[CompetitionCompetitor], float, float, int, int, list[str]]:
     """Search competitors by industry matrix; return scored list + intensity + factor."""
     profile = profile_for_store_type(store_type)
@@ -628,6 +629,7 @@ def _scan_competitors(
         raw_hits,
         decay_m=profile.decay_m,
         max_radius_m=profile.search_radius_m,
+        subject_query=subject_query,
     )
     if scored:
         top = ", ".join(
@@ -825,6 +827,7 @@ def enrich_from_address(
                 store_type=store_type,
                 api_key=api_key,
                 fetch=do_fetch,
+                subject_query=f"{cleaned} {resolved}",
             )
             notes.extend(comp_notes)
         except (urllib.error.URLError, TimeoutError, TypeError, ValueError) as comp_exc:

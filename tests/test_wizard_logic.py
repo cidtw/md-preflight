@@ -21,6 +21,7 @@ def test_wizard_logic_node_smoke() -> None:
         cwd=ROOT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     assert proc.returncode == 0, (
@@ -37,6 +38,7 @@ def test_report_export_node_smoke() -> None:
         cwd=ROOT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     assert proc.returncode == 0, (

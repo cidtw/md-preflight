@@ -660,3 +660,104 @@ def test_r16_measured_sigma_and_delay() -> None:
     assert delay.calc.logistics_buffer_units == pytest.approx(12.0 * 1.5)
     assert any("실측" in g for g in delay.guidance)
     assert "measured" in delay.source_layers[2].text or "실측" in delay.source_layers[2].text
+
+
+def test_capa_auto_cycle_escalates_to_daily_when_mon_wed_fri_exceeds_max_cap() -> None:
+    """When LT=1.0 and CAPA=1, MaxCap=1.6*D < mon_wed_fri Q=2.33*D; auto must escalate to daily."""
+    result = run(
+        {
+            **BASE,
+            "store_size": "cv_xs",
+            "daily_demand": 20,
+            "standard_lead_time_days": 1.0,
+            "order_day_pattern": "auto",
+        },
+    )
+    c = result.calc
+    assert c.max_rop_cap == pytest.approx(32.0)  # 20 * (1.0 + 0.6)
+    assert c.order_day_pattern == "daily_flex"
+    assert c.order_cycle_days == pytest.approx(1.0)
+    assert c.suggested_order_qty == pytest.approx(20.0)
+    assert c.suggested_order_qty >= c.effective_daily_demand * c.order_cycle_days - 1e-6
+
+
+def test_daily_demand_series_computes_empirical_mean_sigma_and_backtest() -> None:
+    result = run(
+        {
+            **BASE,
+            "store_type": "ssm",
+            "store_size": "ssm",
+            "avg_ticket": "t_15k_25k",
+            "daily_demand": 999,  # overridden by empirical series mean
+            "daily_demand_series": "10, 14, 12, 16, 8, 12, 12",
+        },
+    )
+    c = result.calc
+    assert c.ss_mode == "measured_series"
+    assert c.demand_series_days == 7
+    assert c.daily_demand == pytest.approx(12.0)
+    assert c.demand_sigma_daily == pytest.approx(2.58, abs=0.02)
+    assert c.backtest.source == "observed_series"
+    assert c.backtest.days == 14
+    assert 0.0 <= c.backtest.fill_rate_recommended <= 1.0
+    assert any("시계열" in g for g in result.guidance)
+
+
+def test_daily_demand_series_skips_double_competition_discount() -> None:
+    from app.pipeline.types import CompetitionCompetitor, GeoEnrichment
+
+    validated = validate_parameters(
+        {
+            **BASE,
+            "use_precise_location": True,
+            "store_address": "서울 마포구 양화로 45",
+            "consider_competition_saturation": True,
+            "daily_demand_series": "20, 22, 18, 20, 19, 21, 20",
+        },
+    )
+    geo = GeoEnrichment(
+        enabled=True,
+        used_fallback=False,
+        provider="kakao",
+        competition_scan_enabled=True,
+        competition_intensity=0.6,
+        competition_demand_factor=0.76,
+        competitors=[
+            CompetitionCompetitor(
+                name="CU 테스트",
+                kind="convenience",
+                tier="direct",
+                distance_m=80.0,
+                weight=0.5,
+            ),
+        ],
+    )
+    calc = analyze(validated, geo_override=geo)
+    assert calc.competition_already_in_pos is True
+    assert calc.competition_demand_factor == pytest.approx(1.0)
+    assert calc.effective_daily_demand == pytest.approx(20.0)
+
+
+def test_daily_demand_series_validation_errors() -> None:
+    with pytest.raises(InputValidationError, match="daily_demand_series"):
+        _ = validate_parameters({**BASE, "daily_demand_series": "12"})
+    with pytest.raises(InputValidationError, match="daily_demand_series"):
+        _ = validate_parameters({**BASE, "daily_demand_series": "12, abc, 15"})
+
+
+def test_simulation_scales_daily_demand_series_on_shock() -> None:
+    from app.pipeline.analyze.competition_sim import SimulationRequest, run_simulation
+
+    out = run_simulation(
+        SimulationRequest(
+            parameters={
+                **BASE,
+                "daily_demand": 20,
+                "daily_demand_series": "18, 22, 20, 16, 24, 20, 20",
+            },
+            scenario="competitor_pressure",
+            intensity=0.5,
+        ),
+    )
+    assert out.shocked.daily_demand < out.baseline.daily_demand
+    assert out.own_sales_index_delta_pct < 0

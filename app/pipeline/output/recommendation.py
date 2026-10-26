@@ -630,7 +630,10 @@ def _ss_formula_technical(
         f"서비스 레벨 정책 Z={kb.service_level_z:.2f} "
         f"({calc.service_level_label}) → 맥락 반영 최종 Z={kb.safety_z_factor:.2f}. "
     )
-    if calc.ss_mode == "measured_sigma" and calc.demand_sigma_daily is not None:
+    if (
+        calc.ss_mode in {"measured_sigma", "measured_series"}
+        and calc.demand_sigma_daily is not None
+    ):
         ss_body = (
             f"통계 안전재고(캡 전, R16 실측 sigma) = Z * sigma_D "
             f"{calc.demand_sigma_daily:g} * sqrt(LT {calc.standard_lead_time_days}) "
@@ -680,7 +683,12 @@ def _source_layers(calc: CalcBreakdown) -> list[SourceLayerLine]:
             f"SS ~ Z*sqrt(LT) (ASCM/기간 스케일). LT 고정·지연은 버퍼."
         ),
     )
-    if calc.ss_mode == "measured_sigma" and calc.demand_sigma_daily is not None:
+    if calc.ss_mode == "measured_series" and calc.demand_sigma_daily is not None:
+        ss_note = (
+            f"POS 시계열({calc.demand_series_days}일) 실측 D={calc.daily_demand:g}, "
+            f"sigma_D={calc.demand_sigma_daily:g} (vol proxy 비활성)"
+        )
+    elif calc.ss_mode == "measured_sigma" and calc.demand_sigma_daily is not None:
         ss_note = f"sigma_D={calc.demand_sigma_daily:g} 실측 (vol proxy 비활성)"
     else:
         ss_note = (
@@ -761,6 +769,23 @@ def _evidence_plain(validated: ValidatedInput, calc: CalcBreakdown) -> list[Evid
     else:
         ss_take = "여유 재고는 일반 기준과 비슷한 수준"
 
+    bt = calc.backtest
+    bt_source_ko = "POS 실측 시계열" if bt.source == "observed_series" else "시뮬레이션 파형"
+    fr_std_pct = bt.fill_rate_standard * 100
+    fr_rec_pct = bt.fill_rate_recommended * 100
+    bt_plain = (
+        f"사후 검증({bt_source_ko} {bt.days}일 리플레이): "
+        + f"일반 기준 품절 {bt.stockout_days_standard}일(충족률 {fr_std_pct:.1f}%) → "
+        + f"추천 기준 품절 {bt.stockout_days_recommended}일(충족률 {fr_rec_pct:.1f}%), "
+        + f"평균 보유 재고 {bt.avg_inventory_standard:.1f}개 → "
+        + f"{bt.avg_inventory_recommended:.1f}개."
+    )
+    if bt.spoilage_risk_units_standard > 0 or bt.spoilage_risk_units_recommended > 0:
+        bt_plain += (
+            f" (신선 폐기 위험량 약 {bt.spoilage_risk_units_standard:.1f}개 → "
+            f"{bt.spoilage_risk_units_recommended:.1f}개)"
+        )
+
     rop_block = EvidenceBlock(
         id="demand_safety",
         title="왜 이 재고·발주량인가요?",
@@ -777,6 +802,7 @@ def _evidence_plain(validated: ValidatedInput, calc: CalcBreakdown) -> list[Evid
                 f"'{calc.order_days_label}'에 약 {calc.suggested_order_qty:g}개. "
                 f"({product} · {trade} · {dong})"
             ),
+            bt_plain,
         ],
     )
 
@@ -879,6 +905,16 @@ def _evidence_technical(
         ],
     )
 
+    bt = calc.backtest
+    spoil_std = bt.spoilage_risk_units_standard
+    spoil_rec = bt.spoilage_risk_units_recommended
+    bt_tech = (
+        f"backtest({bt.source}, {bt.days}d): "
+        + f"stockout_days {bt.stockout_days_standard}→{bt.stockout_days_recommended}, "
+        + f"fill_rate {bt.fill_rate_standard * 100:.1f}%→{bt.fill_rate_recommended * 100:.1f}%, "
+        + f"avg_inv {bt.avg_inventory_standard:.1f}→{bt.avg_inventory_recommended:.1f}, "
+        + f"spoilage_risk {spoil_std:.1f}→{spoil_rec:.1f}."
+    )
     std_ss = _standard_safety_stock(calc)
     rop_block = EvidenceBlock(
         id="demand_safety",
@@ -902,6 +938,7 @@ def _evidence_technical(
             ),
             _ss_formula_technical(calc, scores),
             _rop_formula_technical(calc),
+            bt_tech,
         ],
     )
     if calc.effective_demand_clamped:
@@ -1101,10 +1138,21 @@ def render(validated: ValidatedInput, calc: CalcBreakdown) -> RecommendationResu
             "CAPA 상한으로 ROP·표시 안전재고를 낮췄습니다. "
             + "이는 목표 서비스 레벨 유지가 아니라 공간 제약 하의 발주 빈도 trade-off입니다.",
         )
-    if calc.ss_mode == "measured_sigma":
+    if calc.ss_mode == "measured_series":
+        guidance.append(
+            f"POS 일별 판매량 시계열({calc.demand_series_days}일)에서 "
+            + f"일평균 소진(D={calc.daily_demand:g})과 "
+            + f"표준편차(sigma={calc.demand_sigma_daily:g})를 자동 실측 산출해 반영했습니다.",
+        )
+    elif calc.ss_mode == "measured_sigma":
         guidance.append(
             "일 수요 표준편차(sigma) 실측값이 반영되어 변동 점수 proxy 대신 "
             + "SS = Z * sigma * sqrt(LT) 경로를 사용했습니다 (R16).",
+        )
+    if calc.competition_already_in_pos:
+        guidance.append(
+            "실측 POS 시계열에는 현재 상권 경쟁 영향이 이미 내재되어 있어, "
+            + "기존 경쟁 포화 계수(m_c) 중복 차감을 생략했습니다.",
         )
     if calc.logistics_delay_mode == "measured_delay":
         guidance.append(

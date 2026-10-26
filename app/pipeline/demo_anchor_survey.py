@@ -429,7 +429,7 @@ def _contains_any(text: str, markers: tuple[str, ...]) -> bool:
     return any(m in text for m in markers)
 
 
-def _is_noise_poi(name: str, category_name: str) -> bool:
+def is_noise_poi(name: str, category_name: str = "") -> bool:
     """Parking, EV chargers, salons, pet hotels, fashion, etc."""
     blob = f"{name} {category_name}"
     if _contains_any(name, _NOISE_NAME_MARKERS):
@@ -439,6 +439,9 @@ def _is_noise_poi(name: str, category_name: str) -> bool:
         return True
     # "큐사랑 …이마트에브리데이점" beauty shops attached to SSM name
     return "미용" in blob and "슈퍼" not in category_name and "마트" not in category_name
+
+
+_is_noise_poi = is_noise_poi
 
 
 def _is_true_convenience_chain(name: str) -> bool:

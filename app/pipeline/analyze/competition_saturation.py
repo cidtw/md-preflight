@@ -17,6 +17,7 @@ import re
 from dataclasses import dataclass
 from typing import Final, Literal
 
+from app.pipeline.demo_anchor_survey import is_noise_poi
 from app.pipeline.types import CompetitionCompetitor
 
 # Soft-sat for raw competition score → intensity in [0, 1].
@@ -259,11 +260,23 @@ def classify_competitor(
     return default_kind
 
 
+def _is_same_subject_store(candidate_name: str, subject_query: str) -> bool:
+    """True when candidate place name matches the subject store query/address."""
+    if not candidate_name or not subject_query:
+        return False
+    cand = re.sub(r"[\s()·\-_]+", "", candidate_name).lower()
+    subj = re.sub(r"[\s()·\-_]+", "", subject_query).lower()
+    if len(cand) < 4 or len(subj) < 4:
+        return False
+    return cand in subj or subj in cand
+
+
 def score_competitors(
     competitors: list[CompetitionCompetitor],
     *,
     decay_m: float,
     max_radius_m: int,
+    subject_query: str = "",
 ) -> tuple[float, float, list[CompetitionCompetitor]]:
     """Return (intensity ∈[0,1], demand_factor ∈[1-max_frac,1], scored list)."""
     if decay_m <= 0:
@@ -273,6 +286,10 @@ def score_competitors(
         if c.distance_m < SELF_EXCLUDE_M:
             continue
         if c.distance_m > max_radius_m * 1.05:
+            continue
+        if is_noise_poi(c.name, ""):
+            continue
+        if _is_same_subject_store(c.name, subject_query):
             continue
         eligible.append(c)
 

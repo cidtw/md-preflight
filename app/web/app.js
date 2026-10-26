@@ -86,6 +86,7 @@ const STEPS = [
     keys: [
       "product_name",
       "daily_demand",
+      "daily_demand_series",
       "standard_lead_time_days",
       "service_level",
       "order_day_pattern",

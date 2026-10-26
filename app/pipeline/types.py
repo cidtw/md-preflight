@@ -131,6 +131,21 @@ class KnowledgeSignals(BaseModel):
     search_query: str
 
 
+class BacktestMetrics(BaseModel):
+    """Empirical replay comparison: standard policy vs recommended policy."""
+
+    days: int = 0
+    source: str = "synthetic"  # observed_series | synthetic
+    stockout_days_standard: int = 0
+    stockout_days_recommended: int = 0
+    fill_rate_standard: float = 1.0
+    fill_rate_recommended: float = 1.0
+    avg_inventory_standard: float = 0.0
+    avg_inventory_recommended: float = 0.0
+    spoilage_risk_units_standard: float = 0.0
+    spoilage_risk_units_recommended: float = 0.0
+
+
 class CalcBreakdown(BaseModel):
     """Internal calc. Lead time is a fixed product input, not a recommended lever."""
 
@@ -174,12 +189,15 @@ class CalcBreakdown(BaseModel):
     max_rop_cap: float | None = None
     multi_order_suggestion: str | None = None
     # R16: measured inputs shrink L3 proxies when provided.
-    # ss_mode: proxy_vol (L3) | measured_sigma (POS daily sigma)
+    # ss_mode: proxy_vol (L3) | measured_sigma (POS daily sigma) | measured_series (POS series)
     ss_mode: str = "proxy_vol"
     demand_sigma_daily: float | None = None
+    demand_series_days: int = 0
+    competition_already_in_pos: bool = False
     # logistics_delay_mode: proxy_kb (L3 hash/table) | measured_delay
     logistics_delay_mode: str = "proxy_kb"
     measured_logistics_delay_days: float | None = None
+    backtest: BacktestMetrics = Field(default_factory=BacktestMetrics)
     scores: ScoreBreakdown
     knowledge: KnowledgeSignals
     geo: GeoEnrichment = Field(default_factory=GeoEnrichment)
